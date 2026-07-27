@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/thuvien_quanly_spring?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+    username: root
+    password: anhtung12
+  jpa:
+    show-sql: true
+
