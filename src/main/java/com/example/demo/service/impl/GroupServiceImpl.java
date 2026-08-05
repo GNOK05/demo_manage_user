@@ -9,7 +9,6 @@ import com.example.demo.repository.UserGroupMappingRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.GroupService;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +19,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GroupServiceImpl implements GroupService {
     private final GroupRepository groupRepository;
-    private final ModelMapper modelMapper;
     private final UserRepository userRepository;
     private final UserGroupMappingRepository userGroupMappingRepository;
 
