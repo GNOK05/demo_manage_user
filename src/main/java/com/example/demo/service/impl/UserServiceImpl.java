@@ -106,9 +106,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        if (username==null) {
-            throw new BussinessException("Username is null or empty");
-        }
         User user = userRespository.findByUsername(username);
         if (user==null){
             throw new UsernameNotFoundException("Username not found");
