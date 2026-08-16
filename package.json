@@ -1,0 +1,8 @@
+{
+  "name": "company-management",
+  "private": true,
+  "scripts": {
+    "start": "npm --prefix frontend start",
+    "build": "npm --prefix frontend run build"
+  }
+}

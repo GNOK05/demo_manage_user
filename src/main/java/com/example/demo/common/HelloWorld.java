@@ -2,7 +2,9 @@ package com.example.demo.common;
 
 public class HelloWorld {
     public static void main(String [] args){
-        System.out.println("masterLauriel");
-        System.out.println("Idk wwhat you man");
+        int x=0;
+        for(;x< 5;x++){
+
+        }
     }
 }

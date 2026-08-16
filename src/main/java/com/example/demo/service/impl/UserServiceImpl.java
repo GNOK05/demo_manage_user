@@ -1,120 +1,47 @@
 package com.example.demo.service.impl;
-import com.example.demo.entity.Group;
-import com.example.demo.exception.BussinessException;
-import com.example.demo.specification.UserSpecification;
-import com.example.demo.dto.request.CreateUserDTO;
-import com.example.demo.dto.request.UpdateUserDTO;
-import com.example.demo.entity.Role;
+
+import com.example.demo.dto.UserDto;
+import com.example.demo.dto.UserResponse;
+import com.example.demo.entity.Department;
 import com.example.demo.entity.User;
-import com.example.demo.entity.UserFiller;
-import com.example.demo.repository.UserGroupMappingRepository;
+import com.example.demo.exception.BussinessException;
+import com.example.demo.repository.DepartmentRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.UserService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDate;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
-@RequiredArgsConstructor
-@Service
+
+@Service @RequiredArgsConstructor @Transactional
 public class UserServiceImpl implements UserService {
-    private final UserRepository userRespository;
-    private final ModelMapper modelMapper;
-    private final UserGroupMappingRepository userGroupMappingRepository;
-    private final PasswordEncoder passwordEncoder;
-
-
-
-    @Override
-    @Transactional
-    public User create( CreateUserDTO request) {
-        User user = modelMapper.map(request,User.class);
-        String encodedPassword = passwordEncoder.encode(request.getPassword());
-        user.setPassword(encodedPassword);
-        return userRespository.save(user);
+    private final UserRepository users; private final DepartmentRepository departments; private final PasswordEncoder encoder;
+    @Override public UserResponse create(UserDto.SaveRequest r) {
+        if (users.existsByUsername(r.username())) throw new BussinessException("Username already exists");
+        if (users.existsByEmail(r.email())) throw new BussinessException("Email already exists");
+        User u = new User(); u.setUsername(r.username()); u.setPassword(encoder.encode(r.password()));
+        u.setFullName(r.fullName()); u.setEmail(r.email()); u.setPhone(r.phone()); u.setRole(r.role()); u.setDepartment(department(r.departmentId()));
+        return response(users.save(u));
     }
-    @Transactional
-    @Override
-    public User updateUser(Integer id, UpdateUserDTO update){
-        User user = userRespository.findById(id)
-                .orElseThrow(() ->  new BussinessException("Không tìm thấy User với ID: " + id));
-        modelMapper.map(update,user);
-        if (update.getPassword()!= null) {
-            String encodedPassword = passwordEncoder.encode(update.getPassword());
-            user.setPassword(encodedPassword);
-        }
-
-        return userRespository.save(user);
+    @Override public UserResponse update(Long id, UserDto.UpdateRequest r) {
+        User u = findEntity(id); u.setFullName(r.fullName()); u.setEmail(r.email()); u.setPhone(r.phone());
+        if (r.role() != null) u.setRole(r.role()); if (r.departmentId() != null) u.setDepartment(department(r.departmentId()));
+        if (r.password() != null && !r.password().isBlank()) u.setPassword(encoder.encode(r.password())); return response(u);
     }
-    @Override
-    public List<User> search(UserFiller userFiller){
-        String firstName= userFiller.getFirstName();
-        String lastName = userFiller.getLastName();
-        String address = userFiller.getAddress();
-        Role role = userFiller.getRole();
-        Specification<User> spec = (root, query, builder) -> builder.conjunction();
-        if (firstName != null && !firstName.isBlank()){
-            spec=spec.and(UserSpecification.hasFirstNameLike(firstName));
-        }
-        if (lastName != null && !lastName.isBlank()){
-            spec=spec.and(UserSpecification.hasLastNameLike(lastName));
-        }
-        if (address != null && !address.isBlank()){
-            spec=spec.and(UserSpecification.hasAddressLike(address));
-        }
-        if (role != null ){
-            spec=spec.and(UserSpecification.hasRoleLike(role));
-        }
-        return userRespository.findAll(spec);
-
+    @Override @Transactional(readOnly = true) public List<UserResponse> findAll() { return users.findAll().stream().map(this::response).toList(); }
+    @Override @Transactional(readOnly = true) public UserResponse get(Long id) { return response(findEntity(id)); }
+    @Override public void delete(Long id) { users.delete(findEntity(id)); }
+    @Override @Transactional(readOnly = true) public User currentUser() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return users.findByUsername(username).orElseThrow(() -> new BussinessException("Current user not found"));
     }
-    @Transactional
-    public void deleteByID(Integer id){
-        if (id==null) {
-            throw new BussinessException(("ID không được để trống"));
-        }
-        if (!userRespository.existsById(id)){
-            throw new BussinessException("không tìm thấy User với Id =" + id + "để xoá");
-        }
-        userRespository.deleteById(id);
-        userGroupMappingRepository.deleteByUserId(id);
-    }
-
-    @Override
-    public List<User> findByBirthdayBetween(LocalDate fromDate, LocalDate toDate) {
-        return userRespository.findByBirthdayBetweenSQL(fromDate,toDate);
-    }
-
-    @Override
-    public Page<User> getAllUsers(Pageable pageable) {
-        return userRespository.findAll(pageable);
-    }
-
-    @Override
-    public List<Group> findGroupByUserId(Integer userId) {
-        return userRespository.findGroupdByUserId(userId);
-    }
-
-    @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRespository.findByUsername(username);
-        if (user==null){
-            throw new UsernameNotFoundException("Username not found");
-        }
-        return new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
-                user.getPassword(),
-                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole()))
-        );
-
-    }
+    @Override public UserResponse currentProfile() { return response(currentUser()); }
+    @Override @Transactional(readOnly = true) public User findEntity(Long id) { return users.findById(id).orElseThrow(() -> new BussinessException("User not found: " + id)); }
+    @Override @Transactional(readOnly = true) public User findEntityByUsername(String username) { return users.findByUsername(username).orElseThrow(() -> new BussinessException("User not found")); }
+    @Override public UserResponse toResponse(User user) { return response(user); }
+    @Override @Transactional(readOnly = true) public List<UserResponse> departmentMembers() { User current=currentUser(); if (current.getDepartment()==null) throw new BussinessException("You do not belong to a department"); return users.findByDepartmentId(current.getDepartment().getId()).stream().map(this::response).toList(); }
+    private Department department(Long id) { return id == null ? null : departments.findById(id).orElseThrow(() -> new BussinessException("Department not found: " + id)); }
+    public UserResponse response(User u) { return new UserResponse(u.getId(), u.getUsername(), u.getFullName(), u.getEmail(), u.getPhone(), u.getRole(), u.getDepartment() == null ? null : u.getDepartment().getId(), u.getDepartment() == null ? null : u.getDepartment().getName(), u.getCreatedAt()); }
 }

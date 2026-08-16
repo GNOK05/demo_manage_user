@@ -1,12 +1,10 @@
 package com.example.demo.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Table(name =  "users")
 @Entity
@@ -16,31 +14,34 @@ import java.time.LocalDate;
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
-    @NotBlank
-    @Column(name="first_name")
-    private String firstName;
+    @Column(nullable = false, unique = true, length = 80)
+    private String username;
 
-    @NotBlank
-    @Column(name="last_name")
-    private String lastName;
-
-    @NotNull
-    @Column(name="birthday")
-    private LocalDate birthday;
-
-    @NotBlank
-    @Column(name="address")
-    private String address;
-
-    @Column(name="password")
+    @Column(nullable = false)
     private String password;
 
+    @Column(name = "full_name", nullable = false, length = 150)
+    private String fullName;
+
+    @Column(nullable = false, unique = true, length = 150)
+    private String email;
+
+    @Column(length = 30)
+    private String phone;
+
     @Enumerated(EnumType.STRING)
-    @Column(name="role")
+    @Column(nullable = false, length = 20)
     private Role role;
 
-    @Column(name = "username")
-    private String username;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    private Department department;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    void onCreate() { createdAt = LocalDateTime.now(); }
 }
