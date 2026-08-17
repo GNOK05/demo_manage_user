@@ -1,0 +1,35 @@
+<aside class="sidebar">
+  <div class="brand-wrap">
+    <div class="brand-mark">CH</div>
+    <div>
+      <strong>CompanyHub</strong>
+      <small>Workspace</small>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
+      >Tổng quan</a
+    >
+    <a *ngIf="auth.hasRole(['ADMIN', 'MANAGER'])" routerLink="/people" routerLinkActive="active">{{
+      peopleLabel
+    }}</a>
+    <a *ngIf="auth.hasRole(['ADMIN', 'MANAGER'])" routerLink="/projects" routerLinkActive="active"
+      >Dự án</a
+    >
+    <a routerLink="/attendance" routerLinkActive="active">{{ attendanceLabel }}</a>
+    <a routerLink="/tasks" routerLinkActive="active">Công việc của tôi</a>
+    <a routerLink="/notifications" routerLinkActive="active">Thông báo</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-chip">
+      <span class="user-avatar">{{ (auth.user()?.fullName || 'U').charAt(0).toUpperCase() }}</span>
+      <div>
+        <strong>{{ auth.user()?.fullName || 'Người dùng' }}</strong>
+        <small>{{ auth.user()?.role || 'EMPLOYEE' }}</small>
+      </div>
+    </div>
+    <button type="button" class="logout" (click)="auth.logout()">Đăng xuất</button>
+  </div>
+</aside>

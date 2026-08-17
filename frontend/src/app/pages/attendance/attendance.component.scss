@@ -1,1 +1,52 @@
-:host { display: block; }
+:host {
+  display: block;
+}
+
+.attendance-group,
+.attendance-history,
+.status-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.attendance-row,
+.people-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.attendance-row:last-child,
+.people-row:last-child {
+  border-bottom: 0;
+}
+
+.attendance-side,
+.people-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.people-row strong,
+.attendance-row strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 700px) {
+  .attendance-row,
+  .people-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .attendance-side,
+  .people-side {
+    align-items: flex-start;
+  }
+}

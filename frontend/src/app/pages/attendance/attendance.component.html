@@ -1,1 +1,65 @@
-<div class="shell"><aside><div class="brand">CompanyHub</div><a routerLink="/">Tổng quan</a><a *ngIf="auth.hasRole(['ADMIN','MANAGER'])" routerLink="/people">{{auth.user()?.role === 'ADMIN' ? 'Nhân sự công ty' : 'Thành viên phòng ban'}}</a><a *ngIf="auth.hasRole(['ADMIN','MANAGER'])" routerLink="/projects">Dự án</a><a routerLink="/attendance">{{title()}}</a><a routerLink="/tasks">Công việc của tôi</a><button class="link" (click)="auth.logout()">Đăng xuất</button></aside><main class="content"><header><div><p class="muted">Theo dõi thời gian làm việc</p><h1>{{title()}}</h1></div></header><section class="card"><div class="row" *ngFor="let item of entries()"><div><strong>{{item.date}}</strong><p class="muted">{{item.userName || 'Tài khoản của tôi'}}</p></div><div><span class="badge">{{item.status}}</span><p class="muted">{{item.checkInTime || '—'}} → {{item.checkOutTime || '—'}}</p></div></div><p *ngIf="!entries().length" class="muted">Chưa có dữ liệu chấm công.</p></section></main></div>
+<div class="shell">
+  <app-sidebar></app-sidebar>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Theo dõi thời gian làm việc</p>
+        <h1>{{ title() }}</h1>
+      </div>
+    </header>
+
+    <ng-container *ngIf="!isSelf(); else selfStatus">
+      <section class="card attendance-group" *ngFor="let group of groups()">
+        <div class="section-top">
+          <h2>{{ group.departmentName }}</h2>
+          <span class="chip">{{ group.people.length }} người</span>
+        </div>
+
+        <div class="attendance-row" *ngFor="let person of group.people">
+          <div>
+            <strong>{{ person.fullName }}</strong>
+            <p class="muted">{{ person.jobTitle || person.role }}</p>
+          </div>
+          <div class="attendance-side">
+            <span class="badge status-{{ person.workStatus }}">{{ person.workStatusLabel }}</span>
+            <p class="muted">{{ person.checkInTime || '—' }} → {{ person.checkOutTime || '—' }}</p>
+          </div>
+        </div>
+
+        <p *ngIf="!group.people.length" class="empty-state">Chưa có nhân sự.</p>
+      </section>
+
+      <p *ngIf="!groups().length" class="empty-state">Chưa có dữ liệu.</p>
+    </ng-container>
+
+    <ng-template #selfStatus>
+      <section class="card status-panel">
+        <div class="section-top">
+          <h2>Trạng thái hôm nay</h2>
+          <span class="badge">{{ myStatusLabel() }}</span>
+        </div>
+      </section>
+    </ng-template>
+
+    <section class="card attendance-history">
+      <div class="section-top">
+        <h2>Lịch sử chấm công</h2>
+        <span class="chip chip-soft">{{ entries().length }} bản ghi</span>
+      </div>
+
+      <div class="attendance-row" *ngFor="let item of entries()">
+        <div>
+          <strong>{{ item.date }}</strong>
+          <p class="muted">{{ item.userName || 'Tài khoản của tôi' }}</p>
+        </div>
+        <div class="attendance-side">
+          <span class="badge">{{ item.status }}</span>
+          <p class="muted">{{ item.checkInTime || '—' }} → {{ item.checkOutTime || '—' }}</p>
+        </div>
+      </div>
+
+      <p *ngIf="!entries().length" class="empty-state">Chưa có dữ liệu chấm công.</p>
+    </section>
+  </main>
+</div>

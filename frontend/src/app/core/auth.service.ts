@@ -10,12 +10,33 @@ export class AuthService {
   private logoutTimer?: ReturnType<typeof setTimeout>;
   constructor(private http: HttpClient, private router: Router)
   { this.scheduleAutoLogout(this.token()); }
-  login(username: string, password: string) { return this.http.post<ApiResponse<{token: string; user: User}>>(`${API}/auth/login`, {username, password}).pipe(tap(r => { localStorage.setItem('token', r.data.token); localStorage.setItem('user', JSON.stringify(r.data.user)); this.user.set(r.data.user); this.scheduleAutoLogout(r.data.token); })); }
-  me() { return this.http.get<ApiResponse<User>>(`${API}/auth/me`).pipe(tap(r => { localStorage.setItem('user', JSON.stringify(r.data)); this.user.set(r.data); })); }
-  token() { return localStorage.getItem('token'); }
-  hasRole(roles: string[]) { return !!this.user() && roles.includes(this.user()!.role); }
-  logout() { if (this.logoutTimer) clearTimeout(this.logoutTimer); localStorage.removeItem('token'); localStorage.removeItem('user'); this.user.set(null); this.router.navigateByUrl('/login'); }
-  private readUser(): User | null { try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; } }
+  login(username: string, password: string) {
+    return this.http.post<ApiResponse<{token: string; user: User}>>(`${API}/auth/login`, {username, password}).pipe(tap(r => {
+      localStorage.setItem('token', r.data.token);
+      localStorage.setItem('user', JSON.stringify(r.data.user));
+      this.user.set(r.data.user); this.scheduleAutoLogout(r.data.token);
+    })); }
+  me() {
+    return this.http.get<ApiResponse<User>>(`${API}/auth/me`).pipe(tap(r => {
+      localStorage.setItem('user', JSON.stringify(r.data)); this.user.set(r.data);
+    })); }
+  token() {
+    return localStorage.getItem('token');
+  }
+  hasRole(roles: string[]) {
+    return !!this.user() && roles.includes(this.user()!.role);
+  }
+  logout() {
+    if (this.logoutTimer) clearTimeout(this.logoutTimer);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    this.user.set(null);
+    this.router.navigateByUrl('/login'); }
+  private readUser(): User | null {
+    try {
+      return JSON.parse(localStorage.getItem('user') || 'null');
+    } catch { return null; }
+  }
   private scheduleAutoLogout(token: string | null) {
     if (this.logoutTimer) clearTimeout(this.logoutTimer);
     if (!token) return;

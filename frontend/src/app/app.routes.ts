@@ -6,13 +6,25 @@ import { ProjectListComponent } from './pages/project-list/project-list.componen
 import { TaskBoardComponent } from './pages/task-board/task-board.component';
 import { PeopleComponent } from './pages/people/people.component';
 import { AttendanceComponent } from './pages/attendance/attendance.component';
+import { NotificationsComponent } from './pages/notifications/notifications.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: '', component: DashboardComponent, canActivate: [authGuard] },
-  { path: 'projects', component: ProjectListComponent, canActivate: [authGuard, roleGuard], data: { roles: ['ADMIN', 'MANAGER'] } },
+  {
+    path: 'projects',
+    component: ProjectListComponent,
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ADMIN', 'MANAGER'] },
+  },
   { path: 'tasks', component: TaskBoardComponent, canActivate: [authGuard] },
-  { path: 'people', component: PeopleComponent, canActivate: [authGuard, roleGuard], data: { roles: ['ADMIN', 'MANAGER'] } },
+  {
+    path: 'people',
+    component: PeopleComponent,
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ADMIN', 'MANAGER'] },
+  },
   { path: 'attendance', component: AttendanceComponent, canActivate: [authGuard] },
-  { path: '**', redirectTo: '' }
+  { path: 'notifications', component: NotificationsComponent, canActivate: [authGuard] },
+  { path: '**', redirectTo: '' },
 ];

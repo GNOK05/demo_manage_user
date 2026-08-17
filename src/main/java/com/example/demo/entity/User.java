@@ -35,6 +35,10 @@ public class User {
     @Column(nullable = false, length = 20)
     private Role role;
 
+    /** Display-only job title (e.g. DEV, QA, QC, TEST, PO). Independent of the security {@link Role}. */
+    @Column(name = "job_title", length = 50)
+    private String jobTitle;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
     private Department department;

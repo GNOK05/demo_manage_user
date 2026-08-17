@@ -1,1 +1,90 @@
-<div class="shell"><aside><div class="brand">CompanyHub</div><a routerLink="/">Tổng quan</a><a routerLink="/people">{{auth.user()?.role === 'ADMIN' ? 'Nhân sự công ty' : 'Thành viên phòng ban'}}</a><a routerLink="/projects">Dự án</a><a routerLink="/attendance">Chấm công</a><button class="link" (click)="auth.logout()">Đăng xuất</button></aside><main class="content"><header><div><p class="muted">{{auth.user()?.role === 'ADMIN' ? 'Quản trị hệ thống' : 'Quản lý phòng ban'}}</p><h1>{{auth.user()?.role === 'ADMIN' ? 'Nhân sự công ty' : 'Thành viên phòng ban'}}</h1></div></header><section class="card"><div class="row" *ngFor="let user of people()"><div><strong>{{user.fullName}}</strong><p class="muted">{{user.email}} · {{user.departmentName || 'Chưa thuộc phòng ban'}}</p></div><span class="badge">{{user.role}}</span></div><p *ngIf="!people().length" class="muted">Chưa có nhân sự.</p></section></main></div>
+<div class="shell">
+  <app-sidebar></app-sidebar>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">
+          {{ auth.user()?.role === 'ADMIN' ? 'Quản trị hệ thống' : 'Quản lý phòng ban' }}
+        </p>
+        <h1>{{ auth.user()?.role === 'ADMIN' ? 'Nhân sự công ty' : 'Thành viên phòng ban' }}</h1>
+      </div>
+    </header>
+
+    <section class="card manager-panel">
+      <div class="section-top">
+        <h2>{{ selectedUser ? 'Chỉnh sửa nhân sự' : 'Thêm nhân sự mới' }}</h2>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          Họ tên
+          <input [(ngModel)]="draft.fullName" placeholder="Nguyễn Văn A" />
+        </label>
+        <label>
+          Username
+          <input [(ngModel)]="draft.username" placeholder="username" />
+        </label>
+        <label>
+          Email
+          <input type="email" [(ngModel)]="draft.email" placeholder="name@company.com" />
+        </label>
+        <label>
+          Chức vụ
+          <input [(ngModel)]="draft.jobTitle" placeholder="Chuyên viên" />
+        </label>
+        <label>
+          Phòng ban
+          <input [(ngModel)]="draft.departmentName" placeholder="Phòng kỹ thuật" />
+        </label>
+        <label>
+          Vai trò
+          <select [(ngModel)]="draft.role">
+            <option value="ADMIN">ADMIN</option>
+            <option value="MANAGER">MANAGER</option>
+            <option value="EMPLOYEE">EMPLOYEE</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" (click)="saveUser()">
+          {{ selectedUser ? 'Cập nhật' : 'Tạo mới' }}
+        </button>
+        <button type="button" class="secondary" (click)="resetForm()">Huỷ</button>
+      </div>
+    </section>
+
+    <section class="toolbar card">
+      <input [(ngModel)]="search" placeholder="Tìm kiếm nhân sự theo tên, email, phòng ban" />
+    </section>
+
+    <section class="card people-group" *ngFor="let group of groups()">
+      <div class="section-top">
+        <h2>{{ group.departmentName }}</h2>
+        <span class="chip">{{ group.people.length }} người</span>
+      </div>
+
+      <div class="people-row" *ngFor="let person of visiblePeople(group)">
+        <div>
+          <strong>{{ person.fullName }}</strong>
+          <p class="muted">{{ person.jobTitle || person.role }} · {{ person.email }}</p>
+        </div>
+        <div class="people-side">
+          <span class="badge status-{{ person.workStatus }}">{{ person.workStatusLabel }}</span>
+          <p class="muted" *ngIf="person.checkInTime">
+            {{ person.checkInTime }} → {{ person.checkOutTime || '—' }}
+          </p>
+          <div class="inline-actions">
+            <button type="button" class="secondary small" (click)="editUser(person)">Sửa</button>
+            <button type="button" class="danger small" (click)="deleteUser(person.id)">Xoá</button>
+          </div>
+        </div>
+      </div>
+
+      <p *ngIf="!group.people.length" class="empty-state">Chưa có nhân sự.</p>
+    </section>
+
+    <p *ngIf="!groups().length" class="empty-state">Chưa có dữ liệu.</p>
+  </main>
+</div>

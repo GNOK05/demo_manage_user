@@ -17,6 +17,7 @@ CREATE TABLE users (
   email VARCHAR(150) NOT NULL UNIQUE,
   phone VARCHAR(30),
   role VARCHAR(20) NOT NULL,
+  job_title VARCHAR(50),
   department_id BIGINT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_user_department FOREIGN KEY (department_id) REFERENCES departments(id)
@@ -52,11 +53,13 @@ CREATE TABLE tasks (
   description VARCHAR(2000),
   project_id BIGINT NOT NULL,
   assigned_to_id BIGINT NULL,
+  tester_id BIGINT NULL,
   created_by_id BIGINT NOT NULL,
   status VARCHAR(20) NOT NULL,
   deadline DATE NOT NULL,
   CONSTRAINT fk_task_project FOREIGN KEY (project_id) REFERENCES projects(id),
   CONSTRAINT fk_task_assignee FOREIGN KEY (assigned_to_id) REFERENCES users(id),
+  CONSTRAINT fk_task_tester FOREIGN KEY (tester_id) REFERENCES users(id),
   CONSTRAINT fk_task_creator FOREIGN KEY (created_by_id) REFERENCES users(id)
 );
 
@@ -64,3 +67,4 @@ CREATE INDEX idx_attendance_user ON attendance(user_id);
 CREATE INDEX idx_project_department ON projects(department_id);
 CREATE INDEX idx_task_project ON tasks(project_id);
 CREATE INDEX idx_task_assignee ON tasks(assigned_to_id);
+CREATE INDEX idx_task_tester ON tasks(tester_id);

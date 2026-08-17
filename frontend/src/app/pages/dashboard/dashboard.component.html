@@ -1,1 +1,112 @@
-<div class="shell"><aside><div class="brand">CompanyHub</div><a routerLink="/">Tổng quan</a><a *ngIf="auth.hasRole(['ADMIN','MANAGER'])" routerLink="/people">{{auth.user()?.role === 'ADMIN' ? 'Nhân sự công ty' : 'Thành viên phòng ban'}}</a><a *ngIf="auth.hasRole(['ADMIN','MANAGER'])" routerLink="/projects">Dự án</a><a routerLink="/attendance">{{auth.user()?.role === 'ADMIN' ? 'Chấm công toàn công ty' : auth.user()?.role === 'MANAGER' ? 'Chấm công phòng ban' : 'Chấm công cá nhân'}}</a><a routerLink="/tasks">Công việc của tôi</a><button class="link" (click)="auth.logout()">Đăng xuất</button></aside><main class="content"><header><div><p class="muted">Xin chào</p><h1>{{auth.user()?.fullName}}</h1></div><span class="badge">{{auth.user()?.role}}</span></header><section class="stats"><article><span>Dự án</span><strong>{{projects().length}}</strong></article><article><span>Công việc</span><strong>{{tasks().length}}</strong></article><article><span>Hoàn thành</span><strong>{{done()}}</strong></article></section><section class="card" *ngIf="auth.user()?.role === 'EMPLOYEE'"><h2>Chấm công hôm nay</h2><div class="actions"><button (click)="checkIn()">Check-in</button><button class="secondary" (click)="checkOut()">Check-out</button></div><p class="notice">{{notice()}}</p></section><section class="card" *ngIf="auth.user()?.role === 'EMPLOYEE'"><h2>Việc cần làm</h2><div *ngFor="let task of tasks()" class="row"><div><strong>{{task.taskName}}</strong><p class="muted">{{task.projectName}}</p></div><span class="badge">{{task.status}}</span></div></section><section class="card" *ngIf="auth.user()?.role !== 'EMPLOYEE'"><h2>Tiến độ dự án</h2><div *ngFor="let project of projects()" class="row"><div><strong>{{project.projectName}}</strong><p class="muted">{{project.completedTasks}}/{{project.totalTasks}} công việc hoàn thành</p></div><span class="progress"><i [style.width.%]="project.progress"></i></span></div></section></main></div>
+<div class="shell">
+  <app-sidebar></app-sidebar>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Xin chào</p>
+        <h1>{{ auth.user()?.fullName || 'Quản lý công ty' }}</h1>
+      </div>
+      <span class="profile-pill">{{ auth.user()?.jobTitle || auth.user()?.role }}</span>
+    </header>
+
+    <section class="stats">
+      <article class="stat-card accent-blue">
+        <span class="stat-label">Dự án</span>
+        <strong class="stat-value">{{ projects().length }}</strong>
+        <small>đang vận hành</small>
+      </article>
+      <article class="stat-card accent-green">
+        <span class="stat-label">Công việc</span>
+        <strong class="stat-value">{{ tasks().length }}</strong>
+        <small>nhiệm vụ hiện tại</small>
+      </article>
+      <article class="stat-card accent-purple">
+        <span class="stat-label">Hoàn thành</span>
+        <strong class="stat-value">{{ done() }}</strong>
+        <small>{{ completionRate() }}% hiệu suất</small>
+      </article>
+    </section>
+
+    <section class="grid-two">
+      <article class="card">
+        <div class="section-top">
+          <h2>Tiến độ dự án</h2>
+          <span class="chip chip-primary">{{ projects().length }} dự án</span>
+        </div>
+
+        <div class="project-list" *ngIf="projects().length; else emptyProjects">
+          <div class="project-item" *ngFor="let project of topProjects()">
+            <div class="project-head">
+              <div>
+                <strong>{{ project.projectName }}</strong>
+                <small>{{ project.departmentName }}</small>
+              </div>
+              <span>{{ project.progress }}%</span>
+            </div>
+            <div class="progress-meter">
+              <span [style.width.%]="project.progress"></span>
+            </div>
+            <div class="project-meta">
+              <span>{{ project.completedTasks }}/{{ project.totalTasks }} task</span>
+              <span>{{ project.status }}</span>
+            </div>
+          </div>
+        </div>
+
+        <ng-template #emptyProjects>
+          <p class="empty-state">Chưa có dự án nào trong hệ thống.</p>
+        </ng-template>
+      </article>
+
+      <article class="card">
+        <div class="section-top">
+          <h2>Nhân sự & chấm công</h2>
+          <span class="chip">Hôm nay</span>
+        </div>
+
+        <div *ngIf="auth.user()?.role === 'EMPLOYEE'; else teamPanel" class="quick-actions">
+          <button (click)="checkIn()">Check-in</button>
+          <button class="secondary" (click)="checkOut()">Check-out</button>
+          <p class="notice" *ngIf="notice()">{{ notice() }}</p>
+        </div>
+
+        <ng-template #teamPanel>
+          <div class="mini-list" *ngIf="departments().length; else emptyDepartments">
+            <div class="mini-row" *ngFor="let department of departments().slice(0, 4)">
+              <span>{{ department.name }}</span>
+              <strong>{{ department.managerName || 'Đang cập nhật' }}</strong>
+            </div>
+          </div>
+          <ng-template #emptyDepartments>
+            <p class="empty-state">Chưa có phòng ban nào để hiển thị.</p>
+          </ng-template>
+        </ng-template>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="section-top">
+        <h2>Việc cần làm</h2>
+        <span class="chip chip-soft">{{ tasks().length }} nhiệm vụ</span>
+      </div>
+
+      <div class="task-list" *ngIf="tasks().length; else emptyTasks">
+        <div class="task-item" *ngFor="let task of tasks().slice(0, 6)">
+          <div>
+            <strong>{{ task.taskName }}</strong>
+            <small>{{ task.projectName }}</small>
+          </div>
+          <div class="task-meta">
+            <span class="task-badge">{{ task.status }}</span>
+            <small>{{ task.deadline || 'Không có hạn' }}</small>
+          </div>
+        </div>
+      </div>
+
+      <ng-template #emptyTasks>
+        <p class="empty-state">Bạn đang không có nhiệm vụ nào.</p>
+      </ng-template>
+    </section>
+  </main>
+</div>

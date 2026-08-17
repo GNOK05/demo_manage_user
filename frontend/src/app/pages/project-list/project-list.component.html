@@ -1,1 +1,49 @@
-<div class="shell"><aside><div class="brand">CompanyHub</div><a routerLink="/">Tổng quan</a><a routerLink="/people">{{auth.user()?.role === 'ADMIN' ? 'Nhân sự công ty' : 'Thành viên phòng ban'}}</a><a routerLink="/projects">Dự án</a><a routerLink="/attendance">Chấm công</a><a routerLink="/tasks">Công việc của tôi</a><button class="link" (click)="auth.logout()">Đăng xuất</button></aside><main class="content"><header><div><p class="muted">Quản lý</p><h1>Dự án phòng ban</h1></div></header><section class="card" *ngFor="let p of projects()"><div class="row"><div><h2>{{p.projectName}}</h2><p class="muted">{{p.departmentName}} · {{p.startDate}} — {{p.endDate}}</p></div><strong>{{p.progress}}%</strong></div><span class="progress wide"><i [style.width.%]="p.progress"></i></span><button class="secondary" (click)="select(p)">Xem công việc ({{p.totalTasks}})</button><div class="tasks" *ngIf="selected()?.id===p.id"><div *ngFor="let t of tasks()" class="row"><span>{{t.taskName}}</span><span class="badge">{{t.assignedToName || 'Chưa giao'}} · {{t.status}}</span></div></div></section></main></div>
+<div class="shell">
+  <app-sidebar></app-sidebar>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Quản lý</p>
+        <h1>Dự án phòng ban</h1>
+      </div>
+      <span class="chip chip-primary">{{ projects().length }} dự án</span>
+    </header>
+
+    <section class="project-grid">
+      <article class="card project-card" *ngFor="let p of projects()">
+        <div class="project-header">
+          <div>
+            <h2>{{ p.projectName }}</h2>
+            <p class="muted">{{ p.departmentName }} · {{ p.startDate }} → {{ p.endDate }}</p>
+          </div>
+          <span class="project-percent">{{ p.progress }}%</span>
+        </div>
+
+        <div class="progress-meter">
+          <span [style.width.%]="p.progress"></span>
+        </div>
+
+        <div class="project-meta">
+          <span>{{ p.completedTasks }}/{{ p.totalTasks }} task hoàn thành</span>
+          <span>{{ p.status }}</span>
+        </div>
+
+        <button class="secondary" (click)="select(p)">Xem công việc</button>
+
+        <div class="task-panel" *ngIf="selected()?.id === p.id">
+          <div class="task-row" *ngFor="let t of tasks()">
+            <div>
+              <strong>{{ t.taskName }}</strong>
+              <small>{{ t.assignedToName || 'Chưa giao' }}</small>
+            </div>
+            <div class="task-right">
+              <span class="badge">{{ t.status }}</span>
+              <span class="badge" *ngIf="t.testerName">QA: {{ t.testerName }}</span>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+</div>

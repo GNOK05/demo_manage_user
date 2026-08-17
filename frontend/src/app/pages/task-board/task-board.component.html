@@ -1,1 +1,87 @@
-<div class="shell"><aside><div class="brand">CompanyHub</div><a routerLink="/">Tổng quan</a><a *ngIf="auth.hasRole(['ADMIN','MANAGER'])" routerLink="/people">{{auth.user()?.role === 'ADMIN' ? 'Nhân sự công ty' : 'Thành viên phòng ban'}}</a><a *ngIf="auth.hasRole(['ADMIN','MANAGER'])" routerLink="/projects">Dự án</a><a routerLink="/attendance">{{auth.user()?.role === 'ADMIN' ? 'Chấm công toàn công ty' : auth.user()?.role === 'MANAGER' ? 'Chấm công phòng ban' : 'Chấm công cá nhân'}}</a><a routerLink="/tasks">Công việc của tôi</a><button class="link" (click)="auth.logout()">Đăng xuất</button></aside><main class="content"><header><div><p class="muted">Cá nhân</p><h1>Task board</h1></div></header><section class="board"><div class="column" *ngFor="let status of statuses"><h2>{{status}}</h2><article class="task" *ngFor="let task of items(status)"><strong>{{task.taskName}}</strong><p>{{task.projectName}}</p><small>Hạn: {{task.deadline}}</small><select [value]="task.status" (change)="move(task, $any($event.target).value)"><option *ngFor="let option of statuses" [value]="option" [disabled]="option==='REVIEW'">{{option}}</option></select></article></div></section></main></div>
+<div class="shell">
+  <app-sidebar></app-sidebar>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Cá nhân</p>
+        <h1>Task board</h1>
+      </div>
+      <span class="chip chip-soft">{{ tasks().length }} nhiệm vụ</span>
+    </header>
+
+    <section class="card manager-panel">
+      <div class="section-top">
+        <h2>{{ selectedTask ? 'Chỉnh sửa task' : 'Thêm task mới' }}</h2>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          Tên task
+          <input [(ngModel)]="draft.taskName" placeholder="Nhập tên công việc" />
+        </label>
+        <label>
+          Dự án
+          <input [(ngModel)]="draft.projectName" placeholder="Tên dự án" />
+        </label>
+        <label>
+          Người phụ trách
+          <input [(ngModel)]="draft.assignedToName" placeholder="Tên người nhận" />
+        </label>
+        <label>
+          Hạn chót
+          <input type="date" [(ngModel)]="draft.deadline" />
+        </label>
+        <label>
+          Trạng thái
+          <select [(ngModel)]="draft.status">
+            <option *ngFor="let option of statuses" [value]="option">{{ option }}</option>
+          </select>
+        </label>
+        <label class="full-width">
+          Mô tả
+          <textarea
+            [(ngModel)]="draft.description"
+            rows="3"
+            placeholder="Mô tả công việc"
+          ></textarea>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" (click)="saveTask()">
+          {{ selectedTask ? 'Cập nhật task' : 'Tạo task' }}
+        </button>
+        <button type="button" class="secondary" (click)="resetForm()">Huỷ</button>
+      </div>
+    </section>
+
+    <section class="toolbar card">
+      <input [(ngModel)]="search" placeholder="Tìm kiếm task theo tên, dự án, người phụ trách" />
+    </section>
+
+    <section class="board">
+      <div class="column" *ngFor="let status of statuses">
+        <h2>{{ status }}</h2>
+
+        <article class="task" *ngFor="let task of items(status)">
+          <strong>{{ task.taskName }}</strong>
+          <p>{{ task.projectName }}</p>
+          <small>Hạn: {{ task.deadline }}</small>
+          <small *ngIf="task.assignedToName">Phụ trách: {{ task.assignedToName }}</small>
+
+          <div class="task-actions">
+            <button type="button" class="secondary small" (click)="editTask(task)">Sửa</button>
+            <button type="button" class="danger small" (click)="deleteTask(task.id)">Xoá</button>
+          </div>
+
+          <select [value]="task.status" (change)="move(task, $any($event.target).value)">
+            <option *ngFor="let option of statuses" [value]="option">{{ option }}</option>
+          </select>
+        </article>
+
+        <p class="empty-state" *ngIf="!items(status).length">Chưa có nhiệm vụ</p>
+      </div>
+    </section>
+  </main>
+</div>

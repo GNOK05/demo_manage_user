@@ -1,1 +1,58 @@
-:host { display: block; }
+:host {
+  display: block;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.column {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px 16px;
+  min-height: 240px;
+}
+
+.column h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.task {
+  background: #f8faff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 12px;
+}
+
+.task strong,
+.task p,
+.task small {
+  display: block;
+}
+
+.task p,
+.task small {
+  margin: 6px 0;
+  color: var(--muted);
+}
+
+.task select {
+  margin-top: 10px;
+}
+
+.empty-state {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 900px) {
+  .board {
+    grid-template-columns: 1fr;
+  }
+}
