@@ -4,6 +4,7 @@ import com.example.demo.entity.LeaveRequestStatus;
 import com.example.demo.entity.LeaveRequestType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
@@ -14,7 +15,7 @@ public final class LeaveRequestDto {
             @NotNull LeaveRequestType type,
             @NotNull LocalDate fromDate,
             @NotNull LocalDate toDate,
-            @NotBlank String reason
+            @NotBlank @Size(max = 500) String reason
     ) {}
 
     public record Response(

@@ -4,7 +4,7 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 public final class TaskDto {
     private TaskDto() {}
-    public record SaveRequest(@NotBlank String taskName, String description, @NotNull Long projectId, Long assignedToId, Long testerId,
+    public record SaveRequest(@NotBlank String taskName, @Size(max = 2000) String description, @NotNull Long projectId, Long assignedToId, Long testerId,
         @NotNull LocalDate deadline, TaskStatus status) {}
     public record StatusRequest(@NotNull TaskStatus status) {}
     public record Response(Long id, String taskName, String description, Long projectId, String projectName,

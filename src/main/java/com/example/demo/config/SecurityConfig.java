@@ -40,5 +40,12 @@ public class SecurityConfig  {
     }
     @Bean public DaoAuthenticationProvider authenticationProvider(){var p=new DaoAuthenticationProvider();p.setUserDetailsService(userDetailsService);p.setPasswordEncoder(encoder);return p;}
     @Bean public AuthenticationManager authenticationManager(AuthenticationConfiguration config)throws Exception{return config.getAuthenticationManager();}
-    @Bean public CorsConfigurationSource corsConfigurationSource(){var c=new CorsConfiguration();c.setAllowedOrigins(List.of("http://localhost:4200"));c.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));c.setAllowedHeaders(List.of("Authorization","Content-Type"));var s=new UrlBasedCorsConfigurationSource();s.registerCorsConfiguration("/**",c);return s;}
+    @Bean public CorsConfigurationSource corsConfigurationSource(){var c=new CorsConfiguration();
+        // Allow local frontend origins during development; permit common headers and credentials
+        c.setAllowedOriginPatterns(List.of("http://localhost:4200","http://127.0.0.1:4200"));
+        c.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+        c.setAllowedHeaders(List.of("*"));
+        c.setAllowCredentials(true);
+        c.setExposedHeaders(List.of("Authorization"));
+        var s=new UrlBasedCorsConfigurationSource();s.registerCorsConfiguration("/**",c);return s;}
 }
