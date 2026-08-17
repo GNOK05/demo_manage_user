@@ -11,8 +11,19 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import java.time.LocalDate;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * Seeds richer demo data: multiple employees, multiple projects (in every status),
+ * multiple tasks (in every status) and a multi-day attendance history (in every status)
+ * per department. All creation is idempotent — restarting the app will not duplicate
+ * records, since every entity is looked up by its natural key before being created.
+ *
+ * For a completely fresh dataset, stop the app, delete the ./data folder, then restart.
+ */
 @Configuration
 @RequiredArgsConstructor
 public class DataInitializer {
@@ -23,45 +34,131 @@ public class DataInitializer {
     private final AttendanceRepository attendance;
     private final PasswordEncoder encoder;
 
+    private static final String[] DEPARTMENT_NAMES = {
+            "Engineering", "Human Resources", "Finance", "Marketing", "Sales",
+            "Operations", "Customer Success", "Product", "Design", "Legal",
+            "Procurement", "Quality", "Research", "Training", "Support"
+    };
+
     /** Local bootstrap account; change or remove it before production deployment. */
     @Bean
     CommandLineRunner seedAdministrator() {
         return args -> {
             createIfMissing("admin", "admin123", "System Administrator", "admin@company.local", Role.ADMIN, null);
 
-            Department it = departments.findAll().stream().filter(d -> d.getCode().equals("IT")).findFirst().orElseGet(() -> {
-                Department d = new Department(); d.setName("Information Technology"); d.setCode("IT"); d.setDescription("Demo department"); return departments.save(d);
-            });
-            User manager = createIfMissing("manager", "manager123", "IT Manager", "manager@company.local", Role.MANAGER, it);
-            if (it.getManager() == null) { it.setManager(manager); departments.save(it); }
+            Department it = findOrCreateDepartment("IT", "Information Technology", "Demo department");
+            User itManager = createIfMissing("manager", "manager123", "IT Manager", "manager@company.local", Role.MANAGER, it);
+            if (it.getManager() == null) { it.setManager(itManager); departments.save(it); }
             createIfMissing("employee", "employee123", "Demo Employee", "employee@company.local", Role.EMPLOYEE, it);
+
             seedDemoData();
         };
     }
 
     private void seedDemoData() {
-        if (projects.count() >= 15) return;
-        String[] names = {"Engineering", "Human Resources", "Finance", "Marketing", "Sales", "Operations", "Customer Success", "Product", "Design", "Legal", "Procurement", "Quality", "Research", "Training", "Support"};
         LocalDate today = LocalDate.now();
-        for (int i = 0; i < names.length; i++) {
+
+        for (int i = 0; i < DEPARTMENT_NAMES.length; i++) {
             int number = i + 1;
             String code = String.format("D%02d", number);
-            String departmentName = names[i];
-            Department department = departments.findAll().stream().filter(d -> code.equals(d.getCode())).findFirst().orElseGet(() -> {
-                Department d = new Department(); d.setName(departmentName); d.setCode(code); d.setDescription("Demo " + departmentName + " department"); return departments.save(d);
-            });
-            User manager = createIfMissing("lead" + number, "lead123", names[i] + " Lead", "lead" + number + "@company.local", Role.MANAGER, department);
-            if (department.getManager() == null) { department.setManager(manager); departments.save(department); }
-            User employee = createIfMissing("staff" + number, "staff123", "Demo Staff " + number, "staff" + number + "@company.local", Role.EMPLOYEE, department);
+            String deptName = DEPARTMENT_NAMES[i];
 
-            Project project = new Project(); project.setProjectName(names[i] + " Improvement " + number); project.setDescription("Seeded demo project for " + names[i]); project.setDepartment(department);
-            project.setStartDate(today.minusDays(20)); project.setEndDate(today.plusDays(40)); project.setStatus(ProjectStatus.IN_PROGRESS); project = projects.save(project);
-            for (int taskNumber = 1; taskNumber <= 2; taskNumber++) {
-                Task task = new Task(); task.setTaskName("Task " + taskNumber + " - " + names[i]); task.setDescription("Demo task for project " + project.getProjectName()); task.setProject(project); task.setAssignedTo(employee); task.setCreatedBy(manager);
-                task.setStatus(taskNumber == 1 ? TaskStatus.IN_PROGRESS : TaskStatus.TODO); task.setDeadline(today.plusDays(7 + taskNumber)); tasks.save(task);
+            Department department = findOrCreateDepartment(code, deptName, "Demo " + deptName + " department");
+
+            User manager = createIfMissing("lead" + number, "lead123", deptName + " Lead", "lead" + number + "@company.local", Role.MANAGER, department);
+            if (department.getManager() == null) { department.setManager(manager); departments.save(department); }
+
+            // 3 employees per department for realistic variety
+            User staffA = createIfMissing("staff" + number, "staff123", "Demo Staff " + number + "A", "staff" + number + "a@company.local", Role.EMPLOYEE, department);
+            User staffB = createIfMissing("staff" + number + "b", "staff123", "Demo Staff " + number + "B", "staff" + number + "b@company.local", Role.EMPLOYEE, department);
+            User staffC = createIfMissing("staff" + number + "c", "staff123", "Demo Staff " + number + "C", "staff" + number + "c@company.local", Role.EMPLOYEE, department);
+            List<User> employees = List.of(staffA, staffB, staffC);
+
+            // 3 projects per department, one in each status
+            Project notStarted = findOrCreateProject(department, deptName + " Revamp " + number,
+                    "Upcoming initiative for " + deptName, today.plusDays(10), today.plusDays(70), ProjectStatus.NOT_STARTED);
+            Project inProgress = findOrCreateProject(department, deptName + " Improvement " + number,
+                    "Seeded demo project for " + deptName, today.minusDays(20), today.plusDays(40), ProjectStatus.IN_PROGRESS);
+            Project completed = findOrCreateProject(department, deptName + " Rollout " + number,
+                    "Wrapped-up project for " + deptName, today.minusDays(90), today.minusDays(10), ProjectStatus.COMPLETED);
+
+            // NOT_STARTED project: tasks not begun yet
+            findOrCreateTask(notStarted, "Kickoff planning", employees.get(0), manager, TaskStatus.TODO, today.plusDays(15));
+            findOrCreateTask(notStarted, "Requirements gathering", employees.get(1), manager, TaskStatus.TODO, today.plusDays(20));
+
+            // IN_PROGRESS project: tasks spread across the workflow
+            findOrCreateTask(inProgress, "Design phase", employees.get(0), manager, TaskStatus.DONE, today.minusDays(5));
+            findOrCreateTask(inProgress, "Implementation", employees.get(1), manager, TaskStatus.IN_PROGRESS, today.plusDays(5));
+            findOrCreateTask(inProgress, "Peer review", employees.get(2), manager, TaskStatus.REVIEW, today.plusDays(8));
+            findOrCreateTask(inProgress, "Backlog cleanup", null, manager, TaskStatus.TODO, today.plusDays(15));
+
+            // COMPLETED project: everything finished
+            findOrCreateTask(completed, "Final delivery", employees.get(0), manager, TaskStatus.DONE, today.minusDays(12));
+            findOrCreateTask(completed, "Handover documentation", employees.get(1), manager, TaskStatus.DONE, today.minusDays(11));
+
+            // Attendance history: last 7 days per employee, varied statuses
+            for (User employee : employees) {
+                seedAttendanceHistory(employee, today, employees.indexOf(employee));
             }
-            Attendance record = new Attendance(); record.setUser(employee); record.setDate(today.minusDays(i % 7)); record.setCheckInTime(today.minusDays(i % 7).atTime(8, 30)); record.setCheckOutTime(today.minusDays(i % 7).atTime(17, 30)); record.setStatus(i % 4 == 0 ? AttendanceStatus.LATE : AttendanceStatus.PRESENT); attendance.save(record);
         }
+    }
+
+    private void seedAttendanceHistory(User employee, LocalDate today, int variant) {
+        AttendanceStatus[] pattern = {
+                AttendanceStatus.PRESENT, AttendanceStatus.PRESENT, AttendanceStatus.LATE,
+                AttendanceStatus.PRESENT, AttendanceStatus.ABSENT, AttendanceStatus.PRESENT, AttendanceStatus.LEAVE
+        };
+        for (int d = 0; d < 7; d++) {
+            LocalDate date = today.minusDays(d);
+            AttendanceStatus status = pattern[(d + variant) % pattern.length];
+            findOrCreateAttendance(employee, date, status);
+        }
+    }
+
+    private Department findOrCreateDepartment(String code, String name, String description) {
+        return departments.findAll().stream().filter(d -> code.equals(d.getCode())).findFirst().orElseGet(() -> {
+            Department d = new Department();
+            d.setName(name); d.setCode(code); d.setDescription(description);
+            return departments.save(d);
+        });
+    }
+
+    private Project findOrCreateProject(Department department, String name, String description,
+                                        LocalDate start, LocalDate end, ProjectStatus status) {
+        return projects.findByDepartmentId(department.getId()).stream()
+                .filter(p -> name.equals(p.getProjectName())).findFirst().orElseGet(() -> {
+                    Project p = new Project();
+                    p.setProjectName(name); p.setDescription(description); p.setDepartment(department);
+                    p.setStartDate(start); p.setEndDate(end); p.setStatus(status);
+                    return projects.save(p);
+                });
+    }
+
+    private Task findOrCreateTask(Project project, String name, User assignee, User creator,
+                                  TaskStatus status, LocalDate deadline) {
+        return tasks.findByProjectId(project.getId()).stream()
+                .filter(t -> name.equals(t.getTaskName())).findFirst().orElseGet(() -> {
+                    Task t = new Task();
+                    t.setTaskName(name); t.setDescription("Demo task for " + project.getProjectName());
+                    t.setProject(project); t.setAssignedTo(assignee); t.setCreatedBy(creator);
+                    t.setStatus(status); t.setDeadline(deadline);
+                    return tasks.save(t);
+                });
+    }
+
+    private void findOrCreateAttendance(User employee, LocalDate date, AttendanceStatus status) {
+        if (attendance.findByUserIdAndDate(employee.getId(), date).isPresent()) return;
+        Attendance record = new Attendance();
+        record.setUser(employee);
+        record.setDate(date);
+        record.setStatus(status);
+        if (status == AttendanceStatus.PRESENT || status == AttendanceStatus.LATE) {
+            LocalDateTime checkIn = status == AttendanceStatus.LATE ? date.atTime(9, 25) : date.atTime(8, 30);
+            record.setCheckInTime(checkIn);
+            record.setCheckOutTime(date.atTime(17, 30));
+        }
+        // ABSENT and LEAVE intentionally have no check-in/check-out times
+        attendance.save(record);
     }
 
     private User createIfMissing(String username, String rawPassword, String fullName, String email, Role role, Department department) {
