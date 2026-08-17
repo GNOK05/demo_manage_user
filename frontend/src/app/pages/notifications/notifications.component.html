@@ -104,14 +104,17 @@
               <strong>{{ item.userName }}</strong>
               <span class="badge {{ item.status.toLowerCase() }}">{{ item.status }}</span>
             </div>
-            <p>{{ item.type }} · {{ item.fromDate }} → {{ item.toDate }}</p>
-            <small>{{ item.reason }}</small>
+            <p class="leave-type">{{ item.type }} · {{ item.fromDate }} → {{ item.toDate }}</p>
+            <div class="leave-reason">
+              <strong>Nguyên nhân:</strong>
+              <p>{{ item.reason }}</p>
+            </div>
             <div class="inline-actions" *ngIf="isPo() && item.status === 'PENDING'">
               <button type="button" class="secondary small" (click)="approve(item.id, 'APPROVED')">
-                Duyệt
+                ✓ Duyệt
               </button>
               <button type="button" class="danger small" (click)="approve(item.id, 'REJECTED')">
-                Từ chối
+                ✗ Từ chối
               </button>
             </div>
           </div>

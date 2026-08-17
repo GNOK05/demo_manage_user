@@ -1,1 +1,53 @@
-:host { display: block; }
+:host {
+  display: block;
+}
+
+.login-error-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fff3f0;
+  border: 1px solid #ffb399;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  animation: slideDown 0.3s ease-out;
+}
+
+.error-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.error-content {
+  flex: 1;
+}
+
+.error-content strong {
+  display: block;
+  color: #d32f2f;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.error-content p {
+  margin: 0;
+  color: #c62828;
+  font-size: 0.9rem;
+}
+
+.input-error {
+  border-color: #d32f2f !important;
+  background-color: #fff8f7 !important;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

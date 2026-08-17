@@ -5,20 +5,33 @@
     <header class="page-header">
       <div>
         <p class="eyebrow">Cá nhân</p>
-        <h1>Task board</h1>
+        <h1>Quản lý công việc</h1>
       </div>
       <span class="chip chip-soft">{{ tasks().length }} nhiệm vụ</span>
     </header>
 
-    <section class="card manager-panel">
+    <!-- Alerts -->
+    <div *ngIf="errorMessage()" class="alert alert-error">
+      <strong>⚠️ Lỗi:</strong> {{ errorMessage() }}
+    </div>
+    <div *ngIf="successMessage()" class="alert alert-success">
+      <strong>✓ Thành công:</strong> {{ successMessage() }}
+    </div>
+
+    <!-- PO/Admin Task Management Panel -->
+    <section class="card manager-panel" *ngIf="isPo()">
       <div class="section-top">
-        <h2>{{ selectedTask ? 'Chỉnh sửa task' : 'Thêm task mới' }}</h2>
+        <div>
+          <p class="eyebrow subtle">Quản lý</p>
+          <h2>{{ selectedTask ? 'Chỉnh sửa công việc' : 'Tạo công việc mới' }}</h2>
+        </div>
+        <span class="chip accent">PO Panel</span>
       </div>
 
       <div class="form-grid">
         <label>
-          Tên task
-          <input [(ngModel)]="draft.taskName" placeholder="Nhập tên công việc" />
+          Tên công việc <span class="required">*</span>
+          <input [(ngModel)]="draft.taskName" placeholder="Nhập tên công việc chi tiết" />
         </label>
         <label>
           Dự án
@@ -26,7 +39,12 @@
         </label>
         <label>
           Người phụ trách
-          <input [(ngModel)]="draft.assignedToName" placeholder="Tên người nhận" />
+          <select [(ngModel)]="draft.assignedToId" (change)="onEmployeeSelected()">
+            <option [value]="null">-- Không gán --</option>
+            <option *ngFor="let emp of employees()" [value]="emp.id">
+              {{ emp.fullName }} ({{ emp.jobTitle || 'Employee' }})
+            </option>
+          </select>
         </label>
         <label>
           Hạn chót
@@ -35,52 +53,78 @@
         <label>
           Trạng thái
           <select [(ngModel)]="draft.status">
-            <option *ngFor="let option of statuses" [value]="option">{{ option }}</option>
+            <option value="TODO">Chưa bắt đầu</option>
+            <option value="IN_PROGRESS">Đang thực hiện</option>
+            <option value="DONE">Hoàn thành</option>
+            <option value="REVIEW">Cần review</option>
           </select>
         </label>
         <label class="full-width">
-          Mô tả
+          Mô tả chi tiết
           <textarea
             [(ngModel)]="draft.description"
-            rows="3"
-            placeholder="Mô tả công việc"
+            rows="4"
+            placeholder="Mô tả chi tiết nội dung công việc cần làm"
           ></textarea>
         </label>
       </div>
 
       <div class="form-actions">
-        <button type="button" (click)="saveTask()">
-          {{ selectedTask ? 'Cập nhật task' : 'Tạo task' }}
+        <button type="button" class="primary" (click)="saveTask()">
+          {{ selectedTask ? 'Cập nhật công việc' : 'Tạo công việc' }}
         </button>
-        <button type="button" class="secondary" (click)="resetForm()">Huỷ</button>
+        <button type="button" class="secondary" (click)="resetForm()" *ngIf="selectedTask">
+          Huỷ chỉnh sửa
+        </button>
       </div>
     </section>
 
+    <!-- Search Bar -->
     <section class="toolbar card">
-      <input [(ngModel)]="search" placeholder="Tìm kiếm task theo tên, dự án, người phụ trách" />
+      <input
+        [(ngModel)]="search"
+        placeholder="🔍 Tìm kiếm công việc theo tên, dự án, người phụ trách"
+        class="search-input"
+      />
     </section>
 
+    <!-- Task Board -->
     <section class="board">
       <div class="column" *ngFor="let status of statuses">
-        <h2>{{ status }}</h2>
+        <h2 class="column-title">{{ status }}</h2>
 
         <article class="task" *ngFor="let task of items(status)">
-          <strong>{{ task.taskName }}</strong>
-          <p>{{ task.projectName }}</p>
-          <small>Hạn: {{ task.deadline }}</small>
-          <small *ngIf="task.assignedToName">Phụ trách: {{ task.assignedToName }}</small>
+          <div class="task-header">
+            <strong class="task-name">{{ task.taskName }}</strong>
+          </div>
+          <p class="task-project">{{ task.projectName }}</p>
+          <small class="task-deadline">📅 Hạn: {{ task.deadline }}</small>
+          <small class="task-assignee" *ngIf="task.assignedToName">
+            👤 Phụ trách: {{ task.assignedToName }}
+          </small>
 
           <div class="task-actions">
-            <button type="button" class="secondary small" (click)="editTask(task)">Sửa</button>
-            <button type="button" class="danger small" (click)="deleteTask(task.id)">Xoá</button>
+            <button type="button" class="secondary small" (click)="editTask(task)" *ngIf="isPo()">
+              Sửa
+            </button>
+            <button type="button" class="danger small" (click)="deleteTask(task.id)" *ngIf="isPo()">
+              Xoá
+            </button>
           </div>
 
-          <select [value]="task.status" (change)="move(task, $any($event.target).value)">
-            <option *ngFor="let option of statuses" [value]="option">{{ option }}</option>
+          <select
+            [value]="task.status"
+            (change)="move(task, $any($event.target).value)"
+            class="status-select"
+          >
+            <option value="TODO">Chưa bắt đầu</option>
+            <option value="IN_PROGRESS">Đang thực hiện</option>
+            <option value="DONE">Hoàn thành</option>
+            <option value="REVIEW">Cần review</option>
           </select>
         </article>
 
-        <p class="empty-state" *ngIf="!items(status).length">Chưa có nhiệm vụ</p>
+        <p class="empty-state" *ngIf="!items(status).length">Không có công việc</p>
       </div>
     </section>
   </main>

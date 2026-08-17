@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth.service';
 import { CompanyApiService } from '../../core/company-api.service';
 import { SidebarComponent } from '../../core/layout/sidebar.component';
-import { Task, TaskStatus } from '../../core/models';
+import { Task, TaskStatus, User } from '../../core/models';
 
 @Component({
   standalone: true,
@@ -15,8 +15,11 @@ import { Task, TaskStatus } from '../../core/models';
 export class TaskBoardComponent implements OnInit {
   statuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'REVIEW'];
   tasks = signal<Task[]>([]);
+  employees = signal<User[]>([]);
   search = signal('');
   selectedTask: Task | null = null;
+  errorMessage = signal('');
+  successMessage = signal('');
   draft: Task = {
     id: 0,
     taskName: '',
@@ -38,6 +41,9 @@ export class TaskBoardComponent implements OnInit {
 
   ngOnInit() {
     this.load();
+    if (this.auth.hasRole(['ADMIN', 'MANAGER'])) {
+      this.api.users().subscribe((x) => this.employees.set(x));
+    }
   }
 
   load() {
@@ -60,9 +66,19 @@ export class TaskBoardComponent implements OnInit {
   }
 
   move(t: Task, status: TaskStatus) {
+    this.errorMessage.set('');
     this.api.updateTaskStatus(t.id, status).subscribe({
-      next: () => this.load(),
-      error: () => this.load(),
+      next: () => {
+        this.successMessage.set('✓ Cập nhật công việc thành công');
+        setTimeout(() => this.successMessage.set(''), 3000);
+        this.load();
+      },
+      error: (err) => {
+        const msg =
+          err?.error?.message ||
+          'Không thể cập nhật công việc. Bạn cần chấm công kết thúc trước khi hoàn thành task.';
+        this.errorMessage.set(msg);
+      },
     });
   }
 
@@ -72,6 +88,13 @@ export class TaskBoardComponent implements OnInit {
   }
 
   saveTask() {
+    this.errorMessage.set('');
+
+    if (!this.draft.taskName || this.draft.taskName.trim() === '') {
+      this.errorMessage.set('Vui lòng nhập tên công việc');
+      return;
+    }
+
     const payload: Partial<Task> = {
       taskName: this.draft.taskName,
       description: this.draft.description,
@@ -88,20 +111,34 @@ export class TaskBoardComponent implements OnInit {
     if (this.selectedTask) {
       this.api.updateTask(this.selectedTask.id, payload).subscribe({
         next: () => {
-          this.resetForm();
-          this.load();
+          this.successMessage.set('✓ Cập nhật công việc thành công');
+          setTimeout(() => {
+            this.successMessage.set('');
+            this.resetForm();
+            this.load();
+          }, 500);
         },
-        error: () => this.load(),
+        error: (err) => {
+          const msg = err?.error?.message || 'Có lỗi khi cập nhật công việc';
+          this.errorMessage.set(msg);
+        },
       });
       return;
     }
 
     this.api.createTask(payload).subscribe({
       next: () => {
-        this.resetForm();
-        this.load();
+        this.successMessage.set('✓ Tạo công việc thành công');
+        setTimeout(() => {
+          this.successMessage.set('');
+          this.resetForm();
+          this.load();
+        }, 500);
       },
-      error: () => this.load(),
+      error: (err) => {
+        const msg = err?.error?.message || 'Có lỗi khi tạo công việc';
+        this.errorMessage.set(msg);
+      },
     });
   }
 
@@ -109,14 +146,22 @@ export class TaskBoardComponent implements OnInit {
     this.api.deleteTask(id).subscribe({
       next: () => {
         if (this.selectedTask?.id === id) this.resetForm();
-        this.load();
+        this.successMessage.set('✓ Xóa công việc thành công');
+        setTimeout(() => {
+          this.successMessage.set('');
+          this.load();
+        }, 1000);
       },
-      error: () => this.load(),
+      error: (err) => {
+        const msg = err?.error?.message || 'Có lỗi khi xóa công việc';
+        this.errorMessage.set(msg);
+      },
     });
   }
 
   resetForm() {
     this.selectedTask = null;
+    this.errorMessage.set('');
     this.draft = {
       id: 0,
       taskName: '',
@@ -130,5 +175,16 @@ export class TaskBoardComponent implements OnInit {
       status: 'TODO',
       deadline: new Date().toISOString().slice(0, 10),
     };
+  }
+
+  isPo() {
+    return this.auth.hasRole(['ADMIN', 'MANAGER']);
+  }
+
+  onEmployeeSelected() {
+    const emp = this.employees().find((e) => e.id === this.draft.assignedToId);
+    if (emp) {
+      this.draft.assignedToName = emp.fullName;
+    }
   }
 }
