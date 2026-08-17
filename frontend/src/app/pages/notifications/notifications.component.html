@@ -1,0 +1,122 @@
+<div class="shell">
+  <app-sidebar></app-sidebar>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Thông tin nội bộ</p>
+        <h1>Thông báo & đơn nghỉ phép</h1>
+      </div>
+      <span class="chip chip-soft">{{ unreadCount() }} cập nhật mới</span>
+    </header>
+
+    <section class="card request-card">
+      <div class="section-top">
+        <div>
+          <p class="eyebrow subtle">Yêu cầu</p>
+          <h2>Tạo đơn xin nghỉ phép</h2>
+        </div>
+      </div>
+
+      <div *ngIf="errorMessage()" class="alert alert-error" style="margin-bottom: 1rem">
+        <strong>Lỗi:</strong> {{ errorMessage() }}
+      </div>
+
+      <div *ngIf="successMessage()" class="alert alert-success" style="margin-bottom: 1rem">
+        <strong>Thành công:</strong> {{ successMessage() }}
+      </div>
+
+      <div class="form-grid">
+        <label>
+          Loại nghỉ
+          <select [(ngModel)]="draft.type">
+            <option value="ANNUAL">Nghỉ phép năm</option>
+            <option value="PERSONAL">Nghỉ cá nhân</option>
+            <option value="SICK">Nghỉ ốm</option>
+            <option value="MATERNITY">Nghỉ thai sản</option>
+          </select>
+        </label>
+        <label>
+          Từ ngày
+          <input type="date" [(ngModel)]="draft.fromDate" />
+        </label>
+        <label>
+          Đến ngày
+          <input type="date" [(ngModel)]="draft.toDate" />
+        </label>
+        <label class="full-width">
+          Nguyên nhân & mô tả chi tiết
+          <textarea
+            [(ngModel)]="draft.reason"
+            rows="4"
+            placeholder="Vui lòng mô tả rõ nguyên nhân xin nghỉ (vd: Sự cố gia đình, bệnh lý, ...)"
+            maxlength="500"
+          ></textarea>
+          <small>{{ draft.reason.length }}/500</small>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" (click)="submitLeaveRequest()">Gửi đơn xin nghỉ</button>
+      </div>
+    </section>
+
+    <section class="notification-grid">
+      <div class="card panel-card">
+        <div class="section-top">
+          <div>
+            <p class="eyebrow subtle">Hệ thống</p>
+            <h2>Thông báo</h2>
+          </div>
+        </div>
+
+        <div class="notif-list">
+          <div class="notif-item" *ngFor="let item of notifications()">
+            <div class="notif-icon" [ngClass]="item.type.toLowerCase()">
+              {{ item.type.charAt(0) }}
+            </div>
+            <div class="notif-copy">
+              <div class="notif-head">
+                <strong>{{ item.title }}</strong>
+                <span class="badge {{ item.priority.toLowerCase() }}">{{ item.priority }}</span>
+              </div>
+              <p>{{ item.message }}</p>
+              <small>{{ item.createdAt | date: 'dd/MM/yyyy HH:mm' }}</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card panel-card">
+        <div class="section-top">
+          <div>
+            <p class="eyebrow subtle">Phê duyệt</p>
+            <h2>Đơn nghỉ phép</h2>
+          </div>
+          <span class="chip soft" *ngIf="isPo()"
+            >{{ leaveRequests().filter((i) => i.status === 'PENDING').length }} chờ duyệt</span
+          >
+        </div>
+
+        <div class="leave-list">
+          <div class="leave-item" *ngFor="let item of leaveRequests()">
+            <div class="leave-head">
+              <strong>{{ item.userName }}</strong>
+              <span class="badge {{ item.status.toLowerCase() }}">{{ item.status }}</span>
+            </div>
+            <p>{{ item.type }} · {{ item.fromDate }} → {{ item.toDate }}</p>
+            <small>{{ item.reason }}</small>
+            <div class="inline-actions" *ngIf="isPo() && item.status === 'PENDING'">
+              <button type="button" class="secondary small" (click)="approve(item.id, 'APPROVED')">
+                Duyệt
+              </button>
+              <button type="button" class="danger small" (click)="approve(item.id, 'REJECTED')">
+                Từ chối
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>

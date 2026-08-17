@@ -1,0 +1,170 @@
+:host {
+  display: block;
+}
+
+.request-card,
+.panel-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.request-card {
+  padding: 22px;
+  margin-bottom: 22px;
+}
+
+.notification-grid {
+  display: grid;
+  grid-template-columns: 1.12fr 0.88fr;
+  gap: 20px;
+}
+
+.panel-card {
+  padding: 18px 18px 12px;
+}
+
+.notif-list,
+.leave-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.notif-item,
+.leave-item {
+  background: linear-gradient(180deg, #f8fbff 0%, #f2f7ff 100%);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.notif-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.notif-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #2457c5 0%, #6ca5ff 100%);
+}
+
+.notif-icon.task {
+  background: linear-gradient(135deg, #2457c5 0%, #6ca5ff 100%);
+}
+.notif-icon.leave {
+  background: linear-gradient(135deg, #0ea5a4 0%, #2dd4bf 100%);
+}
+.notif-icon.system {
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+}
+
+.notif-copy {
+  flex: 1;
+}
+
+.notif-head,
+.leave-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.notif-copy p,
+.leave-item p,
+.leave-item small {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.leave-item {
+  display: grid;
+  gap: 8px;
+}
+
+.badge.low,
+.badge.medium,
+.badge.high,
+.badge.pending,
+.badge.approved,
+.badge.rejected {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge.low {
+  background: #edf7ff;
+  color: #2563eb;
+}
+.badge.medium {
+  background: #fff7ed;
+  color: #d97706;
+}
+.badge.high {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.badge.pending {
+  background: #fff7ed;
+  color: #b45309;
+}
+.badge.approved {
+  background: #ecfdf5;
+  color: #15803d;
+}
+.badge.rejected {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.inline-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+button.small {
+  padding: 8px 12px;
+  font-size: 0.82rem;
+}
+
+button.danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.eyebrow.subtle {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  margin-bottom: 6px;
+}
+
+.chip.accent {
+  background: rgba(36, 87, 197, 0.12);
+  color: var(--primary-strong);
+}
+
+.chip.soft {
+  background: rgba(87, 183, 165, 0.12);
+  color: #0f766e;
+}
+
+@media (max-width: 900px) {
+  .notification-grid {
+    grid-template-columns: 1fr;
+  }
+}
