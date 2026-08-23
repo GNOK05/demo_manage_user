@@ -15,7 +15,10 @@ import { catchError, map, of } from 'rxjs';
 export class SidebarComponent implements OnInit {
   notificationCount = signal(0);
 
-  constructor(public auth: AuthService, private api: CompanyApiService) {}
+  constructor(
+    public auth: AuthService,
+    private api: CompanyApiService,
+  ) {}
 
   ngOnInit() {
     this.api

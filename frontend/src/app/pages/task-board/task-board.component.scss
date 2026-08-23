@@ -2,14 +2,48 @@
   display: block;
 }
 
-.header-actions { display: flex; align-items: center; gap: 12px; }
-.modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(15, 27, 47, .48); }
-.modal-card { width: min(760px, 100%); max-height: calc(100vh - 40px); overflow: auto; }
-.icon-button { width: auto; padding: 4px 9px; background: transparent; color: var(--muted); font-size: 1.5rem; }
-.confirm-modal { max-width: 520px; padding: 24px; }
-.confirm-modal dl { display: grid; grid-template-columns: 100px 1fr; gap: 8px 14px; }
-.confirm-modal dt { color: var(--muted); }
-.confirm-modal dd { margin: 0; font-weight: 700; }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 27, 47, 0.48);
+}
+.modal-card {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+}
+.icon-button {
+  width: auto;
+  padding: 4px 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.5rem;
+}
+.confirm-modal {
+  max-width: 520px;
+  padding: 24px;
+}
+.confirm-modal dl {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 8px 14px;
+}
+.confirm-modal dt {
+  color: var(--muted);
+}
+.confirm-modal dd {
+  margin: 0;
+  font-weight: 700;
+}
 
 .manager-panel textarea,
 .manager-panel .field-hint {

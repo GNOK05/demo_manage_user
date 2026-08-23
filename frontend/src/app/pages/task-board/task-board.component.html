@@ -24,79 +24,92 @@
     <!-- PO/Admin Task Management Panel -->
     <div class="modal-backdrop" *ngIf="isPo() && taskModalOpen()">
       <section class="card manager-panel modal-card">
-      <div class="section-top">
-        <div>
-          <p class="eyebrow subtle">Quản lý</p>
-          <h2>{{ selectedTask ? 'Chỉnh sửa công việc' : 'Tạo công việc mới' }}</h2>
+        <div class="section-top">
+          <div>
+            <p class="eyebrow subtle">Quản lý</p>
+            <h2>{{ selectedTask ? 'Chỉnh sửa công việc' : 'Tạo công việc mới' }}</h2>
+          </div>
+          <span class="chip accent">PO Panel</span>
         </div>
-        <span class="chip accent">PO Panel</span>
-      </div>
 
-      <div class="form-grid">
-        <label>
-          Tên công việc <span class="required">*</span>
-          <input [(ngModel)]="draft.taskName" placeholder="Nhập tên công việc chi tiết" />
-        </label>
-        <label>
-          Dự án
-          <select [(ngModel)]="draft.projectId" (change)="onProjectSelected()">
-            <option [ngValue]="0">-- Chọn dự án --</option>
-            <option *ngFor="let project of projects()" [ngValue]="project.id">
-              {{ project.projectName }}
-            </option>
-          </select>
-        </label>
-        <label>
-          Người phụ trách
-          <select [(ngModel)]="draft.assignedToId" (change)="onEmployeeSelected()">
-            <option [value]="null">-- Không gán --</option>
-            <option *ngFor="let emp of employees()" [value]="emp.id">
-              {{ emp.fullName }} ({{ emp.jobTitle || 'Employee' }})
-            </option>
-          </select>
-        </label>
-        <label>
-          Hạn chót
-          <input type="date" [(ngModel)]="draft.deadline" />
-        </label>
-        <label>
-          Trạng thái
-          <select [(ngModel)]="draft.status">
-            <option value="TODO">Chưa bắt đầu</option>
-            <option value="IN_PROGRESS">Đang thực hiện</option>
-            <option value="DONE">Hoàn thành</option>
-            <option value="REVIEW">Cần review</option>
-          </select>
-        </label>
-        <label class="full-width">
-          Mô tả chi tiết
-          <textarea
-            [(ngModel)]="draft.description"
-            rows="4"
-            placeholder="Mô tả chi tiết nội dung công việc cần làm"
-            maxlength="2000"
-          ></textarea>
-          <small class="field-hint">{{ (draft.description || '').length }}/2000</small>
-        </label>
-      </div>
+        <div class="form-grid">
+          <label>
+            Tên công việc <span class="required">*</span>
+            <input [(ngModel)]="draft.taskName" placeholder="Nhập tên công việc chi tiết" />
+          </label>
+          <label>
+            Dự án
+            <select [(ngModel)]="draft.projectId" (change)="onProjectSelected()">
+              <option [ngValue]="0">-- Chọn dự án --</option>
+              <option *ngFor="let project of projects()" [ngValue]="project.id">
+                {{ project.projectName }}
+              </option>
+            </select>
+          </label>
+          <label>
+            Người phụ trách
+            <select [(ngModel)]="draft.assignedToId" (change)="onEmployeeSelected()">
+              <option [value]="null">-- Không gán --</option>
+              <option *ngFor="let emp of employees()" [value]="emp.id">
+                {{ emp.fullName }} ({{ emp.jobTitle || 'Employee' }})
+              </option>
+            </select>
+          </label>
+          <label>
+            Hạn chót
+            <input type="date" [(ngModel)]="draft.deadline" />
+          </label>
+          <label>
+            Trạng thái
+            <select [(ngModel)]="draft.status">
+              <option value="TODO">Chưa bắt đầu</option>
+              <option value="IN_PROGRESS">Đang thực hiện</option>
+              <option value="DONE">Hoàn thành</option>
+              <option value="REVIEW">Cần review</option>
+            </select>
+          </label>
+          <label class="full-width">
+            Mô tả chi tiết
+            <textarea
+              [(ngModel)]="draft.description"
+              rows="4"
+              placeholder="Mô tả chi tiết nội dung công việc cần làm"
+              maxlength="2000"
+            ></textarea>
+            <small class="field-hint">{{ (draft.description || '').length }}/2000</small>
+          </label>
+        </div>
 
-      <div class="form-actions">
-        <button type="button" class="primary" (click)="saveTask()">
-          {{ selectedTask ? 'Cập nhật công việc' : 'Tạo công việc' }}
-        </button>
-        <button type="button" class="secondary" (click)="resetForm()" *ngIf="selectedTask">
-          Huỷ chỉnh sửa
-        </button>
-      </div>
+        <div class="form-actions">
+          <button type="button" class="primary" (click)="saveTask()">
+            {{ selectedTask ? 'Cập nhật công việc' : 'Tạo công việc' }}
+          </button>
+          <button type="button" class="secondary" (click)="resetForm()" *ngIf="selectedTask">
+            Huỷ chỉnh sửa
+          </button>
+        </div>
       </section>
     </div>
 
     <div class="modal-backdrop" *ngIf="isPo() && deleteModalOpen() && selectedTask">
       <section class="card modal-card confirm-modal">
-        <div class="section-top"><h2>Xoá công việc?</h2><button type="button" class="icon-button" (click)="resetForm()">×</button></div>
+        <div class="section-top">
+          <h2>Xoá công việc?</h2>
+          <button type="button" class="icon-button" (click)="resetForm()">×</button>
+        </div>
         <p>Bạn có chắc muốn xoá công việc này? Thao tác không thể hoàn tác.</p>
-        <dl><dt>Công việc</dt><dd>{{ selectedTask.taskName }}</dd><dt>Dự án</dt><dd>{{ selectedTask.projectName }}</dd><dt>Phụ trách</dt><dd>{{ selectedTask.assignedToName || 'Chưa gán' }}</dd></dl>
-        <div class="form-actions"><button type="button" class="danger" (click)="confirmDelete()">Xoá công việc</button><button type="button" class="secondary" (click)="resetForm()">Huỷ</button></div>
+        <dl>
+          <dt>Công việc</dt>
+          <dd>{{ selectedTask.taskName }}</dd>
+          <dt>Dự án</dt>
+          <dd>{{ selectedTask.projectName }}</dd>
+          <dt>Phụ trách</dt>
+          <dd>{{ selectedTask.assignedToName || 'Chưa gán' }}</dd>
+        </dl>
+        <div class="form-actions">
+          <button type="button" class="danger" (click)="confirmDelete()">Xoá công việc</button
+          ><button type="button" class="secondary" (click)="resetForm()">Huỷ</button>
+        </div>
       </section>
     </div>
 
@@ -129,7 +142,12 @@
             <button type="button" class="secondary small" (click)="editTask(task)" *ngIf="isPo()">
               Sửa
             </button>
-            <button type="button" class="danger small" (click)="deleteTask(task.id)" *ngIf="isAdmin()">
+            <button
+              type="button"
+              class="danger small"
+              (click)="deleteTask(task.id)"
+              *ngIf="isAdmin()"
+            >
               Xoá
             </button>
           </div>

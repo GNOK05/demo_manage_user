@@ -43,21 +43,30 @@ export class NotificationsComponent implements OnInit {
 
   load() {
     this.loadingNotifications.set(true);
-    this.api.notifications().pipe(finalize(() => this.loadingNotifications.set(false))).subscribe({
-      next: (items) => this.notifications.set(items),
-      error: () => this.errorMessage.set('Không thể tải thông báo từ máy chủ'),
-    });
+    this.api
+      .notifications()
+      .pipe(finalize(() => this.loadingNotifications.set(false)))
+      .subscribe({
+        next: (items) => this.notifications.set(items),
+        error: () => this.errorMessage.set('Không thể tải thông báo từ máy chủ'),
+      });
     this.loadingLeaveRequests.set(true);
-    this.api.leaveRequests().pipe(finalize(() => this.loadingLeaveRequests.set(false))).subscribe({
-      next: (items) => this.leaveRequests.set(items),
-      error: () => this.errorMessage.set('Không thể tải danh sách đơn nghỉ phép'),
-    });
+    this.api
+      .leaveRequests()
+      .pipe(finalize(() => this.loadingLeaveRequests.set(false)))
+      .subscribe({
+        next: (items) => this.leaveRequests.set(items),
+        error: () => this.errorMessage.set('Không thể tải danh sách đơn nghỉ phép'),
+      });
     if (this.isPo()) {
       this.loadingPendingRequests.set(true);
-      this.api.pendingLeaveRequests().pipe(finalize(() => this.loadingPendingRequests.set(false))).subscribe({
-        next: (items) => this.pendingRequests.set(items),
-        error: () => this.errorMessage.set('Không thể tải đơn nghỉ đang chờ duyệt'),
-      });
+      this.api
+        .pendingLeaveRequests()
+        .pipe(finalize(() => this.loadingPendingRequests.set(false)))
+        .subscribe({
+          next: (items) => this.pendingRequests.set(items),
+          error: () => this.errorMessage.set('Không thể tải đơn nghỉ đang chờ duyệt'),
+        });
     }
   }
 

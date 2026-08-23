@@ -9,64 +9,66 @@
         </p>
         <h1>Quản Lý Nhân Sự</h1>
       </div>
-      <button type="button" *ngIf="auth.hasRole(['ADMIN'])" (click)="openCreate()">Thêm nhân sự</button>
+      <button type="button" *ngIf="auth.hasRole(['ADMIN'])" (click)="openCreate()">
+        Thêm nhân sự
+      </button>
     </header>
 
     <div class="modal-backdrop" *ngIf="modal() === 'create'">
       <section class="card manager-panel modal-card">
-      <div class="section-top">
-        <h2>{{ selectedUser ? 'Chỉnh sửa nhân sự' : 'Thêm nhân sự mới' }}</h2>
-      </div>
+        <div class="section-top">
+          <h2>{{ selectedUser ? 'Chỉnh sửa nhân sự' : 'Thêm nhân sự mới' }}</h2>
+        </div>
 
-      <div class="form-grid">
-        <label>
-          Họ tên
-          <input [(ngModel)]="draft.fullName" placeholder="Nguyễn Văn A" />
-        </label>
-        <label>
-          Username
-          <input [(ngModel)]="draft.username" placeholder="username" />
-        </label>
-        <label>
-          Email
-          <input type="email" [(ngModel)]="draft.email" placeholder="name@company.com" />
-        </label>
-        <label>
-          Chức vụ
-          <select [(ngModel)]="draft.jobTitle">
-            <option value="">Chọn chức vụ</option>
-            <option *ngFor="let position of positionOptions()" [value]="position">
-              {{ position }}
-            </option>
-          </select>
-        </label>
-        <label>
-          Phòng ban
-          <select [(ngModel)]="draft.departmentId">
-            <option [ngValue]="undefined">Chưa phân phòng ban</option>
-            <option *ngFor="let department of departments()" [ngValue]="department.id">
-              {{ department.name }}
-            </option>
-          </select>
-        </label>
-        <label>
-          Vai trò
-          <select [(ngModel)]="draft.role">
-            <option *ngFor="let role of roles" [value]="role">{{ role }}</option>
-          </select>
-        </label>
-        <label *ngIf="!selectedUser">
-          Mật khẩu
-          <input type="password" [(ngModel)]="draftPassword" placeholder="Tối thiểu 6 ký tự" />
-        </label>
-      </div>
+        <div class="form-grid">
+          <label>
+            Họ tên
+            <input [(ngModel)]="draft.fullName" placeholder="Nguyễn Văn A" />
+          </label>
+          <label>
+            Username
+            <input [(ngModel)]="draft.username" placeholder="username" />
+          </label>
+          <label>
+            Email
+            <input type="email" [(ngModel)]="draft.email" placeholder="name@company.com" />
+          </label>
+          <label>
+            Chức vụ
+            <select [(ngModel)]="draft.jobTitle">
+              <option value="">Chọn chức vụ</option>
+              <option *ngFor="let position of positionOptions()" [value]="position">
+                {{ position }}
+              </option>
+            </select>
+          </label>
+          <label>
+            Phòng ban
+            <select [(ngModel)]="draft.departmentId">
+              <option [ngValue]="undefined">Chưa phân phòng ban</option>
+              <option *ngFor="let department of departments()" [ngValue]="department.id">
+                {{ department.name }}
+              </option>
+            </select>
+          </label>
+          <label>
+            Vai trò
+            <select [(ngModel)]="draft.role">
+              <option *ngFor="let role of roles" [value]="role">{{ role }}</option>
+            </select>
+          </label>
+          <label *ngIf="!selectedUser">
+            Mật khẩu
+            <input type="password" [(ngModel)]="draftPassword" placeholder="Tối thiểu 6 ký tự" />
+          </label>
+        </div>
 
-      <div class="form-actions">
-        <button type="button" (click)="saveUser()">
-          {{ selectedUser ? 'Cập nhật' : 'Tạo mới' }}
-        </button>
-        <button type="button" class="secondary" (click)="resetForm()">Huỷ</button>
-      </div>
+        <div class="form-actions">
+          <button type="button" (click)="saveUser()">
+            {{ selectedUser ? 'Cập nhật' : 'Tạo mới' }}
+          </button>
+          <button type="button" class="secondary" (click)="resetForm()">Huỷ</button>
+        </div>
       </section>
     </div>
 
@@ -126,8 +128,22 @@
             {{ person.checkInTime }} → {{ person.checkOutTime || '—' }}
           </p>
           <div class="inline-actions">
-            <button type="button" class="secondary small" *ngIf="auth.hasRole(['ADMIN'])" (click)="editUser(person)">Sửa</button>
-            <button type="button" class="danger small" *ngIf="canDelete(person)" (click)="deleteUser(person.id)">Xoá</button>
+            <button
+              type="button"
+              class="secondary small"
+              *ngIf="auth.hasRole(['ADMIN'])"
+              (click)="editUser(person)"
+            >
+              Sửa
+            </button>
+            <button
+              type="button"
+              class="danger small"
+              *ngIf="canDelete(person)"
+              (click)="deleteUser(person.id)"
+            >
+              Xoá
+            </button>
           </div>
         </div>
       </div>
