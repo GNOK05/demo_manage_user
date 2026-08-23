@@ -1,7 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../auth.service';
+import { CompanyApiService } from '../company-api.service';
+import { catchError, map, of } from 'rxjs';
 
 @Component({
   standalone: true,
@@ -10,11 +12,23 @@ import { AuthService } from '../auth.service';
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
 })
-export class SidebarComponent {
-  constructor(public auth: AuthService) {}
+export class SidebarComponent implements OnInit {
+  notificationCount = signal(0);
+
+  constructor(public auth: AuthService, private api: CompanyApiService) {}
+
+  ngOnInit() {
+    this.api
+      .notifications()
+      .pipe(
+        map((items) => items.length),
+        catchError(() => of(0)),
+      )
+      .subscribe((count) => this.notificationCount.set(count));
+  }
 
   get peopleLabel(): string {
-    return this.auth.user()?.role === 'ADMIN' ? 'Nhân sự công ty' : 'Thành viên phòng ban';
+    return 'Quản Lý Nhân Sự';
   }
 
   get attendanceLabel(): string {

@@ -60,8 +60,15 @@ export class CompanyApiService {
   project(id: number) {
     return this.http.get<ApiResponse<Project>>(`${API}/projects/${id}`).pipe(map((r) => r.data));
   }
-  projects() {
-    return this.http.get<ApiResponse<Project[]>>(`${API}/projects`).pipe(map((r) => r.data));
+  projects(departmentId?: number | null, status?: string | null) {
+    return this.http
+      .get<ApiResponse<Project[]>>(`${API}/projects`, {
+        params: {
+          ...(departmentId ? { departmentId } : {}),
+          ...(status ? { status } : {}),
+        },
+      })
+      .pipe(map((r) => r.data));
   }
   createProject(payload: Partial<Project>) {
     return this.http
@@ -77,7 +84,7 @@ export class CompanyApiService {
     return this.http.delete<void>(`${API}/projects/${id}`);
   }
   tasks() {
-    return this.http.get<ApiResponse<Task[]>>(`${API}/tasks/my`).pipe(map((r) => r.data));
+    return this.http.get<ApiResponse<Task[]>>(`${API}/tasks`).pipe(map((r) => r.data));
   }
   tasksByProject(id: number) {
     return this.http
@@ -108,20 +115,29 @@ export class CompanyApiService {
       .post<ApiResponse<Attendance>>(`${API}/attendance/check-out`, {})
       .pipe(map((r) => r.data));
   }
-  users() {
-    return this.http.get<ApiResponse<User[]>>(`${API}/users`).pipe(map((r) => r.data));
+  users(query = '', departmentId?: number | null) {
+    return this.http
+      .get<ApiResponse<User[]>>(`${API}/users`, {
+        params: {
+          query,
+          ...(departmentId ? { departmentId } : {}),
+        },
+      })
+      .pipe(map((r) => r.data));
   }
-  createUser(payload: Partial<User>) {
+  createUser(payload: Partial<User> & { password?: string }) {
     return this.http.post<ApiResponse<User>>(`${API}/users`, payload).pipe(map((r) => r.data));
   }
-  updateUser(id: number, payload: Partial<User>) {
+  updateUser(id: number, payload: Partial<User> & { password?: string }) {
     return this.http.put<ApiResponse<User>>(`${API}/users/${id}`, payload).pipe(map((r) => r.data));
   }
   deleteUser(id: number) {
     return this.http.delete<void>(`${API}/users/${id}`);
   }
-  departmentMembers() {
-    return this.http.get<ApiResponse<User[]>>(`${API}/users/department`).pipe(map((r) => r.data));
+  departmentMembers(query = '') {
+    return this.http
+      .get<ApiResponse<User[]>>(`${API}/users/department`, { params: { query } })
+      .pipe(map((r) => r.data));
   }
   myAttendance() {
     return this.http
@@ -131,6 +147,13 @@ export class CompanyApiService {
   departmentAttendance() {
     return this.http
       .get<ApiResponse<Attendance[]>>(`${API}/attendance/department`)
+      .pipe(map((r) => r.data));
+  }
+  employeeAttendance(userId: number, month: number, year: number) {
+    return this.http
+      .get<ApiResponse<Attendance[]>>(`${API}/attendance/user/${userId}`, {
+        params: { month, year },
+      })
       .pipe(map((r) => r.data));
   }
   allAttendance() {

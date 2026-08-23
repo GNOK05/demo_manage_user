@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth.service';
 import { CompanyApiService } from '../../core/company-api.service';
 import { SidebarComponent } from '../../core/layout/sidebar.component';
-import { Task, TaskStatus, User } from '../../core/models';
+import { Project, Task, TaskStatus, User } from '../../core/models';
+import { finalize } from 'rxjs';
 
 @Component({
   standalone: true,
@@ -16,10 +17,14 @@ export class TaskBoardComponent implements OnInit {
   statuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'REVIEW'];
   tasks = signal<Task[]>([]);
   employees = signal<User[]>([]);
+  projects = signal<Project[]>([]);
   search = signal('');
   selectedTask: Task | null = null;
   errorMessage = signal('');
   successMessage = signal('');
+  loading = signal(false);
+  taskModalOpen = signal(false);
+  deleteModalOpen = signal(false);
   draft: Task = {
     id: 0,
     taskName: '',
@@ -42,12 +47,36 @@ export class TaskBoardComponent implements OnInit {
   ngOnInit() {
     this.load();
     if (this.auth.hasRole(['ADMIN', 'MANAGER'])) {
-      this.api.users().subscribe((x) => this.employees.set(x));
+      const usersRequest = this.auth.hasRole(['ADMIN'])
+        ? this.api.users()
+        : this.api.departmentMembers();
+      usersRequest.subscribe({
+        next: (x) => this.employees.set(x),
+        error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tải nhân sự'),
+      });
+      this.api.projects().subscribe({
+        next: (projects) => {
+          this.projects.set(projects);
+          if (projects.length && !this.selectedTask) {
+            this.draft.projectId = projects[0].id;
+            this.draft.projectName = projects[0].projectName;
+          }
+        },
+        error: (error) =>
+          this.errorMessage.set(error?.error?.message || 'Không thể tải danh sách dự án'),
+      });
     }
   }
 
   load() {
-    this.api.tasks().subscribe((x) => this.tasks.set(x));
+    this.loading.set(true);
+    this.api
+      .tasks()
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (tasks) => this.tasks.set(tasks),
+        error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tải công việc'),
+      });
   }
 
   filteredTasks() {
@@ -85,6 +114,12 @@ export class TaskBoardComponent implements OnInit {
   editTask(task: Task) {
     this.selectedTask = task;
     this.draft = { ...task };
+    this.taskModalOpen.set(true);
+  }
+
+  openCreate() {
+    this.resetForm();
+    this.taskModalOpen.set(true);
   }
 
   saveTask() {
@@ -92,6 +127,14 @@ export class TaskBoardComponent implements OnInit {
 
     if (!this.draft.taskName || this.draft.taskName.trim() === '') {
       this.errorMessage.set('Vui lòng nhập tên công việc');
+      return;
+    }
+
+    if (
+      !this.draft.projectId ||
+      !this.projects().some((project) => project.id === this.draft.projectId)
+    ) {
+      this.errorMessage.set('Vui lòng chọn một dự án hợp lệ');
       return;
     }
 
@@ -143,9 +186,16 @@ export class TaskBoardComponent implements OnInit {
   }
 
   deleteTask(id: number) {
+    this.selectedTask = this.tasks().find((task) => task.id === id) || null;
+    this.deleteModalOpen.set(true);
+  }
+
+  confirmDelete() {
+    const id = this.selectedTask?.id;
+    if (!id) return;
     this.api.deleteTask(id).subscribe({
       next: () => {
-        if (this.selectedTask?.id === id) this.resetForm();
+        this.resetForm();
         this.successMessage.set('✓ Xóa công việc thành công');
         setTimeout(() => {
           this.successMessage.set('');
@@ -161,6 +211,8 @@ export class TaskBoardComponent implements OnInit {
 
   resetForm() {
     this.selectedTask = null;
+    this.taskModalOpen.set(false);
+    this.deleteModalOpen.set(false);
     this.errorMessage.set('');
     this.draft = {
       id: 0,
@@ -181,10 +233,22 @@ export class TaskBoardComponent implements OnInit {
     return this.auth.hasRole(['ADMIN', 'MANAGER']);
   }
 
+  isAdmin() {
+    return this.auth.hasRole(['ADMIN']);
+  }
+
   onEmployeeSelected() {
     const emp = this.employees().find((e) => e.id === this.draft.assignedToId);
     if (emp) {
       this.draft.assignedToName = emp.fullName;
+    }
+  }
+
+  onProjectSelected() {
+    const project = this.projects().find((item) => item.id === Number(this.draft.projectId));
+    if (project) {
+      this.draft.projectId = project.id;
+      this.draft.projectName = project.projectName;
     }
   }
 }

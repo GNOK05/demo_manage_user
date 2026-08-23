@@ -1,18 +1,28 @@
 package com.example.demo.service.impl;
-import com.example.demo.dto.ProjectDto;
-import com.example.demo.entity.*;
-import com.example.demo.exception.BussinessException;
-import com.example.demo.repository.*;
-import com.example.demo.service.ProjectService;
-import com.example.demo.service.UserService;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
+
+import com.example.demo.dto.ProjectDto;
+import com.example.demo.entity.Department;
+import com.example.demo.entity.Project;
+import com.example.demo.entity.ProjectStatus;
+import com.example.demo.entity.Role;
+import com.example.demo.entity.TaskStatus;
+import com.example.demo.entity.User;
+import com.example.demo.exception.BussinessException;
+import com.example.demo.repository.DepartmentRepository;
+import com.example.demo.repository.ProjectRepository;
+import com.example.demo.repository.TaskRepository;
+import com.example.demo.service.ProjectService;
+import com.example.demo.service.UserService;
+
+import lombok.RequiredArgsConstructor;
 @Service @RequiredArgsConstructor @Transactional
 public class ProjectServiceImpl implements ProjectService {
  private final ProjectRepository projects; private final DepartmentRepository departments; private final TaskRepository tasks; private final UserService users;
- public List<ProjectDto.Response> findAccessible(){User u=users.currentUser(); List<Project> result=u.getRole()==Role.ADMIN?projects.findAll():u.getRole()==Role.MANAGER&&u.getDepartment()!=null?projects.findByDepartmentId(u.getDepartment().getId()):projects.findAssignedToUser(u.getId()); return result.stream().map(this::response).toList();}
+ public List<ProjectDto.Response> findAccessible(Long departmentId, ProjectStatus status){User u=users.currentUser(); List<Project> result=u.getRole()==Role.ADMIN?projects.findAll():u.getRole()==Role.MANAGER&&u.getDepartment()!=null?projects.findByDepartmentId(u.getDepartment().getId()):projects.findAssignedToUser(u.getId()); return result.stream().filter(p->departmentId==null||p.getDepartment().getId().equals(departmentId)).filter(p->status==null||p.getStatus()==status).map(this::response).toList();}
  public ProjectDto.Response get(Long id){Project p=entity(id); User u=users.currentUser(); if(u.getRole()==Role.EMPLOYEE&&!projects.findAssignedToUser(u.getId()).stream().anyMatch(x->x.getId().equals(id)))throw new BussinessException("You are not assigned to this project"); if(u.getRole()!=Role.EMPLOYEE)verifyDepartment(p);return response(p);}
  public ProjectDto.Response save(ProjectDto.SaveRequest r){Department d=department(r.departmentId());verifyManage(d);return response(projects.save(build(new Project(),r,d)));}
  public ProjectDto.Response update(Long id,ProjectDto.SaveRequest r){Project p=entity(id);verifyManage(p.getDepartment());Department d=department(r.departmentId());verifyManage(d);return response(build(p,r,d));}

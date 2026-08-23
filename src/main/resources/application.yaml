@@ -1,8 +1,8 @@
 spring:
   datasource:
-    # Embedded development database: lets the project run without MySQL installed.
-    # Stored under ./data so the seeded administrator and application data survive restarts.
-    url: jdbc:h2:file:./data/company_management;MODE=MySQL;DB_CLOSE_ON_EXIT=FALSE
+    # Default to in-memory H2 to avoid stale file locks during local restarts.
+    # If you want file persistence, set DB_URL=jdbc:h2:file:./data/company_management;MODE=MySQL;DB_CLOSE_ON_EXIT=FALSE
+    url: ${DB_URL:jdbc:h2:mem:company_management;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
     username: sa
     password:
     driver-class-name: org.h2.Driver

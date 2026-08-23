@@ -17,6 +17,14 @@ public class TaskServiceImpl implements TaskService {
  private final TaskRepository tasks; private final ProjectRepository projects; private final UserService users; private final AttendanceRepository attendance;
  public List<TaskDto.Response> byProject(Long projectId){Project p=project(projectId);canManage(p);return tasks.findByProjectId(projectId).stream().map(this::response).toList();}
  public List<TaskDto.Response> myTasks(){return tasks.findByAssignedToIdOrderByDeadlineAsc(users.currentUser().getId()).stream().map(this::response).toList();}
+ public List<TaskDto.Response> accessibleTasks(){
+    User current=users.currentUser();
+    if(current.getRole()==Role.EMPLOYEE)return myTasks();
+    if(current.getRole()==Role.ADMIN)return tasks.findAll().stream().map(this::response).toList();
+    if(current.getDepartment()==null)throw new BussinessException("Manager must belong to a department");
+    return projects.findByDepartmentId(current.getDepartment().getId()).stream()
+     .flatMap(project->tasks.findByProjectId(project.getId()).stream()).map(this::response).toList();
+ }
  public TaskDto.Response save(TaskDto.SaveRequest r){Project p=project(r.projectId());canManage(p);return response(tasks.save(build(new Task(),r,p)));}
  public TaskDto.Response update(Long id,TaskDto.SaveRequest r){Task t=task(id);canManage(t.getProject());Project p=project(r.projectId());canManage(p);return response(build(t,r,p));}
  public TaskDto.Response updateStatus(Long id,TaskDto.StatusRequest r){Task t=task(id);User current=users.currentUser();boolean manager=current.getRole()==Role.ADMIN||(current.getRole()==Role.MANAGER&&current.getDepartment()!=null&&current.getDepartment().getId().equals(t.getProject().getDepartment().getId()));boolean owner=t.getAssignedTo()!=null&&t.getAssignedTo().getId().equals(current.getId());if(!manager&&!owner)throw new BussinessException("You are not allowed to update this task");if(owner&&r.status()==TaskStatus.REVIEW)throw new BussinessException("Employees cannot move tasks to REVIEW");validateAttendanceForStatusUpdate(current,r.status());t.setStatus(r.status());return response(t);}
@@ -30,5 +38,5 @@ public class TaskServiceImpl implements TaskService {
  private Task task(Long id){return tasks.findById(id).orElseThrow(()->new BussinessException("Task not found: "+id));}
  private void canManage(Project p){User u=users.currentUser();if(u.getRole()==Role.ADMIN)return;if(u.getRole()!=Role.MANAGER||u.getDepartment()==null||!u.getDepartment().getId().equals(p.getDepartment().getId()))throw new BussinessException("Only the department manager can manage tasks");}
  private void validateAttendanceForStatusUpdate(User user, TaskStatus status){if(user.getRole()==Role.ADMIN||user.getRole()==Role.MANAGER)return;if(status==TaskStatus.DONE||status==TaskStatus.REVIEW){var today=attendance.findByUserIdAndDate(user.getId(),LocalDate.now());if(today.isEmpty()||today.get().getCheckOutTime()==null){throw new BussinessException("You must check out before marking this task as complete. Current time is during work hours, please finish your day before updating task status.");}}}
- private TaskDto.Response response(Task t){return new TaskDto.Response(t.getId(),t.getTaskName(),t.getDescription(),t.getProject().getId(),t.getProject().getProjectName(),t.getAssignedTo()==null?null:t.getAssignedTo().getId(),t.getAssignedTo()==null?null:t.getAssignedTo().getFullName(),t.getTester()==null?null:t.getTester().getId(),t.getTester()==null?null:t.getTester().getFullName(),t.getCreatedBy().getId(),t.getStatus(),t.getDeadline());}
+ private TaskDto.Response response(Task t){return new TaskDto.Response(t.getId(),t.getTaskName(),t.getDescription(),t.getProject().getId(),t.getProject().getProjectName(),t.getAssignedTo()==null?null:t.getAssignedTo().getId(),t.getAssignedTo()==null?null:t.getAssignedTo().getFullName(),t.getTester()==null?null:t.getTester().getId(),t.getTester()==null?null:t.getTester().getFullName(),t.getCreatedBy()==null?null:t.getCreatedBy().getId(),t.getStatus(),t.getDeadline());}
 }

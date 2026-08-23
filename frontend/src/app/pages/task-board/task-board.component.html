@@ -7,7 +7,10 @@
         <p class="eyebrow">Cá nhân</p>
         <h1>Quản lý công việc</h1>
       </div>
-      <span class="chip chip-soft">{{ tasks().length }} nhiệm vụ</span>
+      <div class="header-actions">
+        <span class="chip chip-soft">{{ tasks().length }} nhiệm vụ</span>
+        <button type="button" *ngIf="isPo()" (click)="openCreate()">Thêm công việc</button>
+      </div>
     </header>
 
     <!-- Alerts -->
@@ -19,7 +22,8 @@
     </div>
 
     <!-- PO/Admin Task Management Panel -->
-    <section class="card manager-panel" *ngIf="isPo()">
+    <div class="modal-backdrop" *ngIf="isPo() && taskModalOpen()">
+      <section class="card manager-panel modal-card">
       <div class="section-top">
         <div>
           <p class="eyebrow subtle">Quản lý</p>
@@ -35,7 +39,12 @@
         </label>
         <label>
           Dự án
-          <input [(ngModel)]="draft.projectName" placeholder="Tên dự án" />
+          <select [(ngModel)]="draft.projectId" (change)="onProjectSelected()">
+            <option [ngValue]="0">-- Chọn dự án --</option>
+            <option *ngFor="let project of projects()" [ngValue]="project.id">
+              {{ project.projectName }}
+            </option>
+          </select>
         </label>
         <label>
           Người phụ trách
@@ -65,7 +74,9 @@
             [(ngModel)]="draft.description"
             rows="4"
             placeholder="Mô tả chi tiết nội dung công việc cần làm"
+            maxlength="2000"
           ></textarea>
+          <small class="field-hint">{{ (draft.description || '').length }}/2000</small>
         </label>
       </div>
 
@@ -77,7 +88,17 @@
           Huỷ chỉnh sửa
         </button>
       </div>
-    </section>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" *ngIf="isPo() && deleteModalOpen() && selectedTask">
+      <section class="card modal-card confirm-modal">
+        <div class="section-top"><h2>Xoá công việc?</h2><button type="button" class="icon-button" (click)="resetForm()">×</button></div>
+        <p>Bạn có chắc muốn xoá công việc này? Thao tác không thể hoàn tác.</p>
+        <dl><dt>Công việc</dt><dd>{{ selectedTask.taskName }}</dd><dt>Dự án</dt><dd>{{ selectedTask.projectName }}</dd><dt>Phụ trách</dt><dd>{{ selectedTask.assignedToName || 'Chưa gán' }}</dd></dl>
+        <div class="form-actions"><button type="button" class="danger" (click)="confirmDelete()">Xoá công việc</button><button type="button" class="secondary" (click)="resetForm()">Huỷ</button></div>
+      </section>
+    </div>
 
     <!-- Search Bar -->
     <section class="toolbar card">
@@ -90,6 +111,7 @@
 
     <!-- Task Board -->
     <section class="board">
+      <p class="loading-state" *ngIf="loading()">Đang tải công việc...</p>
       <div class="column" *ngFor="let status of statuses">
         <h2 class="column-title">{{ status }}</h2>
 
@@ -107,7 +129,7 @@
             <button type="button" class="secondary small" (click)="editTask(task)" *ngIf="isPo()">
               Sửa
             </button>
-            <button type="button" class="danger small" (click)="deleteTask(task.id)" *ngIf="isPo()">
+            <button type="button" class="danger small" (click)="deleteTask(task.id)" *ngIf="isAdmin()">
               Xoá
             </button>
           </div>

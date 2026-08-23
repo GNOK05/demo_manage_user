@@ -4,28 +4,72 @@
   <main class="content">
     <header class="page-header">
       <div>
-        <p class="eyebrow">Xin chào</p>
-        <h1>{{ auth.user()?.fullName || 'Quản lý công ty' }}</h1>
+        <p class="eyebrow">Tổng quan / Company Management Dashboard</p>
+        <h1>Overview</h1>
       </div>
       <span class="profile-pill">{{ auth.user()?.jobTitle || auth.user()?.role }}</span>
     </header>
 
-    <section class="stats">
+    <section class="stats overview-stats">
+      <article class="stat-card accent-blue">
+        <span class="stat-label">Nhân sự</span>
+        <strong class="stat-value">{{ employees().length }}</strong>
+        <small *ngIf="!isLoading('employees') && !error('employees')">Đang được theo dõi</small>
+        <small *ngIf="error('employees')">{{ error('employees') }}</small>
+      </article>
+      <article class="stat-card accent-green">
+        <span class="stat-label">Phòng ban</span>
+        <strong class="stat-value">{{ departments().length }}</strong>
+        <small>Đơn vị trong hệ thống</small>
+      </article>
       <article class="stat-card accent-blue">
         <span class="stat-label">Dự án</span>
         <strong class="stat-value">{{ projects().length }}</strong>
-        <small>đang vận hành</small>
+        <small>{{ projectStatusCount('IN_PROGRESS') }} đang thực hiện</small>
       </article>
       <article class="stat-card accent-green">
-        <span class="stat-label">Công việc</span>
-        <strong class="stat-value">{{ tasks().length }}</strong>
-        <small>nhiệm vụ hiện tại</small>
+        <span class="stat-label">Việc đang chờ</span>
+        <strong class="stat-value">{{ pendingTasks() }}</strong>
+        <small>{{ done() }} việc đã hoàn thành</small>
       </article>
-      <article class="stat-card accent-purple">
-        <span class="stat-label">Hoàn thành</span>
-        <strong class="stat-value">{{ done() }}</strong>
-        <small>{{ completionRate() }}% hiệu suất</small>
-      </article>
+    </section>
+
+    <section class="card dashboard-section">
+      <div class="section-top">
+        <div>
+          <p class="eyebrow subtle">Hôm nay</p>
+          <h2>Attendance summary</h2>
+        </div>
+        <a class="text-link" routerLink="/attendance">Xem chi tiết</a>
+      </div>
+      <div
+        class="summary-grid"
+        *ngIf="!isLoading('attendance') && !error('attendance'); else attendanceState"
+      >
+        <div>
+          <strong>{{ todayAttendance('PRESENT') }}</strong
+          ><span>Present</span>
+        </div>
+        <div>
+          <strong>{{ todayAttendance('LATE') }}</strong
+          ><span>Late</span>
+        </div>
+        <div>
+          <strong>{{ todayAttendance('ABSENT') }}</strong
+          ><span>Absent</span>
+        </div>
+        <div>
+          <strong>{{ todayAttendance('LEAVE') }}</strong
+          ><span>On leave</span>
+        </div>
+      </div>
+      <ng-template #attendanceState
+        ><p class="loading-state" *ngIf="isLoading('attendance')">Đang tải chấm công...</p>
+        <p class="error-state" *ngIf="error('attendance')">
+          {{ error('attendance') }}
+          <button class="secondary small" (click)="retry('attendance')">Thử lại</button>
+        </p></ng-template
+      >
     </section>
 
     <section class="grid-two">
@@ -85,11 +129,75 @@
       </article>
     </section>
 
+    <section class="grid-two dashboard-section">
+      <article class="card">
+        <div class="section-top">
+          <h2>Employees by department</h2>
+          <button class="secondary small" (click)="retry('employees')">Làm mới</button>
+        </div>
+        <div class="distribution-list" *ngIf="!error('employees'); else employeeError">
+          <div class="distribution-row" *ngFor="let department of departments()">
+            <span>{{ department.name }}</span>
+            <div class="distribution-track">
+              <i
+                [style.width.%]="
+                  employees().length
+                    ? (departmentEmployeeCount(department) / employees().length) * 100
+                    : 0
+                "
+              ></i>
+            </div>
+            <strong>{{ departmentEmployeeCount(department) }}</strong>
+          </div>
+        </div>
+        <ng-template #employeeError
+          ><p class="error-state">
+            {{ error('employees') }}
+            <button class="secondary small" (click)="retry('employees')">Thử lại</button>
+          </p></ng-template
+        >
+      </article>
+      <article class="card">
+        <div class="section-top">
+          <h2>Project overview</h2>
+          <a class="text-link" routerLink="/projects">Xem dự án</a>
+        </div>
+        <div class="project-status-list" *ngIf="!error('projects'); else projectError">
+          <div>
+            <span>Not started</span><strong>{{ projectStatusCount('NOT_STARTED') }}</strong>
+          </div>
+          <div>
+            <span>In progress</span><strong>{{ projectStatusCount('IN_PROGRESS') }}</strong>
+          </div>
+          <div>
+            <span>Completed</span><strong>{{ projectStatusCount('COMPLETED') }}</strong>
+          </div>
+        </div>
+        <ng-template #projectError
+          ><p class="error-state">
+            {{ error('projects') }}
+            <button class="secondary small" (click)="retry('projects')">Thử lại</button>
+          </p></ng-template
+        >
+      </article>
+    </section>
+
     <section class="card">
       <div class="section-top">
         <h2>Việc cần làm</h2>
         <span class="chip chip-soft">{{ tasks().length }} nhiệm vụ</span>
       </div>
+      <p class="error-state" *ngIf="error('tasks')">
+        {{ error('tasks') }}
+        <button class="secondary small" (click)="retry('tasks')">Thử lại</button>
+      </p>
+      <p class="pending-action" *ngIf="auth.hasRole(['ADMIN', 'MANAGER']) && !error('leave')">
+        <a routerLink="/notifications">{{ pendingLeaveCount() }} đơn nghỉ đang chờ duyệt</a>
+      </p>
+      <p class="error-state" *ngIf="error('leave')">
+        {{ error('leave') }}
+        <button class="secondary small" (click)="retry('leave')">Thử lại</button>
+      </p>
 
       <div class="task-list" *ngIf="tasks().length; else emptyTasks">
         <div class="task-item" *ngFor="let task of tasks().slice(0, 6)">

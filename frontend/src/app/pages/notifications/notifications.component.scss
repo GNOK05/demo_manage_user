@@ -2,6 +2,29 @@
   display: block;
 }
 
+.request-card textarea,
+.request-card .field-hint {
+  width: 100%;
+  max-width: 100%;
+}
+
+.request-card textarea {
+  display: block;
+  min-height: 112px;
+  resize: vertical;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.field-hint {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 400;
+  text-align: right;
+}
+
 .request-card,
 .panel-card {
   background: rgba(255, 255, 255, 0.92);

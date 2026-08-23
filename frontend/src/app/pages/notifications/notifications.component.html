@@ -52,12 +52,14 @@
             placeholder="Vui lòng mô tả rõ nguyên nhân xin nghỉ (vd: Sự cố gia đình, bệnh lý, ...)"
             maxlength="500"
           ></textarea>
-          <small>{{ draft.reason.length }}/500</small>
+          <small class="field-hint">{{ (draft.reason || '').length }}/500</small>
         </label>
       </div>
 
       <div class="form-actions">
-        <button type="button" (click)="submitLeaveRequest()">Gửi đơn xin nghỉ</button>
+        <button type="button" [disabled]="loading()" (click)="submitLeaveRequest()">
+          {{ loading() ? 'Đang gửi...' : 'Gửi đơn xin nghỉ' }}
+        </button>
       </div>
     </section>
 
@@ -93,13 +95,11 @@
             <p class="eyebrow subtle">Phê duyệt</p>
             <h2>Đơn nghỉ phép</h2>
           </div>
-          <span class="chip soft" *ngIf="isPo()"
-            >{{ leaveRequests().filter((i) => i.status === 'PENDING').length }} chờ duyệt</span
-          >
+          <span class="chip soft" *ngIf="isPo()">{{ pendingRequests().length }} chờ duyệt</span>
         </div>
 
         <div class="leave-list">
-          <div class="leave-item" *ngFor="let item of leaveRequests()">
+          <div class="leave-item" *ngFor="let item of isPo() ? pendingRequests() : leaveRequests()">
             <div class="leave-head">
               <strong>{{ item.userName }}</strong>
               <span class="badge {{ item.status.toLowerCase() }}">{{ item.status }}</span>
@@ -110,10 +110,20 @@
               <p>{{ item.reason }}</p>
             </div>
             <div class="inline-actions" *ngIf="isPo() && item.status === 'PENDING'">
-              <button type="button" class="secondary small" (click)="approve(item.id, 'APPROVED')">
+              <button
+                type="button"
+                class="secondary small"
+                [disabled]="loading()"
+                (click)="approve(item.id, 'APPROVED')"
+              >
                 ✓ Duyệt
               </button>
-              <button type="button" class="danger small" (click)="approve(item.id, 'REJECTED')">
+              <button
+                type="button"
+                class="danger small"
+                [disabled]="loading()"
+                (click)="approve(item.id, 'REJECTED')"
+              >
                 ✗ Từ chối
               </button>
             </div>

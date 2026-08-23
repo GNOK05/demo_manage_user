@@ -1,65 +1,265 @@
 <div class="shell">
   <app-sidebar></app-sidebar>
-
-  <main class="content">
+  <main class="content attendance-page">
     <header class="page-header">
       <div>
-        <p class="eyebrow">Theo dõi thời gian làm việc</p>
+        <p class="eyebrow">Quản lý chấm công / Công ty</p>
         <h1>{{ title() }}</h1>
       </div>
+      <span class="chip chip-soft">Theo dõi theo phòng ban</span>
     </header>
 
-    <ng-container *ngIf="!isSelf(); else selfStatus">
-      <section class="card attendance-group" *ngFor="let group of groups()">
+    <ng-container *ngIf="!isSelf(); else selfView">
+      <div *ngIf="errorMessage()" class="alert alert-error">{{ errorMessage() }}</div>
+
+      <section class="card filter-card">
         <div class="section-top">
-          <h2>{{ group.departmentName }}</h2>
-          <span class="chip">{{ group.people.length }} người</span>
-        </div>
-
-        <div class="attendance-row" *ngFor="let person of group.people">
           <div>
-            <strong>{{ person.fullName }}</strong>
-            <p class="muted">{{ person.jobTitle || person.role }}</p>
+            <p class="eyebrow subtle">Bộ lọc</p>
+            <h2>Tìm kiếm nhân sự</h2>
           </div>
-          <div class="attendance-side">
-            <span class="badge status-{{ person.workStatus }}">{{ person.workStatusLabel }}</span>
-            <p class="muted">{{ person.checkInTime || '—' }} → {{ person.checkOutTime || '—' }}</p>
-          </div>
+          <button type="button" class="secondary small" (click)="currentMonth()">
+            Tháng hiện tại
+          </button>
         </div>
-
-        <p *ngIf="!group.people.length" class="empty-state">Chưa có nhân sự.</p>
+        <div class="filter-grid">
+          <label
+            >Tháng<select [(ngModel)]="month" (change)="loadEmployeeAttendance()">
+              <option *ngFor="let item of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]" [ngValue]="item">
+                {{ item }}
+              </option>
+            </select></label
+          >
+          <label
+            >Năm<input
+              type="number"
+              [(ngModel)]="year"
+              min="2000"
+              max="2100"
+              (change)="loadEmployeeAttendance()"
+          /></label>
+          <label
+            >Trạng thái<select [(ngModel)]="statusFilter" (change)="page = 1">
+              <option value="ALL">Tất cả</option>
+              <option value="PRESENT">Có mặt</option>
+              <option value="LATE">Đi muộn</option>
+              <option value="LEAVE">Nghỉ phép</option>
+              <option value="ABSENT">Vắng mặt</option>
+            </select></label
+          >
+          <label class="search-field"
+            >Tìm nhân viên<input
+              [ngModel]="search()"
+              (ngModelChange)="onSearch($event)"
+              placeholder="Tên, username hoặc email"
+          /></label>
+          <button
+            type="button"
+            class="search-button"
+            (click)="searchEmployees()"
+            [disabled]="loadingEmployees()"
+          >
+            {{ loadingEmployees() ? 'Đang tìm...' : 'Tìm kiếm' }}
+          </button>
+        </div>
       </section>
 
-      <p *ngIf="!groups().length" class="empty-state">Chưa có dữ liệu.</p>
+      <section class="card hierarchy-card">
+        <div class="section-top">
+          <div>
+            <p class="eyebrow subtle">Cấp 1</p>
+            <h2>Phòng ban</h2>
+          </div>
+          <span class="muted">{{ employees().length }} nhân sự</span>
+        </div>
+        <div class="tab-strip department-tabs" *ngIf="!loadingDepartments">
+          <button
+            type="button"
+            [class.active]="selectedDepartmentId() === null"
+            (click)="selectDepartment(null)"
+          >
+            Tất cả phòng ban <span>{{ employees().length }}</span>
+          </button>
+          <button
+            type="button"
+            *ngFor="let department of departments()"
+            [class.active]="selectedDepartmentId() === department.id"
+            (click)="selectDepartment(department.id)"
+          >
+            {{ department.name }} <span>{{ departmentEmployeeCount(department.id) }}</span>
+          </button>
+        </div>
+        <p class="loading-state" *ngIf="loadingDepartments">Đang tải phòng ban...</p>
+
+        <div class="employee-tabs-wrap" *ngIf="!loadingEmployees">
+          <p class="eyebrow subtle">Cấp 2 · Nhân viên</p>
+          <div class="tab-strip employee-tabs">
+            <button
+              type="button"
+              *ngFor="let employee of departmentEmployees(selectedDepartmentId())"
+              [class.active]="selectedEmployeeId() === employee.id"
+              (click)="selectEmployee(employee.id)"
+            >
+              <strong>{{ employee.fullName }}</strong
+              ><small>{{ employee.jobTitle || employee.username }}</small>
+            </button>
+          </div>
+          <p class="empty-state" *ngIf="!departmentEmployees(selectedDepartmentId()).length">
+            Không tìm thấy nhân viên trong phòng ban này.
+          </p>
+        </div>
+        <p class="loading-state" *ngIf="loadingEmployees">Đang tải nhân viên...</p>
+      </section>
+
+      <ng-container *ngIf="selectedEmployee() as employee">
+        <section class="employee-heading card">
+          <div>
+            <p class="eyebrow subtle">Nhân viên đang chọn</p>
+            <h2>{{ employee.fullName }}</h2>
+            <p class="muted">
+              {{ employee.departmentName || 'Chưa phân phòng ban' }} ·
+              {{ employee.jobTitle || employee.role }} · {{ employee.username }}
+            </p>
+          </div>
+          <div class="month-nav">
+            <button type="button" class="secondary small" (click)="shiftMonth(-1)">
+              ‹ Tháng trước
+            </button>
+            <strong>{{ monthLabel() }}</strong>
+            <button type="button" class="secondary small" (click)="shiftMonth(1)">
+              Tháng sau ›
+            </button>
+          </div>
+        </section>
+
+        <section class="stats attendance-stats">
+          <article class="stat-card accent-blue">
+            <span class="stat-label">Ngày làm việc</span
+            ><strong class="stat-value">{{ summary().workingDays }}</strong
+            ><small>Trong tháng chọn</small>
+          </article>
+          <article class="stat-card accent-green">
+            <span class="stat-label">Ngày nghỉ</span
+            ><strong class="stat-value">{{ summary().leaveDays }}</strong
+            ><small>Attendance status LEAVE</small>
+          </article>
+          <article class="stat-card accent-purple">
+            <span class="stat-label">Giờ làm đã ghi nhận</span
+            ><strong class="stat-value">{{ summary().hours }}h</strong
+            ><small>Từ check-in / check-out</small>
+          </article>
+          <article class="stat-card accent-blue">
+            <span class="stat-label">Đi muộn</span
+            ><strong class="stat-value">{{ summary().lateDays }}</strong
+            ><small>Trong tháng chọn</small>
+          </article>
+        </section>
+
+        <section class="card attendance-table-card">
+          <div class="section-top">
+            <div class="pagination-controls">
+              <label
+                >Số dòng<select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)">
+                  <option [ngValue]="10">10</option>
+                  <option [ngValue]="20">20</option>
+                  <option [ngValue]="50">50</option>
+                </select></label
+              >
+              <p class="eyebrow subtle">Lịch sử</p>
+              <h2>Attendance history</h2>
+            </div>
+            <span class="chip chip-soft">{{ filteredAttendanceCount() }} bản ghi</span>
+          </div>
+          <div class="table-scroll" *ngIf="!loadingAttendance && filteredAttendanceCount()">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ngày</th>
+                  <th>Thứ</th>
+                  <th>Check-in</th>
+                  <th>Check-out</th>
+                  <th>Trạng thái</th>
+                  <th>Giờ làm</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let record of visibleAttendance()">
+                  <td>
+                    <strong>{{ record.date | date: 'dd/MM/yyyy' }}</strong>
+                  </td>
+                  <td>{{ dayName(record.date) }}</td>
+                  <td>{{ time(record.checkInTime) }}</td>
+                  <td>{{ time(record.checkOutTime) }}</td>
+                  <td>
+                    <span class="badge status-{{ record.status }}">{{ workStatus(record) }}</span>
+                  </td>
+                  <td>
+                    {{ duration(record) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="loading-state" *ngIf="loadingAttendance">Đang tải dữ liệu chấm công...</p>
+          <p class="error-state" *ngIf="!loadingAttendance && errorMessage()">
+            {{ errorMessage() }}
+            <button type="button" class="secondary small" (click)="retryAttendance()">
+              Thử lại
+            </button>
+          </p>
+          <p class="empty-state" *ngIf="!loadingAttendance && !filteredAttendanceCount()">
+            Không có bản ghi chấm công cho nhân viên trong tháng này.
+          </p>
+          <div class="pagination" *ngIf="!loadingAttendance && filteredAttendanceCount()">
+            <span
+              >Hiển thị {{ (page - 1) * pageSize + 1 }}–{{
+                page * pageSize > filteredAttendanceCount()
+                  ? filteredAttendanceCount()
+                  : page * pageSize
+              }}
+              trên {{ filteredAttendanceCount() }} bản ghi</span
+            >
+            <div>
+              <button type="button" class="secondary small" (click)="setPage(page - 1)">‹</button
+              ><button
+                type="button"
+                class="secondary small"
+                *ngFor="let item of pages()"
+                [class.current]="page === item"
+                (click)="setPage(item)"
+              >
+                {{ item }}</button
+              ><button type="button" class="secondary small" (click)="setPage(page + 1)">›</button>
+            </div>
+          </div>
+        </section>
+      </ng-container>
     </ng-container>
 
-    <ng-template #selfStatus>
+    <ng-template #selfView>
       <section class="card status-panel">
         <div class="section-top">
-          <h2>Trạng thái hôm nay</h2>
-          <span class="badge">{{ myStatusLabel() }}</span>
+          <h2>Chấm công cá nhân</h2>
+          <span class="chip">{{ selfStatusLabel() }}</span>
+        </div>
+        <p class="muted">
+          Tài khoản nhân viên chỉ có quyền xem lịch sử và thực hiện check-in/check-out của chính
+          mình.
+        </p>
+        <div class="attendance-actions">
+          <button type="button" [disabled]="!!selfToday()?.checkInTime" (click)="checkIn()">
+            {{ selfToday()?.checkInTime ? 'Đã check-in' : 'Check-in' }}
+          </button>
+          <button
+            type="button"
+            class="secondary"
+            [disabled]="!selfToday()?.checkInTime || !!selfToday()?.checkOutTime"
+            (click)="checkOut()"
+          >
+            {{ selfToday()?.checkOutTime ? 'Đã check-out' : 'Check-out' }}
+          </button>
         </div>
       </section>
     </ng-template>
-
-    <section class="card attendance-history">
-      <div class="section-top">
-        <h2>Lịch sử chấm công</h2>
-        <span class="chip chip-soft">{{ entries().length }} bản ghi</span>
-      </div>
-
-      <div class="attendance-row" *ngFor="let item of entries()">
-        <div>
-          <strong>{{ item.date }}</strong>
-          <p class="muted">{{ item.userName || 'Tài khoản của tôi' }}</p>
-        </div>
-        <div class="attendance-side">
-          <span class="badge">{{ item.status }}</span>
-          <p class="muted">{{ item.checkInTime || '—' }} → {{ item.checkOutTime || '—' }}</p>
-        </div>
-      </div>
-
-      <p *ngIf="!entries().length" class="empty-state">Chưa có dữ liệu chấm công.</p>
-    </section>
   </main>
 </div>

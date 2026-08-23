@@ -32,8 +32,16 @@
           formControlName="username"
           autocomplete="username"
           placeholder="Nhập tên đăng nhập"
-          [class.input-error]="error"
+          (blur)="form.controls.username.markAsTouched()"
+          [class.input-error]="showFieldError('username')"
         />
+        <small class="field-error" *ngIf="showFieldError('username')">
+          {{
+            form.controls.username.hasError('required')
+              ? 'Vui lòng nhập tên đăng nhập.'
+              : 'Tên đăng nhập không được chứa khoảng trắng.'
+          }}
+        </small>
       </label>
 
       <label>
@@ -43,8 +51,16 @@
           formControlName="password"
           autocomplete="current-password"
           placeholder="Nhập mật khẩu"
-          [class.input-error]="error"
+          (blur)="form.controls.password.markAsTouched()"
+          [class.input-error]="showFieldError('password')"
         />
+        <small class="field-error" *ngIf="showFieldError('password')">
+          {{
+            form.controls.password.hasError('required')
+              ? 'Vui lòng nhập mật khẩu.'
+              : 'Mật khẩu không được chứa khoảng trắng.'
+          }}
+        </small>
       </label>
 
       <button class="login-button" [disabled]="form.invalid || loading">

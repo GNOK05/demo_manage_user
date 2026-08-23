@@ -7,11 +7,13 @@
         <p class="eyebrow">
           {{ auth.user()?.role === 'ADMIN' ? 'Quản trị hệ thống' : 'Quản lý phòng ban' }}
         </p>
-        <h1>{{ auth.user()?.role === 'ADMIN' ? 'Nhân sự công ty' : 'Thành viên phòng ban' }}</h1>
+        <h1>Quản Lý Nhân Sự</h1>
       </div>
+      <button type="button" *ngIf="auth.hasRole(['ADMIN'])" (click)="openCreate()">Thêm nhân sự</button>
     </header>
 
-    <section class="card manager-panel">
+    <div class="modal-backdrop" *ngIf="modal() === 'create'">
+      <section class="card manager-panel modal-card">
       <div class="section-top">
         <h2>{{ selectedUser ? 'Chỉnh sửa nhân sự' : 'Thêm nhân sự mới' }}</h2>
       </div>
@@ -31,19 +33,31 @@
         </label>
         <label>
           Chức vụ
-          <input [(ngModel)]="draft.jobTitle" placeholder="Chuyên viên" />
+          <select [(ngModel)]="draft.jobTitle">
+            <option value="">Chọn chức vụ</option>
+            <option *ngFor="let position of positionOptions()" [value]="position">
+              {{ position }}
+            </option>
+          </select>
         </label>
         <label>
           Phòng ban
-          <input [(ngModel)]="draft.departmentName" placeholder="Phòng kỹ thuật" />
+          <select [(ngModel)]="draft.departmentId">
+            <option [ngValue]="undefined">Chưa phân phòng ban</option>
+            <option *ngFor="let department of departments()" [ngValue]="department.id">
+              {{ department.name }}
+            </option>
+          </select>
         </label>
         <label>
           Vai trò
           <select [(ngModel)]="draft.role">
-            <option value="ADMIN">ADMIN</option>
-            <option value="MANAGER">MANAGER</option>
-            <option value="EMPLOYEE">EMPLOYEE</option>
+            <option *ngFor="let role of roles" [value]="role">{{ role }}</option>
           </select>
+        </label>
+        <label *ngIf="!selectedUser">
+          Mật khẩu
+          <input type="password" [(ngModel)]="draftPassword" placeholder="Tối thiểu 6 ký tự" />
         </label>
       </div>
 
@@ -53,11 +67,47 @@
         </button>
         <button type="button" class="secondary" (click)="resetForm()">Huỷ</button>
       </div>
-    </section>
+      </section>
+    </div>
 
     <section class="toolbar card">
-      <input [(ngModel)]="search" placeholder="Tìm kiếm nhân sự theo tên, email, phòng ban" />
+      <div class="people-search">
+        <label>
+          Nhân viên
+          <input [(ngModel)]="search" placeholder="Tên, username, email hoặc chức vụ" />
+        </label>
+        <button type="button" (click)="searchPeople()" [disabled]="loading()">
+          {{ loading() ? 'Đang tìm...' : 'Tìm kiếm' }}
+        </button>
+      </div>
     </section>
+
+    <section class="card department-filter">
+      <div class="section-top">
+        <h2>Phòng ban</h2>
+        <span class="muted">{{ people().length }} người</span>
+      </div>
+      <div class="tab-strip">
+        <button
+          type="button"
+          [class.active]="selectedDepartmentId() === null"
+          (click)="selectDepartment(null)"
+        >
+          Tất cả phòng ban
+        </button>
+        <button
+          type="button"
+          *ngFor="let department of departments()"
+          [class.active]="selectedDepartmentId() === department.id"
+          (click)="selectDepartment(department.id)"
+        >
+          {{ department.name }}
+        </button>
+      </div>
+    </section>
+
+    <div *ngIf="errorMessage()" class="alert alert-error">{{ errorMessage() }}</div>
+    <p *ngIf="loading()" class="loading-state">Đang tải nhân sự...</p>
 
     <section class="card people-group" *ngFor="let group of groups()">
       <div class="section-top">
@@ -76,8 +126,8 @@
             {{ person.checkInTime }} → {{ person.checkOutTime || '—' }}
           </p>
           <div class="inline-actions">
-            <button type="button" class="secondary small" (click)="editUser(person)">Sửa</button>
-            <button type="button" class="danger small" (click)="deleteUser(person.id)">Xoá</button>
+            <button type="button" class="secondary small" *ngIf="auth.hasRole(['ADMIN'])" (click)="editUser(person)">Sửa</button>
+            <button type="button" class="danger small" *ngIf="canDelete(person)" (click)="deleteUser(person.id)">Xoá</button>
           </div>
         </div>
       </div>
@@ -85,6 +135,74 @@
       <p *ngIf="!group.people.length" class="empty-state">Chưa có nhân sự.</p>
     </section>
 
-    <p *ngIf="!groups().length" class="empty-state">Chưa có dữ liệu.</p>
+    <p *ngIf="!loading() && !groups().length" class="empty-state">Không tìm thấy nhân sự.</p>
+
+    <div class="modal-backdrop" *ngIf="modal() === 'edit' && selectedUser">
+      <section class="modal-card">
+        <div class="section-top">
+          <div>
+            <p class="eyebrow subtle">Nhân sự</p>
+            <h2>Chỉnh sửa nhân sự</h2>
+          </div>
+          <button type="button" class="icon-button" (click)="resetForm()">×</button>
+        </div>
+        <div class="form-grid">
+          <label>Username<input [ngModel]="draft.username" disabled /></label>
+          <label>Họ tên<input [(ngModel)]="draft.fullName" /></label>
+          <label>Email<input type="email" [(ngModel)]="draft.email" /></label>
+          <label
+            >Phòng ban<select [(ngModel)]="draft.departmentId">
+              <option [ngValue]="undefined">Chưa phân phòng ban</option>
+              <option *ngFor="let department of departments()" [ngValue]="department.id">
+                {{ department.name }}
+              </option>
+            </select></label
+          >
+          <label
+            >Chức vụ<select [(ngModel)]="draft.jobTitle">
+              <option value="">Chọn chức vụ</option>
+              <option *ngFor="let position of positionOptions()" [value]="position">
+                {{ position }}
+              </option>
+            </select></label
+          >
+          <label
+            >Vai trò<select [(ngModel)]="draft.role">
+              <option *ngFor="let role of roles" [value]="role">{{ role }}</option>
+            </select></label
+          >
+        </div>
+        <div class="form-actions">
+          <button type="button" (click)="saveUser()" [disabled]="loading()">Lưu thay đổi</button
+          ><button type="button" class="secondary" (click)="resetForm()">Huỷ</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" *ngIf="modal() === 'delete' && selectedUser">
+      <section class="modal-card confirm-modal">
+        <div class="section-top">
+          <h2>Xoá nhân sự</h2>
+          <button type="button" class="icon-button" (click)="resetForm()">×</button>
+        </div>
+        <p>Bạn có chắc muốn xoá nhân sự này? Thao tác không thể hoàn tác.</p>
+        <dl>
+          <dt>Họ tên</dt>
+          <dd>{{ selectedUser.fullName }}</dd>
+          <dt>Username</dt>
+          <dd>{{ selectedUser.username }}</dd>
+          <dt>Phòng ban</dt>
+          <dd>{{ selectedUser.departmentName || 'Chưa phân phòng ban' }}</dd>
+          <dt>Chức vụ</dt>
+          <dd>{{ selectedUser.jobTitle || 'Chưa cập nhật' }}</dd>
+        </dl>
+        <p class="error-state" *ngIf="errorMessage()">{{ errorMessage() }}</p>
+        <div class="form-actions">
+          <button type="button" class="danger" (click)="confirmDelete()" [disabled]="loading()">
+            {{ loading() ? 'Đang xoá...' : 'Xoá nhân sự' }}</button
+          ><button type="button" class="secondary" (click)="resetForm()">Huỷ</button>
+        </div>
+      </section>
+    </div>
   </main>
 </div>

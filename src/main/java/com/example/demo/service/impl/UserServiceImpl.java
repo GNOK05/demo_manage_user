@@ -1,19 +1,24 @@
 package com.example.demo.service.impl;
 
+import java.util.List;
+
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.demo.dto.UserDto;
 import com.example.demo.dto.UserResponse;
 import com.example.demo.entity.Department;
 import com.example.demo.entity.User;
+import com.example.demo.entity.Role;
 import com.example.demo.exception.BussinessException;
 import com.example.demo.repository.DepartmentRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.UserService;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
 
 @Service @RequiredArgsConstructor @Transactional
 public class UserServiceImpl implements UserService {
@@ -32,9 +37,25 @@ public class UserServiceImpl implements UserService {
         if (r.jobTitle() != null) u.setJobTitle(r.jobTitle());
         if (r.password() != null && !r.password().isBlank()) u.setPassword(encoder.encode(r.password())); return response(u);
     }
-    @Override @Transactional(readOnly = true) public List<UserResponse> findAll() { return users.findAll().stream().map(this::response).toList(); }
+    @Override @Transactional(readOnly = true) public List<UserResponse> findAll(String query, Long departmentId) { return users.search(query == null ? "" : query.trim(), departmentId).stream().map(this::response).toList(); }
     @Override @Transactional(readOnly = true) public UserResponse get(Long id) { return response(findEntity(id)); }
-    @Override public void delete(Long id) { users.delete(findEntity(id)); }
+    @Override public void delete(Long id) {
+        User current = currentUser();
+        User target = findEntity(id);
+        if (current.getId().equals(target.getId()) || roleRank(current.getRole()) <= roleRank(target.getRole())) {
+            throw new AccessDeniedException("You do not have permission to delete this user.");
+        }
+        if (current.getRole() == Role.MANAGER
+                && (current.getDepartment() == null || target.getDepartment() == null
+                || !current.getDepartment().getId().equals(target.getDepartment().getId()))) {
+            throw new AccessDeniedException("You can only delete users in your department.");
+        }
+        users.delete(target);
+    }
+
+    private int roleRank(Role role) {
+        return role == Role.ADMIN ? 3 : role == Role.MANAGER ? 2 : 1;
+    }
     @Override @Transactional(readOnly = true) public User currentUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return users.findByUsername(username).orElseThrow(() -> new BussinessException("Current user not found"));
@@ -43,7 +64,7 @@ public class UserServiceImpl implements UserService {
     @Override @Transactional(readOnly = true) public User findEntity(Long id) { return users.findById(id).orElseThrow(() -> new BussinessException("User not found: " + id)); }
     @Override @Transactional(readOnly = true) public User findEntityByUsername(String username) { return users.findByUsername(username).orElseThrow(() -> new BussinessException("User not found")); }
     @Override public UserResponse toResponse(User user) { return response(user); }
-    @Override @Transactional(readOnly = true) public List<UserResponse> departmentMembers() { User current=currentUser(); if (current.getDepartment()==null) throw new BussinessException("You do not belong to a department"); return users.findByDepartmentId(current.getDepartment().getId()).stream().map(this::response).toList(); }
+    @Override @Transactional(readOnly = true) public List<UserResponse> departmentMembers(String query) { User current=currentUser(); if (current.getDepartment()==null) throw new BussinessException("You do not belong to a department"); return users.search(query == null ? "" : query.trim(), current.getDepartment().getId()).stream().map(this::response).toList(); }
     private Department department(Long id) { return id == null ? null : departments.findById(id).orElseThrow(() -> new BussinessException("Department not found: " + id)); }
     public UserResponse response(User u) { return new UserResponse(u.getId(), u.getUsername(), u.getFullName(), u.getEmail(), u.getPhone(), u.getRole(), u.getDepartment() == null ? null : u.getDepartment().getId(), u.getDepartment() == null ? null : u.getDepartment().getName(), u.getJobTitle(), u.getCreatedAt()); }
 }

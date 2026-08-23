@@ -41,6 +41,13 @@
   background-color: #fff8f7 !important;
 }
 
+.field-error {
+  display: block;
+  margin-top: 6px;
+  color: #c62828;
+  font-size: 0.82rem;
+}
+
 @keyframes slideDown {
   from {
     opacity: 0;

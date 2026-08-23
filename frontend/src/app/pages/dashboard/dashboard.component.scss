@@ -1,1 +1,88 @@
-:host { display: block; }
+:host {
+  display: block;
+}
+
+.dashboard-section {
+  margin-bottom: 18px;
+}
+.overview-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.summary-grid div,
+.project-status-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.summary-grid strong {
+  font-size: 1.45rem;
+  color: var(--primary-strong);
+}
+.summary-grid span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.distribution-list,
+.project-status-list {
+  display: grid;
+  gap: 12px;
+}
+.distribution-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 36px;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.88rem;
+}
+.distribution-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8eef8;
+}
+.distribution-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+.project-status-list strong {
+  color: var(--primary-strong);
+}
+.text-link {
+  color: var(--primary-strong);
+  font-weight: 700;
+}
+.error-state {
+  color: #b42318;
+}
+.error-state button {
+  margin-left: 8px;
+}
+
+@media (max-width: 800px) {
+  .overview-stats,
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .overview-stats,
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+  .distribution-row {
+    grid-template-columns: 90px 1fr 28px;
+  }
+}

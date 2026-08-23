@@ -10,7 +10,33 @@
       <span class="chip chip-primary">{{ projects().length }} dự án</span>
     </header>
 
-    <section class="project-grid">
+    <section class="card project-filters">
+      <label>
+        Phòng ban
+        <select [(ngModel)]="selectedDepartmentId">
+          <option [ngValue]="null">Tất cả phòng ban</option>
+          <option *ngFor="let department of departments()" [ngValue]="department.id">
+            {{ department.name }}
+          </option>
+        </select>
+      </label>
+      <label>
+        Trạng thái
+        <select [(ngModel)]="selectedStatus">
+          <option value="">Tất cả trạng thái</option>
+          <option value="NOT_STARTED">Chưa bắt đầu</option>
+          <option value="IN_PROGRESS">Đang thực hiện</option>
+          <option value="COMPLETED">Hoàn thành</option>
+        </select>
+      </label>
+      <button type="button" (click)="search()" [disabled]="loading()">
+        {{ loading() ? 'Đang tải...' : 'Tìm kiếm' }}
+      </button>
+    </section>
+    <div *ngIf="errorMessage()" class="alert alert-error">{{ errorMessage() }}</div>
+    <p *ngIf="loading()" class="loading-state">Đang tải dự án...</p>
+
+    <section class="project-grid" *ngIf="!loading()">
       <article class="card project-card" *ngFor="let p of projects()">
         <div class="project-header">
           <div>
@@ -45,5 +71,6 @@
         </div>
       </article>
     </section>
+    <p *ngIf="!loading() && !projects().length" class="empty-state">Không tìm thấy dự án.</p>
   </main>
 </div>
