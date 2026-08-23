@@ -4,41 +4,107 @@
 
 .people-group {
   display: grid;
-  gap: 10px;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.8);
 }
 
-.people-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
+.people-group .section-top {
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--line);
 }
 
-.people-row:last-child {
-  border-bottom: 0;
+.people-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.02);
 }
 
 .people-row strong {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
+  font-size: 1.02rem;
+  letter-spacing: -0.02em;
+}
+
+.people-row .muted {
+  font-size: 0.84rem;
+  line-height: 1.5;
 }
 
 .people-side {
   display: flex;
-  flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 180px;
+}
+
+.inline-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inline-actions button {
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+}
+
+.toolbar {
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.toolbar input {
+  width: 100%;
+  margin: 0;
+}
+
+.manager-panel {
+  background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(246,249,255,0.9) 100%);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.form-grid label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.form-grid input,
+.form-grid select {
+  margin-top: 8px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
 }
 
 @media (max-width: 700px) {
   .people-row {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     align-items: flex-start;
   }
 
   .people-side {
     align-items: flex-start;
+    min-width: 0;
   }
 }

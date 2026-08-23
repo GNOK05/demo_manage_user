@@ -6,47 +6,54 @@
 .attendance-history,
 .status-panel {
   display: grid;
-  gap: 10px;
+  gap: 14px;
 }
 
-.attendance-row,
-.people-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 0;
+.attendance-group .section-top,
+.attendance-history .section-top,
+.status-panel .section-top {
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--line);
 }
 
-.attendance-row:last-child,
-.people-row:last-child {
-  border-bottom: 0;
+.attendance-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.02);
 }
 
-.attendance-side,
-.people-side {
+.attendance-row strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 1.02rem;
+}
+
+.attendance-side {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: 8px;
+  min-width: 180px;
 }
 
-.people-row strong,
-.attendance-row strong {
-  display: block;
-  margin-bottom: 4px;
+.status-panel {
+  background: linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(241,255,249,0.82) 100%);
 }
 
 @media (max-width: 700px) {
-  .attendance-row,
-  .people-row {
-    flex-direction: column;
+  .attendance-row {
+    grid-template-columns: 1fr;
     align-items: flex-start;
   }
 
-  .attendance-side,
-  .people-side {
+  .attendance-side {
     align-items: flex-start;
+    min-width: 0;
   }
 }
