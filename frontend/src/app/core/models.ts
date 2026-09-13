@@ -1,5 +1,7 @@
 export type Role = 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'REVIEW';
+export type TaskSort =
+  'DEFAULT' | 'NEWEST' | 'OLDEST' | 'DEADLINE_ASC' | 'DEADLINE_DESC' | 'NAME_ASC' | 'NAME_DESC';
 export interface User {
   id: number;
   username: string;
@@ -14,6 +16,19 @@ export interface User {
 export interface ApiResponse<T> {
   data: T;
   message: string;
+}
+export interface DashboardSummary {
+  totalEmployees: number;
+  totalDepartments: number;
+  totalProjects: number;
+  activeProjects: number;
+  completedProjects: number;
+  totalTasks: number;
+  pendingTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  attendanceToday: Record<string, number>;
+  pendingLeaveRequests: number;
 }
 export interface Project {
   id: number;
@@ -49,6 +64,15 @@ export interface Task {
   status: TaskStatus;
   deadline: string;
 }
+export interface TaskSaveRequest {
+  taskName: string;
+  description?: string;
+  projectId: number | null;
+  assignedToId: number | null;
+  testerId: number | null;
+  status?: TaskStatus;
+  deadline: string;
+}
 export interface Attendance {
   id: number;
   userId: number;
@@ -82,4 +106,6 @@ export interface NotificationItem {
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   createdAt: string;
   relatedId?: number;
+  key: string;
+  unread: boolean;
 }

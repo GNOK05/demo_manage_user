@@ -67,4 +67,12 @@ CREATE INDEX idx_attendance_user ON attendance(user_id);
 CREATE INDEX idx_project_department ON projects(department_id);
 CREATE INDEX idx_task_project ON tasks(project_id);
 CREATE INDEX idx_task_assignee ON tasks(assigned_to_id);
+
+CREATE TABLE notification_reads (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  notification_key VARCHAR(120) NOT NULL,
+  CONSTRAINT uq_notification_read UNIQUE (user_id, notification_key),
+  CONSTRAINT fk_notification_read_user FOREIGN KEY (user_id) REFERENCES users(id)
+);
 CREATE INDEX idx_task_tester ON tasks(tester_id);

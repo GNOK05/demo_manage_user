@@ -4,7 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth.service';
 import { CompanyApiService } from '../../core/company-api.service';
 import { SidebarComponent } from '../../core/layout/sidebar.component';
-import { Project, Task, TaskStatus, User } from '../../core/models';
+import {
+  Project,
+  Role,
+  Task,
+  TaskSaveRequest,
+  TaskSort,
+  TaskStatus,
+  User,
+} from '../../core/models';
 import { finalize } from 'rxjs';
 
 @Component({
@@ -19,22 +27,22 @@ export class TaskBoardComponent implements OnInit {
   employees = signal<User[]>([]);
   projects = signal<Project[]>([]);
   search = signal('');
+  selectedRole = signal<Role | ''>('');
+  selectedStatus = signal<TaskStatus | ''>('');
+  selectedSort = signal<TaskSort>('DEFAULT');
   selectedTask: Task | null = null;
   errorMessage = signal('');
   successMessage = signal('');
   loading = signal(false);
+  operationLoading = signal(false);
   taskModalOpen = signal(false);
   deleteModalOpen = signal(false);
-  draft: Task = {
-    id: 0,
+  draft: TaskSaveRequest = {
     taskName: '',
     description: '',
-    projectId: 1,
-    projectName: 'Dự án demo',
-    assignedToId: 1,
-    assignedToName: 'Nguyễn Văn A',
-    testerId: 0,
-    testerName: '',
+    projectId: null,
+    assignedToId: null,
+    testerId: null,
     status: 'TODO',
     deadline: new Date().toISOString().slice(0, 10),
   };
@@ -57,10 +65,6 @@ export class TaskBoardComponent implements OnInit {
       this.api.projects().subscribe({
         next: (projects) => {
           this.projects.set(projects);
-          if (projects.length && !this.selectedTask) {
-            this.draft.projectId = projects[0].id;
-            this.draft.projectName = projects[0].projectName;
-          }
         },
         error: (error) =>
           this.errorMessage.set(error?.error?.message || 'Không thể tải danh sách dự án'),
@@ -71,7 +75,12 @@ export class TaskBoardComponent implements OnInit {
   load() {
     this.loading.set(true);
     this.api
-      .tasks()
+      .tasks(
+        this.search(),
+        this.selectedRole() || null,
+        this.selectedStatus() || null,
+        this.selectedSort(),
+      )
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: (tasks) => this.tasks.set(tasks),
@@ -79,41 +88,47 @@ export class TaskBoardComponent implements OnInit {
       });
   }
 
-  filteredTasks() {
-    const q = this.search().trim().toLowerCase();
-    if (!q) return this.tasks();
-    return this.tasks().filter(
-      (task) =>
-        task.taskName.toLowerCase().includes(q) ||
-        task.projectName.toLowerCase().includes(q) ||
-        (task.assignedToName || '').toLowerCase().includes(q),
-    );
+  items(s: TaskStatus) {
+    return this.tasks().filter((x) => x.status === s);
   }
 
-  items(s: TaskStatus) {
-    return this.filteredTasks().filter((x) => x.status === s);
+  searchTasks() {
+    this.load();
   }
 
   move(t: Task, status: TaskStatus) {
+    if (this.operationLoading()) return;
     this.errorMessage.set('');
-    this.api.updateTaskStatus(t.id, status).subscribe({
-      next: () => {
-        this.successMessage.set('✓ Cập nhật công việc thành công');
-        setTimeout(() => this.successMessage.set(''), 3000);
-        this.load();
-      },
-      error: (err) => {
-        const msg =
-          err?.error?.message ||
-          'Không thể cập nhật công việc. Bạn cần chấm công kết thúc trước khi hoàn thành task.';
-        this.errorMessage.set(msg);
-      },
-    });
+    this.operationLoading.set(true);
+    this.api
+      .updateTaskStatus(t.id, status)
+      .pipe(finalize(() => this.operationLoading.set(false)))
+      .subscribe({
+        next: () => {
+          this.successMessage.set('✓ Cập nhật công việc thành công');
+          setTimeout(() => this.successMessage.set(''), 3000);
+          this.load();
+        },
+        error: (err) => {
+          const msg =
+            err?.error?.message ||
+            'Không thể cập nhật công việc. Bạn cần chấm công kết thúc trước khi hoàn thành task.';
+          this.errorMessage.set(msg);
+        },
+      });
   }
 
   editTask(task: Task) {
     this.selectedTask = task;
-    this.draft = { ...task };
+    this.draft = {
+      taskName: task.taskName,
+      description: task.description,
+      projectId: task.projectId,
+      assignedToId: task.assignedToId ?? null,
+      testerId: task.testerId ?? null,
+      status: task.status,
+      deadline: task.deadline,
+    };
     this.taskModalOpen.set(true);
   }
 
@@ -138,23 +153,45 @@ export class TaskBoardComponent implements OnInit {
       return;
     }
 
-    const payload: Partial<Task> = {
+    const payload: TaskSaveRequest = {
       taskName: this.draft.taskName,
       description: this.draft.description,
       projectId: this.draft.projectId,
-      projectName: this.draft.projectName,
-      assignedToId: this.draft.assignedToId,
-      assignedToName: this.draft.assignedToName,
-      testerId: this.draft.testerId,
-      testerName: this.draft.testerName,
+      assignedToId: this.draft.assignedToId || null,
+      testerId: this.draft.testerId || null,
       status: this.draft.status,
       deadline: this.draft.deadline,
     };
 
     if (this.selectedTask) {
-      this.api.updateTask(this.selectedTask.id, payload).subscribe({
+      this.operationLoading.set(true);
+      this.api
+        .updateTask(this.selectedTask.id, payload)
+        .pipe(finalize(() => this.operationLoading.set(false)))
+        .subscribe({
+          next: () => {
+            this.successMessage.set('✓ Cập nhật công việc thành công');
+            setTimeout(() => {
+              this.successMessage.set('');
+              this.resetForm();
+              this.load();
+            }, 500);
+          },
+          error: (err) => {
+            const msg = err?.error?.message || 'Có lỗi khi cập nhật công việc';
+            this.errorMessage.set(msg);
+          },
+        });
+      return;
+    }
+
+    this.operationLoading.set(true);
+    this.api
+      .createTask(payload)
+      .pipe(finalize(() => this.operationLoading.set(false)))
+      .subscribe({
         next: () => {
-          this.successMessage.set('✓ Cập nhật công việc thành công');
+          this.successMessage.set('✓ Tạo công việc thành công');
           setTimeout(() => {
             this.successMessage.set('');
             this.resetForm();
@@ -162,27 +199,10 @@ export class TaskBoardComponent implements OnInit {
           }, 500);
         },
         error: (err) => {
-          const msg = err?.error?.message || 'Có lỗi khi cập nhật công việc';
+          const msg = err?.error?.message || 'Có lỗi khi tạo công việc';
           this.errorMessage.set(msg);
         },
       });
-      return;
-    }
-
-    this.api.createTask(payload).subscribe({
-      next: () => {
-        this.successMessage.set('✓ Tạo công việc thành công');
-        setTimeout(() => {
-          this.successMessage.set('');
-          this.resetForm();
-          this.load();
-        }, 500);
-      },
-      error: (err) => {
-        const msg = err?.error?.message || 'Có lỗi khi tạo công việc';
-        this.errorMessage.set(msg);
-      },
-    });
   }
 
   deleteTask(id: number) {
@@ -192,21 +212,32 @@ export class TaskBoardComponent implements OnInit {
 
   confirmDelete() {
     const id = this.selectedTask?.id;
-    if (!id) return;
-    this.api.deleteTask(id).subscribe({
-      next: () => {
-        this.resetForm();
-        this.successMessage.set('✓ Xóa công việc thành công');
-        setTimeout(() => {
-          this.successMessage.set('');
-          this.load();
-        }, 1000);
-      },
-      error: (err) => {
-        const msg = err?.error?.message || 'Có lỗi khi xóa công việc';
-        this.errorMessage.set(msg);
-      },
-    });
+    if (!id || this.operationLoading()) return;
+    this.operationLoading.set(true);
+    this.api
+      .deleteTask(id)
+      .pipe(finalize(() => this.operationLoading.set(false)))
+      .subscribe({
+        next: () => {
+          this.resetForm();
+          this.successMessage.set('✓ Xóa công việc thành công');
+          setTimeout(() => {
+            this.successMessage.set('');
+            this.load();
+          }, 1000);
+        },
+        error: (err) => {
+          const msg =
+            err?.status === 404
+              ? 'Công việc không còn tồn tại. Danh sách đã được cập nhật.'
+              : err?.error?.message || 'Có lỗi khi xóa công việc';
+          if (err?.status === 404) {
+            this.resetForm();
+            this.load();
+          }
+          this.errorMessage.set(msg);
+        },
+      });
   }
 
   resetForm() {
@@ -215,15 +246,11 @@ export class TaskBoardComponent implements OnInit {
     this.deleteModalOpen.set(false);
     this.errorMessage.set('');
     this.draft = {
-      id: 0,
       taskName: '',
       description: '',
-      projectId: 1,
-      projectName: 'Dự án demo',
-      assignedToId: 1,
-      assignedToName: 'Nguyễn Văn A',
-      testerId: 0,
-      testerName: '',
+      projectId: null,
+      assignedToId: null,
+      testerId: null,
       status: 'TODO',
       deadline: new Date().toISOString().slice(0, 10),
     };
@@ -238,17 +265,13 @@ export class TaskBoardComponent implements OnInit {
   }
 
   onEmployeeSelected() {
-    const emp = this.employees().find((e) => e.id === this.draft.assignedToId);
-    if (emp) {
-      this.draft.assignedToName = emp.fullName;
-    }
+    return this.employees().find((e) => e.id === this.draft.assignedToId);
   }
 
   onProjectSelected() {
     const project = this.projects().find((item) => item.id === Number(this.draft.projectId));
     if (project) {
       this.draft.projectId = project.id;
-      this.draft.projectName = project.projectName;
     }
   }
 }

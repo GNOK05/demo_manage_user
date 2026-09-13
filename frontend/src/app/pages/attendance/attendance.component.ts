@@ -32,6 +32,8 @@ export class AttendanceComponent implements OnInit {
   loadingEmployees = signal(false);
   loadingAttendance = signal(false);
   errorMessage = signal('');
+  private employeeRequestId = 0;
+  private attendanceRequestId = 0;
 
   constructor(
     public auth: AuthService,
@@ -40,17 +42,21 @@ export class AttendanceComponent implements OnInit {
 
   ngOnInit() {
     if (this.isSelf()) {
-      this.api.myAttendance().subscribe({
-        next: (records) => {
-          this.selfAttendance.set(records);
-          this.selfStatusLabel.set(
-            WORK_STATUS_LABEL[
-              computeWorkStatus(records.find((record) => record.date === this.localDate()))
-            ],
-          );
-        },
-        error: () => this.errorMessage.set('Không thể tải lịch sử chấm công của bạn.'),
-      });
+      this.loadingAttendance.set(true);
+      this.api
+        .myAttendance()
+        .pipe(finalize(() => this.loadingAttendance.set(false)))
+        .subscribe({
+          next: (records) => {
+            this.selfAttendance.set(records);
+            this.selfStatusLabel.set(
+              WORK_STATUS_LABEL[
+                computeWorkStatus(records.find((record) => record.date === this.localDate()))
+              ],
+            );
+          },
+          error: () => this.errorMessage.set('Không thể tải lịch sử chấm công của bạn.'),
+        });
       return;
     }
     this.loadDepartmentsAndEmployees();
@@ -114,19 +120,31 @@ export class AttendanceComponent implements OnInit {
   }
 
   searchEmployees() {
+    const requestId = ++this.employeeRequestId;
     this.loadingEmployees.set(true);
     this.errorMessage.set('');
     const request =
       this.auth.user()?.role === 'ADMIN'
         ? this.api.users(this.search(), this.selectedDepartmentId())
         : this.api.departmentMembers(this.search());
-    request.pipe(finalize(() => this.loadingEmployees.set(false))).subscribe({
-      next: (employees) => {
-        this.employees.set(employees);
-        this.selectFirstEmployee();
-      },
-      error: () => this.errorMessage.set('Không thể tìm kiếm nhân sự. Vui lòng thử lại.'),
-    });
+    request
+      .pipe(
+        finalize(() => {
+          if (requestId === this.employeeRequestId) this.loadingEmployees.set(false);
+        }),
+      )
+      .subscribe({
+        next: (employees) => {
+          if (requestId !== this.employeeRequestId) return;
+          this.employees.set(employees);
+          this.selectFirstEmployee();
+        },
+        error: () => {
+          if (requestId === this.employeeRequestId) {
+            this.errorMessage.set('Không thể tìm kiếm nhân sự. Vui lòng thử lại.');
+          }
+        },
+      });
   }
 
   selectDepartment(id: number | null) {
@@ -144,23 +162,34 @@ export class AttendanceComponent implements OnInit {
     const employee = this.departmentEmployees(this.selectedDepartmentId())[0];
     this.selectedEmployeeId.set(employee?.id ?? null);
     if (employee) this.loadEmployeeAttendance();
-    else this.attendance.set([]);
+    else {
+      this.attendanceRequestId++;
+      this.loadingAttendance.set(false);
+      this.attendance.set([]);
+    }
   }
 
   loadEmployeeAttendance() {
     const employeeId = this.selectedEmployeeId();
     if (!employeeId || this.isSelf()) return;
+    const requestId = ++this.attendanceRequestId;
     this.loadingAttendance.set(true);
     this.errorMessage.set('');
     this.api
       .employeeAttendance(employeeId, this.month, this.year)
-      .pipe(finalize(() => this.loadingAttendance.set(false)))
+      .pipe(
+        finalize(() => {
+          if (requestId === this.attendanceRequestId) this.loadingAttendance.set(false);
+        }),
+      )
       .subscribe({
         next: (records) => {
+          if (requestId !== this.attendanceRequestId) return;
           this.attendance.set(records);
           this.page = 1;
         },
         error: (error) => {
+          if (requestId !== this.attendanceRequestId) return;
           this.errorMessage.set(
             error?.error?.message || 'Không thể tải dữ liệu chấm công. Vui lòng thử lại.',
           );
@@ -169,6 +198,25 @@ export class AttendanceComponent implements OnInit {
   }
 
   retryAttendance() {
+    if (this.isSelf()) {
+      this.loadingAttendance.set(true);
+      this.errorMessage.set('');
+      this.api
+        .myAttendance()
+        .pipe(finalize(() => this.loadingAttendance.set(false)))
+        .subscribe({
+          next: (records) => {
+            this.selfAttendance.set(records);
+            this.selfStatusLabel.set(
+              WORK_STATUS_LABEL[
+                computeWorkStatus(records.find((record) => record.date === this.localDate()))
+              ],
+            );
+          },
+          error: () => this.errorMessage.set('Không thể tải lịch sử chấm công của bạn.'),
+        });
+      return;
+    }
     this.loadEmployeeAttendance();
   }
 

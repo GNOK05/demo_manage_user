@@ -24,7 +24,7 @@ export class SidebarComponent implements OnInit {
     this.api
       .notifications()
       .pipe(
-        map((items) => items.length),
+        map((items) => items.filter((item) => item.unread).length),
         catchError(() => of(0)),
       )
       .subscribe((count) => this.notificationCount.set(count));

@@ -7,7 +7,7 @@
         <p class="eyebrow">Thông tin nội bộ</p>
         <h1>Thông báo & đơn nghỉ phép</h1>
       </div>
-      <span class="chip chip-soft">{{ unreadCount() }} cập nhật mới</span>
+      <span class="chip chip-soft" *ngIf="unreadCount()">{{ unreadCount() }} cập nhật mới</span>
     </header>
 
     <section class="card request-card">
@@ -73,7 +73,12 @@
         </div>
 
         <div class="notif-list">
-          <div class="notif-item" *ngFor="let item of notifications()">
+          <div
+            class="notif-item"
+            *ngFor="let item of notifications()"
+            [class.unread-notification]="item.unread"
+            (click)="markRead(item)"
+          >
             <div class="notif-icon" [ngClass]="item.type.toLowerCase()">
               {{ item.type.charAt(0) }}
             </div>
@@ -86,6 +91,9 @@
               <small>{{ item.createdAt | date: 'dd/MM/yyyy HH:mm' }}</small>
             </div>
           </div>
+          <p class="empty-state" *ngIf="!loadingNotifications() && !notifications().length">
+            Không có thông báo mới.
+          </p>
         </div>
       </div>
 

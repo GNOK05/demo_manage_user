@@ -14,14 +14,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dto.ApiResponse;
 import com.example.demo.dto.TaskDto;
+import com.example.demo.entity.Role;
+import com.example.demo.entity.TaskStatus;
 import com.example.demo.service.TaskService;
 
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.RequestParam;
 import lombok.RequiredArgsConstructor;
 @RestController @RequestMapping("/api/v1/tasks") @RequiredArgsConstructor
 public class TaskController {private final TaskService service;
- @GetMapping public ApiResponse<List<TaskDto.Response>> accessible(){return ApiResponse.ok(service.accessibleTasks());}
- @GetMapping("/project/{projectId}") public ApiResponse<List<TaskDto.Response>> project(@PathVariable Long projectId){return ApiResponse.ok(service.byProject(projectId));}
+ @GetMapping public ApiResponse<List<TaskDto.Response>> accessible(@RequestParam(defaultValue="") String keyword, @RequestParam(required=false) Role role, @RequestParam(required=false) TaskStatus status, @RequestParam(defaultValue="DEFAULT") String sort){return ApiResponse.ok(service.accessibleTasks(keyword, role, status, sort));}
+ @GetMapping("/project/{projectId}") @PreAuthorize("hasAnyRole('ADMIN','MANAGER')") public ApiResponse<List<TaskDto.Response>> project(@PathVariable Long projectId){return ApiResponse.ok(service.byProject(projectId));}
  @GetMapping("/my") public ApiResponse<List<TaskDto.Response>> mine(){return ApiResponse.ok(service.myTasks());}
  @PostMapping @PreAuthorize("hasAnyRole('ADMIN','MANAGER')") public ApiResponse<TaskDto.Response> create(@Valid @RequestBody TaskDto.SaveRequest r){return ApiResponse.ok(service.save(r));}
  @PutMapping("/{id}") @PreAuthorize("hasAnyRole('ADMIN','MANAGER')") public ApiResponse<TaskDto.Response> update(@PathVariable Long id,@Valid @RequestBody TaskDto.SaveRequest r){return ApiResponse.ok(service.update(id,r));}

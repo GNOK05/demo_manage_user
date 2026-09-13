@@ -2,8 +2,8 @@ package com.example.demo.service.impl;
 
 import java.util.List;
 
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,8 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.demo.dto.UserDto;
 import com.example.demo.dto.UserResponse;
 import com.example.demo.entity.Department;
-import com.example.demo.entity.User;
 import com.example.demo.entity.Role;
+import com.example.demo.entity.User;
 import com.example.demo.exception.BussinessException;
 import com.example.demo.repository.DepartmentRepository;
 import com.example.demo.repository.UserRepository;

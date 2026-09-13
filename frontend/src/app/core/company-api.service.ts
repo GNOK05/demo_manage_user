@@ -4,11 +4,14 @@ import { map } from 'rxjs';
 import {
   ApiResponse,
   Attendance,
+  DashboardSummary,
   Department,
   LeaveRequest,
   NotificationItem,
   Project,
   Task,
+  TaskSaveRequest,
+  TaskSort,
   TaskStatus,
   User,
 } from './models';
@@ -19,10 +22,19 @@ const API = 'http://localhost:8080/api/v1';
 export class CompanyApiService {
   constructor(private http: HttpClient) {}
 
+  dashboardSummary() {
+    return this.http
+      .get<ApiResponse<DashboardSummary>>(`${API}/dashboard/summary`)
+      .pipe(map((r) => r.data));
+  }
+
   notifications() {
     return this.http
       .get<ApiResponse<NotificationItem[]>>(`${API}/notifications`)
       .pipe(map((r) => r.data));
+  }
+  markNotificationRead(key: string) {
+    return this.http.post<void>(`${API}/notifications/read`, { key });
   }
 
   leaveRequests() {
@@ -83,18 +95,32 @@ export class CompanyApiService {
   deleteProject(id: number) {
     return this.http.delete<void>(`${API}/projects/${id}`);
   }
-  tasks() {
-    return this.http.get<ApiResponse<Task[]>>(`${API}/tasks`).pipe(map((r) => r.data));
+  tasks(
+    keyword = '',
+    role?: string | null,
+    status?: TaskStatus | null,
+    sort: TaskSort = 'DEFAULT',
+  ) {
+    return this.http
+      .get<ApiResponse<Task[]>>(`${API}/tasks`, {
+        params: {
+          keyword: keyword.trim(),
+          ...(role ? { role } : {}),
+          ...(status ? { status } : {}),
+          sort,
+        },
+      })
+      .pipe(map((r) => r.data));
   }
   tasksByProject(id: number) {
     return this.http
       .get<ApiResponse<Task[]>>(`${API}/tasks/project/${id}`)
       .pipe(map((r) => r.data));
   }
-  createTask(payload: Partial<Task>) {
+  createTask(payload: TaskSaveRequest) {
     return this.http.post<ApiResponse<Task>>(`${API}/tasks`, payload).pipe(map((r) => r.data));
   }
-  updateTask(id: number, payload: Partial<Task>) {
+  updateTask(id: number, payload: TaskSaveRequest) {
     return this.http.put<ApiResponse<Task>>(`${API}/tasks/${id}`, payload).pipe(map((r) => r.data));
   }
   deleteTask(id: number) {

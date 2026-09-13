@@ -13,24 +13,29 @@
     <section class="stats overview-stats">
       <article class="stat-card accent-blue">
         <span class="stat-label">Nhân sự</span>
-        <strong class="stat-value">{{ employees().length }}</strong>
+        <strong class="stat-value">{{ summary()?.totalEmployees ?? employees().length }}</strong>
         <small *ngIf="!isLoading('employees') && !error('employees')">Đang được theo dõi</small>
         <small *ngIf="error('employees')">{{ error('employees') }}</small>
       </article>
       <article class="stat-card accent-green">
         <span class="stat-label">Phòng ban</span>
-        <strong class="stat-value">{{ departments().length }}</strong>
+        <strong class="stat-value">{{
+          summary()?.totalDepartments ?? departments().length
+        }}</strong>
         <small>Đơn vị trong hệ thống</small>
       </article>
       <article class="stat-card accent-blue">
         <span class="stat-label">Dự án</span>
-        <strong class="stat-value">{{ projects().length }}</strong>
-        <small>{{ projectStatusCount('IN_PROGRESS') }} đang thực hiện</small>
+        <strong class="stat-value">{{ summary()?.totalProjects ?? projects().length }}</strong>
+        <small
+          >{{ summary()?.activeProjects ?? projectStatusCount('IN_PROGRESS') }} đang thực
+          hiện</small
+        >
       </article>
       <article class="stat-card accent-green">
         <span class="stat-label">Việc đang chờ</span>
-        <strong class="stat-value">{{ pendingTasks() }}</strong>
-        <small>{{ done() }} việc đã hoàn thành</small>
+        <strong class="stat-value">{{ summary()?.pendingTasks ?? pendingTasks() }}</strong>
+        <small>{{ summary()?.completedTasks ?? done() }} việc đã hoàn thành</small>
       </article>
     </section>
 

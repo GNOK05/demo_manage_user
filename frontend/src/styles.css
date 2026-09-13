@@ -304,6 +304,12 @@ button.secondary {
   text-align: center;
 }
 
+.unread-notification {
+  border-left: 3px solid var(--primary);
+  background: rgba(36, 87, 197, 0.05);
+  cursor: pointer;
+}
+
 .sidebar-footer {
   margin-top: auto;
   border-top: 1px solid rgba(255, 255, 255, 0.08);

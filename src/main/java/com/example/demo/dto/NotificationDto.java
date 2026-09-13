@@ -12,6 +12,15 @@ public final class NotificationDto {
             String message,
             String priority,
             LocalDateTime createdAt,
-            Long relatedId
-    ) {}
+                Long relatedId,
+                String key,
+                boolean unread
+        ) {
+            public Response(Long id, String type, String title, String message, String priority,
+                            LocalDateTime createdAt, Long relatedId) {
+                this(id, type, title, message, priority, createdAt, relatedId, type + ":" + relatedId, true);
+            }
+        }
+
+            public record ReadRequest(String key) {}
 }

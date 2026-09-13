@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/auth.service';
 import { CompanyApiService } from '../../core/company-api.service';
 import { SidebarComponent } from '../../core/layout/sidebar.component';
-import { Attendance, Department, Project, Task, User } from '../../core/models';
+import { Attendance, DashboardSummary, Department, Project, Task, User } from '../../core/models';
 import { Observable, finalize } from 'rxjs';
 import { RouterLink } from '@angular/router';
 @Component({
@@ -22,6 +22,7 @@ export class DashboardComponent implements OnInit {
   loading = signal<Record<string, boolean>>({});
   sectionErrors = signal<Record<string, string>>({});
   notice = signal('');
+  summary = signal<DashboardSummary | null>(null);
 
   constructor(
     public auth: AuthService,
@@ -29,12 +30,22 @@ export class DashboardComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    this.loadSummary();
     this.loadDepartments();
     this.loadEmployees();
     this.loadProjects();
     this.loadTasks();
     this.loadAttendance();
     if (this.auth.hasRole(['ADMIN', 'MANAGER'])) this.loadPendingLeave();
+  }
+
+  loadSummary() {
+    this.request(
+      'summary',
+      this.api.dashboardSummary(),
+      (value) => this.summary.set(value),
+      'Không thể tải tổng hợp Dashboard.',
+    );
   }
 
   private request<T>(
@@ -151,7 +162,10 @@ export class DashboardComponent implements OnInit {
   }
 
   todayAttendance(status: string) {
-    const today = new Date().toISOString().slice(0, 10);
+    const summaryCount = this.summary()?.attendanceToday[status];
+    if (summaryCount !== undefined) return summaryCount;
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return this.attendance().filter((record) => record.date === today && record.status === status)
       .length;
   }
@@ -165,10 +179,12 @@ export class DashboardComponent implements OnInit {
   }
 
   pendingTasks() {
+    if (this.summary()) return this.summary()!.pendingTasks;
     return this.tasks().filter((task) => task.status !== 'DONE').length;
   }
 
   done(): number {
+    if (this.summary()) return this.summary()!.completedTasks;
     return this.tasks().filter((x) => x.status === 'DONE').length;
   }
 

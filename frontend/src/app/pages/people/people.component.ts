@@ -112,16 +112,18 @@ export class PeopleComponent implements OnInit {
     if (this.selectedUser) {
       this.loading.set(true);
       this.errorMessage.set('');
-      this.api.updateUser(this.selectedUser.id, payload).subscribe({
-        next: () => {
-          this.resetForm();
-          this.load();
-        },
-        error: (error) => {
-          this.errorMessage.set(error?.error?.message || 'Không thể cập nhật nhân sự.');
-          this.loading.set(false);
-        },
-      });
+      this.api
+        .updateUser(this.selectedUser.id, payload)
+        .pipe(finalize(() => this.loading.set(false)))
+        .subscribe({
+          next: () => {
+            this.resetForm();
+            this.load();
+          },
+          error: (error) => {
+            this.errorMessage.set(error?.error?.message || 'Không thể cập nhật nhân sự.');
+          },
+        });
       return;
     }
 
@@ -129,6 +131,7 @@ export class PeopleComponent implements OnInit {
     this.errorMessage.set('');
     this.api
       .createUser({ ...payload, username: this.draft.username, password: this.draftPassword })
+      .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: () => {
           this.resetForm();
@@ -136,7 +139,6 @@ export class PeopleComponent implements OnInit {
         },
         error: (error) => {
           this.errorMessage.set(error?.error?.message || 'Không thể tạo nhân sự.');
-          this.loading.set(false);
         },
       });
   }
@@ -151,16 +153,18 @@ export class PeopleComponent implements OnInit {
     if (!id) return;
     this.loading.set(true);
     this.errorMessage.set('');
-    this.api.deleteUser(id).subscribe({
-      next: () => {
-        this.resetForm();
-        this.load();
-      },
-      error: (error) => {
-        this.errorMessage.set(error?.error?.message || 'Không thể xoá nhân sự.');
-        this.loading.set(false);
-      },
-    });
+    this.api
+      .deleteUser(id)
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: () => {
+          this.resetForm();
+          this.load();
+        },
+        error: (error) => {
+          this.errorMessage.set(error?.error?.message || 'Không thể xoá nhân sự.');
+        },
+      });
   }
 
   positionOptions() {

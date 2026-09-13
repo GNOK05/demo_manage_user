@@ -81,8 +81,19 @@
         </div>
 
         <div class="form-actions">
-          <button type="button" class="primary" (click)="saveTask()">
-            {{ selectedTask ? 'Cập nhật công việc' : 'Tạo công việc' }}
+          <button
+            type="button"
+            class="primary"
+            (click)="saveTask()"
+            [disabled]="operationLoading()"
+          >
+            {{
+              operationLoading()
+                ? 'Đang lưu...'
+                : selectedTask
+                  ? 'Cập nhật công việc'
+                  : 'Tạo công việc'
+            }}
           </button>
           <button type="button" class="secondary" (click)="resetForm()" *ngIf="selectedTask">
             Huỷ chỉnh sửa
@@ -107,7 +118,13 @@
           <dd>{{ selectedTask.assignedToName || 'Chưa gán' }}</dd>
         </dl>
         <div class="form-actions">
-          <button type="button" class="danger" (click)="confirmDelete()">Xoá công việc</button
+          <button
+            type="button"
+            class="danger"
+            (click)="confirmDelete()"
+            [disabled]="operationLoading()"
+          >
+            {{ operationLoading() ? 'Đang xoá...' : 'Xoá công việc' }}</button
           ><button type="button" class="secondary" (click)="resetForm()">Huỷ</button>
         </div>
       </section>
@@ -117,9 +134,32 @@
     <section class="toolbar card">
       <input
         [(ngModel)]="search"
-        placeholder="🔍 Tìm kiếm công việc theo tên, dự án, người phụ trách"
+        placeholder="Tìm kiếm công việc theo tên, dự án hoặc người phụ trách"
         class="search-input"
       />
+      <select [ngModel]="selectedRole()" (ngModelChange)="selectedRole.set($event); searchTasks()">
+        <option value="">Tất cả vai trò</option>
+        <option value="ADMIN">ADMIN</option>
+        <option value="MANAGER">MANAGER</option>
+        <option value="EMPLOYEE">EMPLOYEE</option>
+      </select>
+      <select
+        [ngModel]="selectedStatus()"
+        (ngModelChange)="selectedStatus.set($event); searchTasks()"
+      >
+        <option value="">Tất cả trạng thái</option>
+        <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
+      </select>
+      <select [ngModel]="selectedSort()" (ngModelChange)="selectedSort.set($event); searchTasks()">
+        <option value="DEFAULT">Mặc định</option>
+        <option value="NEWEST">Mới nhất</option>
+        <option value="OLDEST">Cũ nhất</option>
+        <option value="DEADLINE_ASC">Deadline gần nhất</option>
+        <option value="DEADLINE_DESC">Deadline xa nhất</option>
+        <option value="NAME_ASC">Tên A-Z</option>
+        <option value="NAME_DESC">Tên Z-A</option>
+      </select>
+      <button type="button" (click)="searchTasks()" [disabled]="loading()">Tìm kiếm</button>
     </section>
 
     <!-- Task Board -->
@@ -155,6 +195,7 @@
           <select
             [value]="task.status"
             (change)="move(task, $any($event.target).value)"
+            [disabled]="operationLoading()"
             class="status-select"
           >
             <option value="TODO">Chưa bắt đầu</option>

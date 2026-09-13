@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -116,4 +117,19 @@ public class TaskIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.taskName").value("Integration Task"));
     }
+
+        @Test
+        void taskSearchSupportsContainsRoleStatusAndSortParameters() throws Exception {
+                String token = loginAdmin();
+
+                mockMvc.perform(get("/api/v1/tasks")
+                                                .param("keyword", "engineer")
+                                                .param("role", "EMPLOYEE")
+                                                .param("status", "IN_PROGRESS")
+                                                .param("sort", "DEADLINE_ASC")
+                                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.data[0].status").value("IN_PROGRESS"))
+                                .andExpect(jsonPath("$.data[0].assignedToName").exists());
+        }
 }

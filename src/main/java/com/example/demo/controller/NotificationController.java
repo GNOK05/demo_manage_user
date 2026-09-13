@@ -6,6 +6,7 @@ import com.example.demo.entity.LeaveRequestStatus;
 import com.example.demo.entity.Role;
 import com.example.demo.service.UserService;
 import com.example.demo.repository.LeaveRequestRepository;
+import com.example.demo.repository.NotificationReadRepository;
 import com.example.demo.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +25,7 @@ public class NotificationController {
     private final UserService users;
     private final TaskRepository tasks;
     private final LeaveRequestRepository leaveRequests;
+    private final NotificationReadRepository notificationReads;
 
     @GetMapping
     public ApiResponse<List<NotificationDto.Response>> all() {
@@ -55,8 +57,28 @@ public class NotificationController {
             appendPending(result, id, leaveRequests.findByUserDepartmentIdOrderByCreatedAtDesc(current.getDepartment().getId()));
         }
 
-        result.sort(Comparator.comparing(NotificationDto.Response::createdAt, Comparator.nullsLast(Comparator.reverseOrder())));
+        result.replaceAll(item -> new NotificationDto.Response(
+                item.id(), item.type(), item.title(), item.message(), item.priority(), item.createdAt(),
+                item.relatedId(), notificationKey(item), !notificationReads.existsByUserAndNotificationKey(current, notificationKey(item))));
+        result.sort(Comparator.comparing((NotificationDto.Response item) -> item.createdAt(),
+            Comparator.nullsLast(Comparator.reverseOrder())));
         return ApiResponse.ok(result);
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/read")
+    public void markRead(@org.springframework.web.bind.annotation.RequestBody NotificationDto.ReadRequest request) {
+        if (request == null || request.key() == null || request.key().isBlank()) return;
+        var current = users.currentUser();
+        if (!notificationReads.existsByUserAndNotificationKey(current, request.key())) {
+            var read = new com.example.demo.entity.NotificationRead();
+            read.setUser(current);
+            read.setNotificationKey(request.key());
+            notificationReads.save(read);
+        }
+    }
+
+    private String notificationKey(NotificationDto.Response item) {
+        return item.type() + ":" + item.relatedId();
     }
 
     private void appendPending(List<NotificationDto.Response> result, AtomicLong id, List<com.example.demo.entity.LeaveRequest> requests) {

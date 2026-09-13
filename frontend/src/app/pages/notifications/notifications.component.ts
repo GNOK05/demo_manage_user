@@ -106,41 +106,58 @@ export class NotificationsComponent implements OnInit {
     }
 
     this.loading.set(true);
-    this.api.createLeaveRequest(this.draft).subscribe({
-      next: () => {
-        this.successMessage.set('Đơn xin nghỉ đã được gửi thành công');
-        this.draft.reason = '';
-        this.draft.fromDate = new Date().toISOString().slice(0, 10);
-        this.draft.toDate = new Date().toISOString().slice(0, 10);
-        this.draft.type = 'ANNUAL';
-        this.loading.set(false);
-        this.load();
-      },
-      error: (err) => {
-        const errorMsg = err?.error?.message || 'Có lỗi khi gửi đơn';
-        this.errorMessage.set(errorMsg);
-        this.loading.set(false);
-      },
-    });
+    this.api
+      .createLeaveRequest(this.draft)
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: () => {
+          this.successMessage.set('Đơn xin nghỉ đã được gửi thành công');
+          this.draft.reason = '';
+          this.draft.fromDate = new Date().toISOString().slice(0, 10);
+          this.draft.toDate = new Date().toISOString().slice(0, 10);
+          this.draft.type = 'ANNUAL';
+          this.load();
+        },
+        error: (err) => {
+          const errorMsg = err?.error?.message || 'Có lỗi khi gửi đơn';
+          this.errorMessage.set(errorMsg);
+        },
+      });
   }
 
   approve(id: number, status: 'APPROVED' | 'REJECTED') {
     this.loading.set(true);
-    this.api.approveLeaveRequest(id, status).subscribe({
-      next: () => {
-        this.successMessage.set(`Đơn ${status === 'APPROVED' ? 'đã được duyệt' : 'đã bị từ chối'}`);
-        this.loading.set(false);
-        this.load();
-        setTimeout(() => this.successMessage.set(''), 500);
-      },
-      error: (err) => {
-        this.errorMessage.set(err?.error?.message || 'Có lỗi khi xử lý đơn');
-        this.loading.set(false);
-      },
-    });
+    this.api
+      .approveLeaveRequest(id, status)
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: () => {
+          this.successMessage.set(
+            `Đơn ${status === 'APPROVED' ? 'đã được duyệt' : 'đã bị từ chối'}`,
+          );
+          this.load();
+        },
+        error: (err) => {
+          this.errorMessage.set(err?.error?.message || 'Có lỗi khi xử lý đơn');
+        },
+      });
   }
 
   unreadCount() {
-    return this.notifications().length;
+    return this.notifications().filter((item) => item.unread).length;
+  }
+
+  markRead(item: NotificationItem) {
+    if (!item.unread) return;
+    this.api.markNotificationRead(item.key).subscribe({
+      next: () =>
+        this.notifications.update((items) =>
+          items.map((current) =>
+            current.key === item.key ? { ...current, unread: false } : current,
+          ),
+        ),
+      error: (error) =>
+        this.errorMessage.set(error?.error?.message || 'Không thể cập nhật thông báo.'),
+    });
   }
 }

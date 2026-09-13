@@ -24,20 +24,13 @@
         </div>
         <div class="filter-grid">
           <label
-            >Tháng<select [(ngModel)]="month" (change)="loadEmployeeAttendance()">
+            >Tháng<select [(ngModel)]="month">
               <option *ngFor="let item of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]" [ngValue]="item">
                 {{ item }}
               </option>
             </select></label
           >
-          <label
-            >Năm<input
-              type="number"
-              [(ngModel)]="year"
-              min="2000"
-              max="2100"
-              (change)="loadEmployeeAttendance()"
-          /></label>
+          <label>Năm<input type="number" [(ngModel)]="year" min="2000" max="2100" /></label>
           <label
             >Trạng thái<select [(ngModel)]="statusFilter" (change)="page = 1">
               <option value="ALL">Tất cả</option>
@@ -72,7 +65,7 @@
           </div>
           <span class="muted">{{ employees().length }} nhân sự</span>
         </div>
-        <div class="tab-strip department-tabs" *ngIf="!loadingDepartments">
+        <div class="tab-strip department-tabs" *ngIf="!loadingDepartments()">
           <button
             type="button"
             [class.active]="selectedDepartmentId() === null"
@@ -89,9 +82,9 @@
             {{ department.name }} <span>{{ departmentEmployeeCount(department.id) }}</span>
           </button>
         </div>
-        <p class="loading-state" *ngIf="loadingDepartments">Đang tải phòng ban...</p>
+        <p class="loading-state" *ngIf="loadingDepartments()">Đang tải phòng ban...</p>
 
-        <div class="employee-tabs-wrap" *ngIf="!loadingEmployees">
+        <div class="employee-tabs-wrap" *ngIf="!loadingEmployees()">
           <p class="eyebrow subtle">Cấp 2 · Nhân viên</p>
           <div class="tab-strip employee-tabs">
             <button
@@ -108,7 +101,7 @@
             Không tìm thấy nhân viên trong phòng ban này.
           </p>
         </div>
-        <p class="loading-state" *ngIf="loadingEmployees">Đang tải nhân viên...</p>
+        <p class="loading-state" *ngIf="loadingEmployees()">Đang tải nhân viên...</p>
       </section>
 
       <ng-container *ngIf="selectedEmployee() as employee">
@@ -170,7 +163,7 @@
             </div>
             <span class="chip chip-soft">{{ filteredAttendanceCount() }} bản ghi</span>
           </div>
-          <div class="table-scroll" *ngIf="!loadingAttendance && filteredAttendanceCount()">
+          <div class="table-scroll" *ngIf="!loadingAttendance() && filteredAttendanceCount()">
             <table>
               <thead>
                 <tr>
@@ -200,17 +193,17 @@
               </tbody>
             </table>
           </div>
-          <p class="loading-state" *ngIf="loadingAttendance">Đang tải dữ liệu chấm công...</p>
-          <p class="error-state" *ngIf="!loadingAttendance && errorMessage()">
+          <p class="loading-state" *ngIf="loadingAttendance()">Đang tải dữ liệu chấm công...</p>
+          <p class="error-state" *ngIf="!loadingAttendance() && errorMessage()">
             {{ errorMessage() }}
             <button type="button" class="secondary small" (click)="retryAttendance()">
               Thử lại
             </button>
           </p>
-          <p class="empty-state" *ngIf="!loadingAttendance && !filteredAttendanceCount()">
+          <p class="empty-state" *ngIf="!loadingAttendance() && !filteredAttendanceCount()">
             Không có bản ghi chấm công cho nhân viên trong tháng này.
           </p>
-          <div class="pagination" *ngIf="!loadingAttendance && filteredAttendanceCount()">
+          <div class="pagination" *ngIf="!loadingAttendance() && filteredAttendanceCount()">
             <span
               >Hiển thị {{ (page - 1) * pageSize + 1 }}–{{
                 page * pageSize > filteredAttendanceCount()
@@ -237,6 +230,10 @@
     </ng-container>
 
     <ng-template #selfView>
+      <div *ngIf="errorMessage()" class="alert alert-error">
+        {{ errorMessage() }}
+        <button type="button" class="secondary small" (click)="retryAttendance()">Thử lại</button>
+      </div>
       <section class="card status-panel">
         <div class="section-top">
           <h2>Chấm công cá nhân</h2>
@@ -259,6 +256,7 @@
             {{ selfToday()?.checkOutTime ? 'Đã check-out' : 'Check-out' }}
           </button>
         </div>
+        <p class="loading-state" *ngIf="loadingAttendance()">Đang tải lịch sử chấm công...</p>
       </section>
     </ng-template>
   </main>

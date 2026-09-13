@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -66,16 +67,30 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     @Override
     public LeaveRequestDto.Response approve(Long id, LeaveRequestStatus status) {
         User current = userService.currentUser();
-        LeaveRequest request = leaveRequests.findById(id)
+        LeaveRequest request = leaveRequests.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new BussinessException("Leave request not found: " + id));
 
         if (current.getRole() != Role.MANAGER && current.getRole() != Role.ADMIN) {
             throw new BussinessException("Only PO or Admin can approve leave requests");
         }
 
-        if (current.getRole() == Role.MANAGER && request.getUser().getDepartment() != null && current.getDepartment() != null
-                && !current.getDepartment().getId().equals(request.getUser().getDepartment().getId())) {
-            throw new BussinessException("You can only approve requests in your department");
+        if (request.getStatus() != LeaveRequestStatus.PENDING) {
+            throw new BussinessException("Only pending leave requests can be approved or rejected");
+        }
+
+        if (request.getUser() == null) {
+            throw new BussinessException("Leave request owner not found");
+        }
+
+        if (request.getUser().getId().equals(current.getId())) {
+            throw new BussinessException("You cannot approve your own leave request");
+        }
+
+        if (current.getRole() == Role.MANAGER) {
+            if (current.getDepartment() == null || request.getUser().getDepartment() == null
+                    || !current.getDepartment().getId().equals(request.getUser().getDepartment().getId())) {
+                throw new BussinessException("You can only approve requests in your department");
+            }
         }
 
         if (status != LeaveRequestStatus.APPROVED && status != LeaveRequestStatus.REJECTED) {

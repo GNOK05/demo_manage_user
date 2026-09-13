@@ -2,6 +2,7 @@ package com.example.demo;
 
 import com.example.demo.dto.LeaveRequestDto;
 import com.example.demo.entity.*;
+import com.example.demo.exception.BussinessException;
 import com.example.demo.repository.LeaveRequestRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.UserService;
@@ -64,11 +65,15 @@ class LeaveRequestServiceTest {
         manager.setId(20L);
         manager.setRole(Role.MANAGER);
         manager.setFullName("PO Nguyen");
+        Department department = new Department();
+        department.setId(1L);
+        manager.setDepartment(department);
 
         LeaveRequest leaveRequest = new LeaveRequest();
         leaveRequest.setId(99L);
         leaveRequest.setUser(new User());
         leaveRequest.getUser().setId(10L);
+        leaveRequest.getUser().setDepartment(department);
         leaveRequest.setType(LeaveRequestType.PERSONAL);
         leaveRequest.setFromDate(LocalDate.now().plusDays(1));
         leaveRequest.setToDate(LocalDate.now().plusDays(2));
@@ -83,5 +88,64 @@ class LeaveRequestServiceTest {
 
         assertEquals(LeaveRequestStatus.APPROVED, response.status());
         assertEquals("PO Nguyen", response.approvedBy());
+    }
+
+    @Test
+    void managerWithoutDepartmentCannotApprove() {
+        User manager = new User();
+        manager.setId(20L);
+        manager.setRole(Role.MANAGER);
+        LeaveRequest request = pendingRequest(99L, 10L);
+        when(userService.currentUser()).thenReturn(manager);
+        when(leaveRequestRepository.findById(99L)).thenReturn(Optional.of(request));
+
+        assertThrows(BussinessException.class,
+                () -> leaveRequestService.approve(99L, LeaveRequestStatus.APPROVED));
+    }
+
+    @Test
+    void requesterCannotApproveOwnLeave() {
+        User employee = new User();
+        employee.setId(10L);
+        employee.setRole(Role.MANAGER);
+        Department department = new Department();
+        department.setId(1L);
+        employee.setDepartment(department);
+        LeaveRequest request = pendingRequest(99L, 10L);
+        request.getUser().setDepartment(department);
+        when(userService.currentUser()).thenReturn(employee);
+        when(leaveRequestRepository.findById(99L)).thenReturn(Optional.of(request));
+
+        assertThrows(BussinessException.class,
+                () -> leaveRequestService.approve(99L, LeaveRequestStatus.APPROVED));
+    }
+
+    @Test
+    void processedLeaveCannotBeChanged() {
+        User admin = new User();
+        admin.setId(1L);
+        admin.setRole(Role.ADMIN);
+        LeaveRequest request = pendingRequest(99L, 10L);
+        request.setStatus(LeaveRequestStatus.APPROVED);
+        when(userService.currentUser()).thenReturn(admin);
+        when(leaveRequestRepository.findById(99L)).thenReturn(Optional.of(request));
+
+        assertThrows(BussinessException.class,
+                () -> leaveRequestService.approve(99L, LeaveRequestStatus.REJECTED));
+    }
+
+    private LeaveRequest pendingRequest(Long id, Long userId) {
+        LeaveRequest request = new LeaveRequest();
+        request.setId(id);
+        User owner = new User();
+        owner.setId(userId);
+        owner.setFullName("Employee");
+        request.setUser(owner);
+        request.setType(LeaveRequestType.PERSONAL);
+        request.setFromDate(LocalDate.now().plusDays(1));
+        request.setToDate(LocalDate.now().plusDays(2));
+        request.setReason("Việc gia đình");
+        request.setStatus(LeaveRequestStatus.PENDING);
+        return request;
     }
 }
