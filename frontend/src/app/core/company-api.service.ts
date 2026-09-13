@@ -16,7 +16,10 @@ import {
   User,
 } from './models';
 
-const API = 'http://localhost:8080/api/v1';
+// Use a relative URL so the application works behind a reverse proxy and on
+// any deployed host. Angular's development server forwards this path through
+// proxy.conf.json.
+const API = '/api/v1';
 
 @Injectable({ providedIn: 'root' })
 export class CompanyApiService {
@@ -60,9 +63,9 @@ export class CompanyApiService {
       .pipe(map((r) => r.data));
   }
 
-  approveLeaveRequest(id: number, status: 'APPROVED' | 'REJECTED', approver = 'PO') {
+  approveLeaveRequest(id: number, status: 'APPROVED' | 'REJECTED') {
     return this.http
-      .patch<ApiResponse<LeaveRequest>>(`${API}/leave-requests/${id}/approve`, status)
+      .patch<ApiResponse<LeaveRequest>>(`${API}/leave-requests/${id}/approve`, { status })
       .pipe(map((r) => r.data));
   }
 

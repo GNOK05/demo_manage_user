@@ -35,7 +35,9 @@ public class LeaveRequestController {
 
     @PatchMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ApiResponse<LeaveRequestDto.Response> approve(@PathVariable Long id, @RequestBody LeaveRequestStatus status) {
-        return ApiResponse.ok(service.approve(id, status));
+    public ApiResponse<LeaveRequestDto.Response> approve(
+            @PathVariable Long id,
+            @Valid @RequestBody LeaveRequestDto.DecisionRequest request) {
+        return ApiResponse.ok(service.approve(id, request.status()));
     }
 }

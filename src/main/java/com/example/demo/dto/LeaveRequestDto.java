@@ -18,6 +18,8 @@ public final class LeaveRequestDto {
             @NotBlank @Size(max = 500) String reason
     ) {}
 
+    public record DecisionRequest(@NotNull LeaveRequestStatus status) {}
+
     public record Response(
             Long id,
             Long userId,

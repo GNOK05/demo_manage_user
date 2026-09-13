@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs';
 import { ApiResponse, User } from './models';
-const API = 'http://localhost:8080/api/v1';
+const API = '/api/v1';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   readonly user = signal<User | null>(this.readUser());
