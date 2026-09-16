@@ -14,6 +14,7 @@ import {
   User,
 } from '../../core/models';
 import { finalize } from 'rxjs';
+import { localDateIso } from '../../core/work-status';
 
 @Component({
   standalone: true,
@@ -44,7 +45,7 @@ export class TaskBoardComponent implements OnInit {
     assignedToId: null,
     testerId: null,
     status: 'TODO',
-    deadline: new Date().toISOString().slice(0, 10),
+    deadline: localDateIso(),
   };
 
   constructor(
@@ -252,7 +253,7 @@ export class TaskBoardComponent implements OnInit {
       assignedToId: null,
       testerId: null,
       status: 'TODO',
-      deadline: new Date().toISOString().slice(0, 10),
+      deadline: localDateIso(),
     };
   }
 

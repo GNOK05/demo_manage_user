@@ -39,13 +39,13 @@ export interface DepartmentStatusGroup {
   people: PersonStatusRow[];
 }
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+export function localDateIso(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 /** Groups a flat user list by department and attaches each user's live work status for today. */
 export function groupPeopleByDepartmentWithStatus(people: User[], allAttendance: Attendance[]): DepartmentStatusGroup[] {
-  const today = todayIso();
+  const today = localDateIso();
   const todayByUser = new Map<number, Attendance>();
   for (const record of allAttendance) {
     if (record.date === today) todayByUser.set(record.userId, record);

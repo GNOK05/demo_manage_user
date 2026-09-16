@@ -5,7 +5,7 @@ import { AuthService } from '../../core/auth.service';
 import { CompanyApiService } from '../../core/company-api.service';
 import { SidebarComponent } from '../../core/layout/sidebar.component';
 import { Attendance, Department, User } from '../../core/models';
-import { computeWorkStatus, WORK_STATUS_LABEL } from '../../core/work-status';
+import { computeWorkStatus, localDateIso, WORK_STATUS_LABEL } from '../../core/work-status';
 import { finalize } from 'rxjs';
 
 @Component({
@@ -71,8 +71,7 @@ export class AttendanceComponent implements OnInit {
   }
 
   private localDate() {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return localDateIso();
   }
 
   private loadDepartmentsAndEmployees() {
@@ -317,21 +316,25 @@ export class AttendanceComponent implements OnInit {
   }
   checkIn() {
     this.api.checkIn().subscribe({
-      next: (record) =>
+      next: (record) => {
         this.selfAttendance.set([
           record,
           ...this.selfAttendance().filter((item) => item.date !== record.date),
-        ]),
+        ]);
+        this.selfStatusLabel.set(WORK_STATUS_LABEL[computeWorkStatus(record)]);
+      },
       error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể check-in'),
     });
   }
   checkOut() {
     this.api.checkOut().subscribe({
-      next: (record) =>
+      next: (record) => {
         this.selfAttendance.set([
           record,
           ...this.selfAttendance().filter((item) => item.date !== record.date),
-        ]),
+        ]);
+        this.selfStatusLabel.set(WORK_STATUS_LABEL[computeWorkStatus(record)]);
+      },
       error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể check-out'),
     });
   }

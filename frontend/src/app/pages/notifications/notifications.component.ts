@@ -6,6 +6,7 @@ import { CompanyApiService } from '../../core/company-api.service';
 import { SidebarComponent } from '../../core/layout/sidebar.component';
 import { LeaveRequest, NotificationItem } from '../../core/models';
 import { finalize } from 'rxjs';
+import { localDateIso } from '../../core/work-status';
 
 @Component({
   standalone: true,
@@ -26,8 +27,8 @@ export class NotificationsComponent implements OnInit {
   loadingPendingRequests = signal(false);
   draft = {
     type: 'ANNUAL' as LeaveRequest['type'],
-    fromDate: new Date().toISOString().slice(0, 10),
-    toDate: new Date().toISOString().slice(0, 10),
+    fromDate: localDateIso(),
+    toDate: localDateIso(),
     reason: '',
   };
 
@@ -75,8 +76,8 @@ export class NotificationsComponent implements OnInit {
     this.successMessage.set('');
 
     // Validate dates
-    const fromDate = new Date(this.draft.fromDate);
-    const toDate = new Date(this.draft.toDate);
+    const fromDate = new Date(`${this.draft.fromDate}T00:00:00`);
+    const toDate = new Date(`${this.draft.toDate}T00:00:00`);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -113,8 +114,8 @@ export class NotificationsComponent implements OnInit {
         next: () => {
           this.successMessage.set('Đơn xin nghỉ đã được gửi thành công');
           this.draft.reason = '';
-          this.draft.fromDate = new Date().toISOString().slice(0, 10);
-          this.draft.toDate = new Date().toISOString().slice(0, 10);
+          this.draft.fromDate = localDateIso();
+          this.draft.toDate = localDateIso();
           this.draft.type = 'ANNUAL';
           this.load();
         },

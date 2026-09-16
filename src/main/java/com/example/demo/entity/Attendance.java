@@ -15,4 +15,17 @@ public class Attendance {
     @Column(name = "check_in_time") private LocalDateTime checkInTime;
     @Column(name = "check_out_time") private LocalDateTime checkOutTime;
     @Enumerated(EnumType.STRING) @Column(nullable = false) private AttendanceStatus status;
+    @Column(name = "created_at", nullable = false, updatable = false) private LocalDateTime createdAt;
+    @Column(name = "updated_at", nullable = false) private LocalDateTime updatedAt;
+    @Version @Column(nullable = false) private Long version;
+
+    @PrePersist
+    void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    void onUpdate() { updatedAt = LocalDateTime.now(); }
 }

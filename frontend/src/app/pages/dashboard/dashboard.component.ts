@@ -193,6 +193,15 @@ export class DashboardComponent implements OnInit {
     return Math.round((this.done() / this.tasks().length) * 100);
   }
 
+  attendanceRate(): number {
+    const total = this.summary()?.totalEmployees ?? this.employees().length;
+    return total ? Math.round((this.todayAttendance('PRESENT') / total) * 100) : 0;
+  }
+
+  attendanceTotal(): number {
+    return this.summary()?.totalEmployees ?? this.employees().length;
+  }
+
   topProjects(): Project[] {
     return this.projects().slice(0, 4);
   }

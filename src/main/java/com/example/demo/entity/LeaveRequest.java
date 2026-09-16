@@ -44,8 +44,20 @@ public class LeaveRequest {
     @JoinColumn(name = "approved_by_id")
     private User approvedBy;
 
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @PrePersist
     void onCreate() {
-        createdAt = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
     }
+
+    @PreUpdate
+    void onUpdate() { updatedAt = LocalDateTime.now(); }
 }

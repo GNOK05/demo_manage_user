@@ -8,6 +8,29 @@
 .overview-stats {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.attendance-card { min-height: 260px; }
+.attendance-ring {
+  width: 112px;
+  height: 112px;
+  margin: 24px auto 14px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  border-radius: 50%;
+  background: conic-gradient(#1760db 0 60%, #f2b640 60% 82%, #e7edf8 82% 100%);
+  position: relative;
+}
+.attendance-ring::before { content: ''; position: absolute; inset: 12px; border-radius: 50%; background: #fff; }
+.attendance-ring strong,.attendance-ring small { position: relative; z-index: 1; }
+.attendance-ring strong { font-size: 20px; }.attendance-ring small { color: var(--muted); font-size: 9px; }
+.attendance-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; font-size: 9px; color: var(--muted); }
+.attendance-legend span { display:flex; align-items:center; gap:5px; }.attendance-legend b { margin-left:auto; color:var(--text); }.attendance-legend i { width:6px; height:6px; border-radius:50%; background:#1760db; }.attendance-legend i.late { background:#f2b640; }.attendance-legend i.absent { background:#ef6470; }.attendance-legend i.leave { background:#8f6fe8; }
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -72,14 +95,16 @@
 
 @media (max-width: 800px) {
   .overview-stats,
-  .summary-grid {
+  .summary-grid,
+  .dashboard-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 520px) {
   .overview-stats,
-  .summary-grid {
+  .summary-grid,
+  .dashboard-grid {
     grid-template-columns: 1fr;
   }
   .distribution-row {

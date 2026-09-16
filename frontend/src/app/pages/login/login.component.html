@@ -5,21 +5,27 @@
         <div class="brand-mark">CH</div>
         <div class="brand-text">CompanyHub</div>
       </div>
-      <h1>Quản lý công ty hiệu quả hơn mỗi ngày.</h1>
-      <p>Giám sát nhân sự, dự án, tiến độ làm việc và chấm công từ một nền tảng duy nhất.</p>
+      <div class="hero-copy">
+        <p class="eyebrow">Nền tảng quản trị doanh nghiệp</p>
+        <h1>Quản lý công ty hiệu quả hơn mỗi ngày.</h1>
+        <p>Giám sát nhân sự, dự án, tiến độ làm việc và chấm công từ một nền tảng duy nhất.</p>
+      </div>
       <ul class="feature-list">
-        <li>Dashboard theo dõi thực tế</li>
-        <li>Quản lý nhân sự và phòng ban</li>
-        <li>Phân công và theo dõi công việc</li>
+        <li><span class="feature-icon">✓</span><span>Dashboard theo dõi thực tế</span></li>
+        <li><span class="feature-icon">✓</span><span>Quản lý nhân sự và phòng ban</span></li>
+        <li><span class="feature-icon">✓</span><span>Phân công và theo dõi công việc</span></li>
       </ul>
     </section>
 
     <form class="login-card" [formGroup]="form" (ngSubmit)="submit()">
-      <div class="login-title">Đăng nhập</div>
+      <div class="login-card-header">
+        <p class="eyebrow">Chào mừng trở lại</p>
+        <h2>Đăng nhập</h2>
+      </div>
       <p class="login-subtitle">Chào mừng bạn quay trở lại.</p>
 
-      <div *ngIf="error" class="login-error-alert">
-        <span class="error-icon">⚠️</span>
+      <div *ngIf="error" class="login-error-alert" role="alert" aria-live="polite">
+        <span class="error-icon">!</span>
         <div class="error-content">
           <strong>Lỗi đăng nhập</strong>
           <p>{{ error }}</p>
@@ -64,8 +70,10 @@
       </label>
 
       <button class="login-button" [disabled]="form.invalid || loading">
-        {{ loading ? 'Đang đăng nhập…' : 'Đăng nhập' }}
+        <span>{{ loading ? 'Đang đăng nhập...' : 'Đăng nhập' }}</span>
+        <span class="button-arrow" aria-hidden="true">→</span>
       </button>
+      <p class="login-footer">CompanyHub · Quản lý công việc tập trung</p>
     </form>
   </div>
 </main>
