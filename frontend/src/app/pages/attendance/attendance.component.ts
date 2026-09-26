@@ -41,22 +41,9 @@ export class AttendanceComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    if (this.isManager()) this.loadSelfAttendance();
     if (this.isSelf()) {
-      this.loadingAttendance.set(true);
-      this.api
-        .myAttendance()
-        .pipe(finalize(() => this.loadingAttendance.set(false)))
-        .subscribe({
-          next: (records) => {
-            this.selfAttendance.set(records);
-            this.selfStatusLabel.set(
-              WORK_STATUS_LABEL[
-                computeWorkStatus(records.find((record) => record.date === this.localDate()))
-              ],
-            );
-          },
-          error: () => this.errorMessage.set('Không thể tải lịch sử chấm công của bạn.'),
-        });
+      this.loadSelfAttendance();
       return;
     }
     this.loadDepartmentsAndEmployees();
@@ -68,6 +55,26 @@ export class AttendanceComponent implements OnInit {
 
   isSelf() {
     return this.auth.user()?.role === 'EMPLOYEE';
+  }
+
+  isManager() {
+    return this.auth.user()?.role === 'MANAGER';
+  }
+
+  private loadSelfAttendance() {
+    this.api.myAttendance().subscribe({
+      next: (records) => this.updateSelfAttendance(records),
+      error: () => this.errorMessage.set('Không thể tải lịch sử chấm công của bạn.'),
+    });
+  }
+
+  private updateSelfAttendance(records: Attendance[]) {
+    this.selfAttendance.set(records);
+    this.selfStatusLabel.set(
+      WORK_STATUS_LABEL[
+        computeWorkStatus(records.find((record) => record.date === this.localDate()))
+      ],
+    );
   }
 
   private localDate() {
@@ -322,6 +329,7 @@ export class AttendanceComponent implements OnInit {
           ...this.selfAttendance().filter((item) => item.date !== record.date),
         ]);
         this.selfStatusLabel.set(WORK_STATUS_LABEL[computeWorkStatus(record)]);
+        this.errorMessage.set('');
       },
       error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể check-in'),
     });
@@ -334,6 +342,7 @@ export class AttendanceComponent implements OnInit {
           ...this.selfAttendance().filter((item) => item.date !== record.date),
         ]);
         this.selfStatusLabel.set(WORK_STATUS_LABEL[computeWorkStatus(record)]);
+        this.errorMessage.set('');
       },
       error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể check-out'),
     });

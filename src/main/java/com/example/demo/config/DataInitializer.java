@@ -105,7 +105,8 @@ public class DataInitializer {
 
             // Attendance history: last 7 days per employee, varied statuses
             for (User employee : employees) {
-                seedAttendanceHistory(employee, today, employees.indexOf(employee));
+                // Offset each department's pattern so dashboard totals differ across departments.
+                seedAttendanceHistory(employee, today, (number * 3 + employees.indexOf(employee) * 2) % 7);
             }
         }
     }
@@ -160,16 +161,22 @@ public class DataInitializer {
      */
     private void findOrCreateAttendance(User employee, LocalDate date, AttendanceStatus status, boolean isToday) {
         if (attendance.findByUserIdAndDate(employee.getId(), date).isPresent()) return;
+        // Keep today's workday open so demo users can perform a real check-in in the UI.
+        if (isToday && (status == AttendanceStatus.PRESENT || status == AttendanceStatus.LATE)) return;
         Attendance record = new Attendance();
         record.setUser(employee);
         record.setDate(date);
         record.setStatus(status);
         if (status == AttendanceStatus.PRESENT || status == AttendanceStatus.LATE) {
-            LocalDateTime checkIn = status == AttendanceStatus.LATE ? date.atTime(9, 25) : date.atTime(8, 30);
+            // Stable per-user time offsets make repeated demo runs consistent while avoiding identical records.
+            int minuteOffset = Math.floorMod(employee.getUsername().hashCode(), 36);
+            LocalDateTime checkIn = status == AttendanceStatus.LATE
+                ? date.atTime(9, 5).plusMinutes(minuteOffset)
+                : date.atTime(8, 5).plusMinutes(minuteOffset);
             record.setCheckInTime(checkIn);
             // Leave "today" partially open sometimes so the demo shows every current-status state
             if (!isToday || status == AttendanceStatus.LATE) {
-                record.setCheckOutTime(date.atTime(17, 30));
+                record.setCheckOutTime(date.atTime(16, 45).plusMinutes(Math.floorMod(employee.getUsername().hashCode(), 91)));
             }
         }
         // ABSENT and LEAVE intentionally have no check-in/check-out times

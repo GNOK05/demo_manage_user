@@ -12,6 +12,22 @@
     <ng-container *ngIf="!isSelf(); else selfView">
       <div *ngIf="errorMessage()" class="alert alert-error">{{ errorMessage() }}</div>
 
+      <section class="card status-panel manager-self-panel" *ngIf="isManager()">
+        <div class="section-top">
+          <div><p class="eyebrow subtle">Chấm công của bạn</p><h2>Hôm nay</h2></div>
+          <span class="chip">{{ selfStatusLabel() }}</span>
+        </div>
+        <p class="muted">Ghi nhận giờ làm của tài khoản quản lý. Dữ liệu được lưu vào lịch sử chấm công cá nhân.</p>
+        <div class="attendance-actions">
+          <button type="button" [disabled]="!!selfToday()?.checkInTime" (click)="checkIn()">
+            {{ selfToday()?.checkInTime ? 'Đã check-in · ' + time(selfToday()?.checkInTime) : 'Check-in' }}
+          </button>
+          <button type="button" class="secondary" [disabled]="!selfToday()?.checkInTime || !!selfToday()?.checkOutTime" (click)="checkOut()">
+            {{ selfToday()?.checkOutTime ? 'Đã check-out · ' + time(selfToday()?.checkOutTime) : 'Check-out' }}
+          </button>
+        </div>
+      </section>
+
       <section class="card filter-card">
         <div class="section-top">
           <div>
