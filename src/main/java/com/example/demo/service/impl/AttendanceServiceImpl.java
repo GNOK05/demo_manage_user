@@ -3,6 +3,7 @@ import com.example.demo.dto.AttendanceDto;
 import com.example.demo.entity.*;
 import com.example.demo.exception.BussinessException;
 import com.example.demo.repository.AttendanceRepository;
+import com.example.demo.repository.AttendanceSessionRepository;
 import com.example.demo.service.AttendanceService;
 import com.example.demo.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -12,12 +13,12 @@ import java.time.*;
 import java.util.List;
 @Service @RequiredArgsConstructor @Transactional
 public class AttendanceServiceImpl implements AttendanceService {
- private final AttendanceRepository records; private final UserService users;
- public AttendanceDto.Response checkIn(){User u=users.currentUser();LocalDate today=LocalDate.now();Attendance a=records.findByUserIdAndDate(u.getId(),today).orElseGet(()->{Attendance n=new Attendance();n.setUser(u);n.setDate(today);return n;});if(a.getCheckInTime()!=null)throw new BussinessException("You have already checked in today");LocalDateTime now=LocalDateTime.now();a.setCheckInTime(now);a.setStatus(now.toLocalTime().isAfter(LocalTime.of(9,0))?AttendanceStatus.LATE:AttendanceStatus.PRESENT);return response(records.save(a));}
- public AttendanceDto.Response checkOut(){User u=users.currentUser();Attendance a=records.findByUserIdAndDate(u.getId(),LocalDate.now()).orElseThrow(()->new BussinessException("Please check in before checking out"));if(a.getCheckOutTime()!=null)throw new BussinessException("You have already checked out today");a.setCheckOutTime(LocalDateTime.now());return response(a);}
- public List<AttendanceDto.Response> myAttendance(){return records.findByUserIdOrderByDateDesc(users.currentUser().getId()).stream().map(this::response).toList();}
- public List<AttendanceDto.Response> departmentAttendance(){User u=users.currentUser();if(u.getRole()!=Role.MANAGER||u.getDepartment()==null)throw new BussinessException("Only department managers can view department attendance");return records.findByUserDepartmentIdOrderByDateDesc(u.getDepartment().getId()).stream().map(this::response).toList();}
- public List<AttendanceDto.Response> all(){return records.findAll().stream().map(this::response).toList();}
+ private final AttendanceRepository records; private final AttendanceSessionRepository sessions; private final UserService users;
+ public AttendanceDto.Response checkIn(){User u=users.currentUser();LocalDate today=LocalDate.now();Attendance a=records.findByUserIdAndDate(u.getId(),today).orElseGet(()->{Attendance n=new Attendance();n.setUser(u);n.setDate(today);return n;});if(sessions.findFirstByAttendanceIdAndCheckOutTimeIsNullOrderByCheckInTimeDesc(a.getId()).isPresent()||(a.getId()!=null&&sessions.findByAttendanceIdOrderByCheckInTimeAsc(a.getId()).isEmpty()&&a.getCheckInTime()!=null&&a.getCheckOutTime()==null))throw new BussinessException("You are already checked in");migrateLegacySession(a);LocalDateTime now=LocalDateTime.now();boolean firstCheckIn=a.getCheckInTime()==null;if(firstCheckIn){a.setCheckInTime(now);a.setStatus(now.toLocalTime().isAfter(LocalTime.of(9,0))?AttendanceStatus.LATE:AttendanceStatus.PRESENT);}a.setCheckOutTime(null);a=records.save(a);AttendanceSession session=new AttendanceSession();session.setAttendance(a);session.setCheckInTime(now);sessions.save(session);return response(a);}
+ public AttendanceDto.Response checkOut(){User u=users.currentUser();Attendance a=records.findByUserIdAndDate(u.getId(),LocalDate.now()).orElseThrow(()->new BussinessException("Please check in before checking out"));migrateLegacySession(a);AttendanceSession session=sessions.findFirstByAttendanceIdAndCheckOutTimeIsNullOrderByCheckInTimeDesc(a.getId()).orElseThrow(()->new BussinessException("You must check in before checking out"));LocalDateTime now=LocalDateTime.now();session.setCheckOutTime(now);sessions.save(session);a.setCheckOutTime(now);return response(records.save(a));}
+ public List<AttendanceDto.Response> myAttendance(){return responses(records.findByUserIdOrderByDateDesc(users.currentUser().getId()));}
+ public List<AttendanceDto.Response> departmentAttendance(){User u=users.currentUser();if(u.getRole()!=Role.MANAGER||u.getDepartment()==null)throw new BussinessException("Only department managers can view department attendance");return responses(records.findByUserDepartmentIdOrderByDateDesc(u.getDepartment().getId()));}
+ public List<AttendanceDto.Response> all(){return responses(records.findAll());}
  public List<AttendanceDto.Response> employeeAttendance(Long userId,int month,int year){
     if(month<1||month>12)throw new BussinessException("Month must be between 1 and 12");
     if(year<2000||year>2100)throw new BussinessException("Year must be between 2000 and 2100");
@@ -26,7 +27,9 @@ public class AttendanceServiceImpl implements AttendanceService {
   if(current.getRole()==Role.MANAGER && (current.getDepartment()==null || selected.getDepartment()==null || !current.getDepartment().getId().equals(selected.getDepartment().getId()))) throw new BussinessException("You can only view attendance in your department");
   if(current.getRole()!=Role.ADMIN && current.getRole()!=Role.MANAGER) throw new BussinessException("Only administrators and managers can view employee attendance");
   LocalDate from=LocalDate.of(year,month,1);
-  return records.findByUserIdAndDateBetweenOrderByDateDesc(userId,from,from.withDayOfMonth(from.lengthOfMonth())).stream().map(this::response).toList();
+  return responses(records.findByUserIdAndDateBetweenOrderByDateDesc(userId,from,from.withDayOfMonth(from.lengthOfMonth())));
  }
- private AttendanceDto.Response response(Attendance a){return new AttendanceDto.Response(a.getId(),a.getUser().getId(),a.getUser().getFullName(),a.getDate(),a.getCheckInTime(),a.getCheckOutTime(),a.getStatus());}
+ private List<AttendanceDto.Response> responses(List<Attendance> attendanceRecords){attendanceRecords.forEach(this::migrateLegacySession);return attendanceRecords.stream().map(this::response).toList();}
+ private void migrateLegacySession(Attendance a){if(a.getId()==null||a.getCheckInTime()==null||sessions.findByAttendanceIdOrderByCheckInTimeAsc(a.getId()).size()>0)return;AttendanceSession session=new AttendanceSession();session.setAttendance(a);session.setCheckInTime(a.getCheckInTime());session.setCheckOutTime(a.getCheckOutTime());sessions.save(session);}
+ private AttendanceDto.Response response(Attendance a){List<AttendanceDto.Session> sessionResponses=a.getId()==null?List.of():sessions.findByAttendanceIdOrderByCheckInTimeAsc(a.getId()).stream().map(session->new AttendanceDto.Session(session.getId(),session.getCheckInTime(),session.getCheckOutTime())).toList();return new AttendanceDto.Response(a.getId(),a.getUser().getId(),a.getUser().getFullName(),a.getDate(),a.getCheckInTime(),a.getCheckOutTime(),a.getStatus(),sessionResponses);}
 }

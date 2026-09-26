@@ -4,9 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth.service';
 import { CompanyApiService } from '../../core/company-api.service';
 import { SidebarComponent } from '../../core/layout/sidebar.component';
-import { LeaveRequest, NotificationItem } from '../../core/models';
+import { AnnualLeaveBalance, LeaveRequest, NotificationItem } from '../../core/models';
 import { finalize } from 'rxjs';
-import { localDateIso } from '../../core/work-status';
+import { isAttendanceAdjustmentDateAllowed, localDateIso } from '../../core/work-status';
+import { ActivatedRoute, Router } from '@angular/router';
+import { AttendanceAdjustment } from '../../core/models';
 
 @Component({
   standalone: true,
@@ -18,6 +20,19 @@ export class NotificationsComponent implements OnInit {
   notifications = signal<NotificationItem[]>([]);
   leaveRequests = signal<LeaveRequest[]>([]);
   pendingRequests = signal<LeaveRequest[]>([]);
+  balance = signal<AnnualLeaveBalance | null>(null);
+  myAdjustments = signal<AttendanceAdjustment[]>([]);
+  pendingAdjustments = signal<AttendanceAdjustment[]>([]);
+  showAdjustmentForm = signal(false);
+  savingAdjustment = signal(false);
+  adjustmentDraft: {
+    sessionId: number | null;
+    userId: number | null;
+    date: string;
+    requestedCheckIn: string;
+    requestedCheckOut: string;
+    reason: string;
+  } = { sessionId: null, userId: null, date: '', requestedCheckIn: '', requestedCheckOut: '', reason: '' };
   readonly isPo = signal(false);
   errorMessage = signal('');
   successMessage = signal('');
@@ -35,10 +50,33 @@ export class NotificationsComponent implements OnInit {
   constructor(
     public auth: AuthService,
     private api: CompanyApiService,
+    private route: ActivatedRoute,
+    private router: Router,
   ) {}
 
   ngOnInit() {
     this.isPo.set(this.auth.hasRole(['ADMIN', 'MANAGER']));
+    this.route.queryParamMap.subscribe((params) => {
+      const sessionId = Number(params.get('adjustmentSessionId'));
+      const userId = Number(params.get('adjustmentUserId'));
+      const date = params.get('adjustmentDate');
+      const checkIn = params.get('adjustmentCheckIn');
+      const checkOut = params.get('adjustmentCheckOut');
+      if (!sessionId || !userId || !date || !checkIn || !checkOut || this.auth.user()?.role === 'ADMIN') return;
+      if (!isAttendanceAdjustmentDateAllowed(date)) {
+        this.errorMessage.set('Chỉ có thể gửi yêu cầu điều chỉnh trong ngày hiện tại hoặc 2 ngày trước đó.');
+        return;
+      }
+      this.adjustmentDraft = {
+        sessionId,
+        userId,
+        date,
+        requestedCheckIn: checkIn.slice(0, 16),
+        requestedCheckOut: checkOut.slice(0, 16),
+        reason: '',
+      };
+      this.showAdjustmentForm.set(true);
+    });
     this.load();
   }
 
@@ -59,6 +97,10 @@ export class NotificationsComponent implements OnInit {
         next: (items) => this.leaveRequests.set(items),
         error: () => this.errorMessage.set('Không thể tải danh sách đơn nghỉ phép'),
       });
+    this.api.annualLeaveBalance(Number(localDateIso().slice(0, 4))).subscribe({
+      next: (balance) => this.balance.set(balance),
+      error: () => this.errorMessage.set('Không thể tải số dư phép năm'),
+    });
     if (this.isPo()) {
       this.loadingPendingRequests.set(true);
       this.api
@@ -68,6 +110,10 @@ export class NotificationsComponent implements OnInit {
           next: (items) => this.pendingRequests.set(items),
           error: () => this.errorMessage.set('Không thể tải đơn nghỉ đang chờ duyệt'),
         });
+    }
+    this.api.myAttendanceAdjustments().subscribe({ next: (items) => this.myAdjustments.set(items) });
+    if (this.isPo()) {
+      this.api.pendingAttendanceAdjustments().subscribe({ next: (items) => this.pendingAdjustments.set(items) });
     }
   }
 
@@ -142,6 +188,94 @@ export class NotificationsComponent implements OnInit {
           this.errorMessage.set(err?.error?.message || 'Có lỗi khi xử lý đơn');
         },
       });
+  }
+
+  cancelLeave(id: number) {
+    this.loading.set(true);
+    this.api.cancelLeaveRequest(id).pipe(finalize(() => this.loading.set(false))).subscribe({
+      next: () => {
+        this.successMessage.set('Đơn nghỉ đã được hủy');
+        this.load();
+      },
+      error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể hủy đơn nghỉ'),
+    });
+  }
+
+  canCancel(item: LeaveRequest) {
+    return ['PENDING', 'PENDING_MANAGER', 'PENDING_ADMIN', 'APPROVED'].includes(item.status)
+      && item.fromDate > localDateIso();
+  }
+
+  leaveStatusLabel(status: LeaveRequest['status']) {
+    return ({
+      PENDING: 'Chờ manager duyệt',
+      PENDING_MANAGER: 'Chờ manager duyệt',
+      PENDING_ADMIN: 'Chờ admin duyệt',
+      APPROVED: 'Đã duyệt',
+      REJECTED: 'Từ chối',
+      REJECTED_MANAGER: 'Manager từ chối',
+      REJECTED_ADMIN: 'Admin từ chối',
+      CANCELLED: 'Đã hủy',
+    } as Record<LeaveRequest['status'], string>)[status];
+  }
+
+  leaveTypeLabel(type: LeaveRequest['type']) {
+    return ({ ANNUAL: 'Phép năm hưởng lương', UNPAID: 'Nghỉ không lương', PERSONAL: 'Nghỉ cá nhân',
+      SICK: 'Nghỉ ốm', MATERNITY: 'Nghỉ thai sản' } as Record<LeaveRequest['type'], string>)[type];
+  }
+
+  submitAdjustment() {
+    const draft = this.adjustmentDraft;
+    if (!isAttendanceAdjustmentDateAllowed(draft.date)) {
+      this.errorMessage.set('Chỉ có thể gửi yêu cầu điều chỉnh trong ngày hiện tại hoặc 2 ngày trước đó.');
+      return;
+    }
+    if (!draft.sessionId || !draft.userId || !draft.reason.trim()) {
+      this.errorMessage.set('Cần có phiên chấm công và lý do điều chỉnh.');
+      return;
+    }
+    this.savingAdjustment.set(true);
+    this.api.createAttendanceAdjustment({
+      sessionId: draft.sessionId,
+      userId: draft.userId,
+      requestedCheckIn: draft.requestedCheckIn,
+      requestedCheckOut: draft.requestedCheckOut,
+      reason: draft.reason.trim(),
+    }).pipe(finalize(() => this.savingAdjustment.set(false))).subscribe({
+      next: () => {
+        this.successMessage.set('Yêu cầu điều chỉnh đã được gửi; dữ liệu công chỉ đổi sau khi duyệt đủ cấp.');
+        this.showAdjustmentForm.set(false);
+        this.router.navigate(['/notifications'], { replaceUrl: true });
+        this.load();
+      },
+      error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể gửi yêu cầu điều chỉnh.'),
+    });
+  }
+
+  decideAdjustment(item: AttendanceAdjustment, approved: boolean) {
+    const status = approved ? 'APPROVED' : this.auth.user()?.role === 'ADMIN' ? 'REJECTED_ADMIN' : 'REJECTED_MANAGER';
+    this.api.decideAttendanceAdjustment(item.id, status).subscribe({
+      next: () => {
+        this.successMessage.set(approved ? 'Yêu cầu đã chuyển sang bước duyệt tiếp theo.' : 'Yêu cầu điều chỉnh đã bị từ chối.');
+        this.load();
+      },
+      error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể xử lý yêu cầu điều chỉnh.'),
+    });
+  }
+
+  adjustmentStatusLabel(status: AttendanceAdjustment['status']) {
+    return ({ PENDING_MANAGER: 'Chờ manager duyệt', PENDING_ADMIN: 'Chờ admin duyệt', APPROVED: 'Đã duyệt',
+      REJECTED_MANAGER: 'Manager từ chối', REJECTED_ADMIN: 'Admin từ chối' } as Record<AttendanceAdjustment['status'], string>)[status];
+  }
+
+  adjustmentTime(value: string) {
+    return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' })
+      .format(new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(value) ? value : `${value}+07:00`));
+  }
+
+  cancelAdjustment() {
+    this.showAdjustmentForm.set(false);
+    this.router.navigate(['/notifications'], { replaceUrl: true });
   }
 
   unreadCount() {

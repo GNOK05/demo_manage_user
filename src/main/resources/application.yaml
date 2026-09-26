@@ -13,6 +13,11 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        jdbc:
+          time_zone: Asia/Ho_Chi_Minh
+
+  jackson:
+    time-zone: Asia/Ho_Chi_Minh
 
   h2:
     console:
@@ -20,6 +25,7 @@ spring:
       path: /h2-console
 
 app:
+  time-zone: ${APP_TIME_ZONE:Asia/Ho_Chi_Minh}
   jwt:
     # Change this to a long random value in production (at least 32 characters).
     secret: company-management-local-development-secret-key-2026

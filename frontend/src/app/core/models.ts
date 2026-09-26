@@ -81,21 +81,94 @@ export interface Attendance {
   checkInTime?: string;
   checkOutTime?: string;
   status: string;
+  sessions?: { id?: number; checkInTime: string; checkOutTime?: string }[];
 }
 
-export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type LeaveStatus =
+  | 'PENDING'
+  | 'PENDING_MANAGER'
+  | 'PENDING_ADMIN'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'REJECTED_MANAGER'
+  | 'REJECTED_ADMIN'
+  | 'CANCELLED';
+
+export type LeaveType = 'ANNUAL' | 'UNPAID' | 'PERSONAL' | 'SICK' | 'MATERNITY';
 
 export interface LeaveRequest {
   id: number;
   userId: number;
   userName: string;
-  type: 'ANNUAL' | 'PERSONAL' | 'SICK' | 'MATERNITY';
+  type: LeaveType;
   fromDate: string;
   toDate: string;
   reason: string;
   status: LeaveStatus;
   createdAt: string;
   approvedBy?: string;
+  managerApprovedBy?: string;
+  adminApprovedBy?: string;
+  rejectionReason?: string;
+  cancelledAt?: string;
+  requestedWorkdays: number;
+}
+
+export interface AnnualLeaveBalance {
+  userId: number;
+  userName: string;
+  year: number;
+  entitledDays: number;
+  usedDays: number;
+  pendingDays: number;
+  remainingDays: number;
+}
+
+export interface PayrollMonthlyReport {
+  year: number;
+  month: number;
+  closed: boolean;
+  closedAt?: string;
+  closedBy?: string;
+  employees: {
+    userId: number;
+    username: string;
+    fullName: string;
+    department: string;
+    workDays: number;
+    payrollWorkDays: number;
+    lateDays: number;
+    absentDays: number;
+    workedHours: number;
+    annualLeaveDays: number;
+    unpaidLeaveDays: number;
+    otherLeaveDays: number;
+  }[];
+}
+
+export type AttendanceAdjustmentStatus =
+  | 'PENDING_MANAGER'
+  | 'PENDING_ADMIN'
+  | 'APPROVED'
+  | 'REJECTED_MANAGER'
+  | 'REJECTED_ADMIN';
+
+export interface AttendanceAdjustment {
+  id: number;
+  sessionId: number;
+  userId: number;
+  userName: string;
+  requestedBy: string;
+  date: string;
+  originalCheckIn: string;
+  originalCheckOut?: string;
+  requestedCheckIn: string;
+  requestedCheckOut: string;
+  reason: string;
+  status: AttendanceAdjustmentStatus;
+  managerApprovedBy?: string;
+  adminApprovedBy?: string;
+  createdAt: string;
 }
 
 export interface NotificationItem {

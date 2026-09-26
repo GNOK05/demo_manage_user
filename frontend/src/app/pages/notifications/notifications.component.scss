@@ -37,6 +37,51 @@
   margin-bottom: 22px;
 }
 
+.leave-balance-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.leave-balance-strip div {
+  display: grid;
+  gap: 4px;
+}
+
+.leave-balance-strip small,
+.leave-policy-note,
+.approval-trail {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.leave-balance-strip strong {
+  color: var(--text);
+  font-size: 1.15rem;
+}
+
+.leave-policy-note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.approval-queue {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.approval-trail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+}
+
 .notification-grid {
   display: grid;
   grid-template-columns: 1.12fr 0.88fr;
@@ -178,6 +223,15 @@
   background: #fff7ed;
   color: #b45309;
 }
+.badge.pending_manager,
+.badge.pending_admin {
+  background: #fff7ed;
+  color: #b45309;
+}
+.badge.cancelled {
+  background: #f1f5f9;
+  color: #475569;
+}
 .badge.approved {
   background: #ecfdf5;
   color: #15803d;
@@ -221,5 +275,8 @@ button.danger {
 @media (max-width: 900px) {
   .notification-grid {
     grid-template-columns: 1fr;
+  }
+  .leave-balance-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

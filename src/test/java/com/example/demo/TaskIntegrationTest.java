@@ -14,6 +14,7 @@ import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -131,5 +132,34 @@ public class TaskIntegrationTest {
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.data[0].status").value("IN_PROGRESS"))
                                 .andExpect(jsonPath("$.data[0].assignedToName").exists());
+        }
+
+        @Test
+        void managerMustCheckOutBeforeCompletingAssignedTask() throws Exception {
+                String body = mapper.writeValueAsString(Map.of("username", "manager_1", "password", "lead123"));
+                var loginResult = mockMvc.perform(post("/api/v1/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON).content(body))
+                        .andExpect(status().isOk()).andReturn();
+                String token = mapper.readTree(loginResult.getResponse().getContentAsString()).at("/data/token").asText();
+
+                var taskResult = mockMvc.perform(get("/api/v1/tasks/my").header("Authorization", "Bearer " + token))
+                        .andExpect(status().isOk()).andReturn();
+                long taskId = mapper.readTree(taskResult.getResponse().getContentAsString()).at("/data/0/id").asLong();
+                String statusBody = "{\"status\":\"DONE\"}";
+
+                mockMvc.perform(patch("/api/v1/tasks/{id}/status", taskId)
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON).content(statusBody))
+                        .andExpect(status().isBadRequest());
+
+                mockMvc.perform(post("/api/v1/attendance/check-in").header("Authorization", "Bearer " + token))
+                        .andExpect(status().isOk());
+                mockMvc.perform(post("/api/v1/attendance/check-out").header("Authorization", "Bearer " + token))
+                        .andExpect(status().isOk());
+                mockMvc.perform(patch("/api/v1/tasks/{id}/status", taskId)
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON).content(statusBody))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.status").value("DONE"));
         }
 }

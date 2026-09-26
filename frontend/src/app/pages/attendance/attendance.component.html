@@ -11,6 +11,7 @@
 
     <ng-container *ngIf="!isSelf(); else selfView">
       <div *ngIf="errorMessage()" class="alert alert-error">{{ errorMessage() }}</div>
+      <div *ngIf="successMessage()" class="alert alert-success">{{ successMessage() }}</div>
 
       <section class="card status-panel manager-self-panel" *ngIf="isManager()">
         <div class="section-top">
@@ -19,11 +20,11 @@
         </div>
         <p class="muted">Ghi nhận giờ làm của tài khoản quản lý. Dữ liệu được lưu vào lịch sử chấm công cá nhân.</p>
         <div class="attendance-actions">
-          <button type="button" [disabled]="!!selfToday()?.checkInTime" (click)="checkIn()">
-            {{ selfToday()?.checkInTime ? 'Đã check-in · ' + time(selfToday()?.checkInTime) : 'Check-in' }}
+          <button type="button" [disabled]="!canCheckIn()" (click)="checkIn()">
+            {{ canCheckIn() && selfToday()?.checkOutTime ? 'Check-in lại' : selfToday()?.checkInTime ? 'Đã check-in · ' + time(currentCheckInTime()) : 'Check-in' }}
           </button>
-          <button type="button" class="secondary" [disabled]="!selfToday()?.checkInTime || !!selfToday()?.checkOutTime" (click)="checkOut()">
-            {{ selfToday()?.checkOutTime ? 'Đã check-out · ' + time(selfToday()?.checkOutTime) : 'Check-out' }}
+          <button type="button" class="secondary" [disabled]="!canCheckOut()" (click)="checkOut()">
+            {{ selfToday()?.checkOutTime && !canCheckOut() ? 'Đã check-out · ' + time(selfToday()?.checkOutTime) : 'Check-out' }}
           </button>
         </div>
       </section>
@@ -34,28 +35,8 @@
             <p class="eyebrow subtle">Bộ lọc</p>
             <h2>Tìm kiếm nhân sự</h2>
           </div>
-          <button type="button" class="secondary small" (click)="currentMonth()">
-            Tháng hiện tại
-          </button>
         </div>
         <div class="filter-grid">
-          <label
-            >Tháng<select [(ngModel)]="month">
-              <option *ngFor="let item of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]" [ngValue]="item">
-                {{ item }}
-              </option>
-            </select></label
-          >
-          <label>Năm<input type="number" [(ngModel)]="year" min="2000" max="2100" /></label>
-          <label
-            >Trạng thái<select [(ngModel)]="statusFilter" (change)="page = 1">
-              <option value="ALL">Tất cả</option>
-              <option value="PRESENT">Có mặt</option>
-              <option value="LATE">Đi muộn</option>
-              <option value="LEAVE">Nghỉ phép</option>
-              <option value="ABSENT">Vắng mặt</option>
-            </select></label
-          >
           <label class="search-field"
             >Tìm nhân viên<input
               [ngModel]="search()"
@@ -130,84 +111,147 @@
               {{ employee.jobTitle || employee.role }} · {{ employee.username }}
             </p>
           </div>
-          <div class="month-nav">
-            <button type="button" class="secondary small" (click)="shiftMonth(-1)">
-              ‹ Tháng trước
+          <div class="payroll-actions">
+            <button type="button" class="secondary small" (click)="exportPayroll()">Xuất Excel kỳ công</button>
+            <button type="button" class="small" *ngIf="isAdmin()" [disabled]="!canClosePayroll()" (click)="closePayroll()">
+              {{ payrollClosed() ? 'Đã chốt kỳ' : 'Chốt kỳ công' }}
             </button>
-            <strong>{{ monthLabel() }}</strong>
-            <button type="button" class="secondary small" (click)="shiftMonth(1)">
-              Tháng sau ›
-            </button>
+            <small *ngIf="payrollClosed()">Chốt bởi {{ payrollClosedBy() }}</small>
+            <ng-container *ngIf="isAdmin() && payrollClosed()">
+              <input class="reopen-reason" [(ngModel)]="reopenReason" placeholder="Lý do mở lại kỳ" />
+              <button type="button" class="secondary small" [disabled]="!reopenReason.trim()" (click)="reopenPayroll()">Mở lại kỳ</button>
+            </ng-container>
           </div>
         </section>
 
+        <section class="quota-editor" *ngIf="isAdmin() && selectedBalance()">
+          <label>Quota phép năm
+            <input type="number" min="0" max="366" [(ngModel)]="leaveQuotaDraft" />
+          </label>
+          <button type="button" class="secondary small" (click)="saveLeaveQuota()">Lưu quota</button>
+        </section>
+
+        <div class="attendance-view-tabs" role="tablist" aria-label="Loại công">
+          <button type="button" role="tab" [attr.aria-selected]="attendanceView() === 'ACTUAL'"
+            [class.active]="attendanceView() === 'ACTUAL'" (click)="selectAttendanceView('ACTUAL')">
+            Công thực tế
+          </button>
+          <button type="button" role="tab" [attr.aria-selected]="attendanceView() === 'PAYROLL'"
+            [class.active]="attendanceView() === 'PAYROLL'" (click)="selectAttendanceView('PAYROLL')">
+            Công tính lương
+          </button>
+          <button type="button" role="tab" [attr.aria-selected]="attendanceView() === 'CLOSED'"
+            [class.active]="attendanceView() === 'CLOSED'" [disabled]="!payrollClosed()"
+            (click)="selectAttendanceView('CLOSED')">
+            Công đã chốt
+          </button>
+        </div>
+
+        <div class="calendar-toolbar period-toolbar">
+          <button type="button" class="secondary small" (click)="currentMonth()">Tháng hiện tại</button>
+          <div class="month-nav">
+            <button type="button" class="secondary small" aria-label="Tháng trước" (click)="shiftMonth(-1)">‹</button>
+            <strong>{{ monthLabel() }}</strong>
+            <button type="button" class="secondary small" aria-label="Tháng sau" (click)="shiftMonth(1)">›</button>
+          </div>
+        </div>
+
+        <section class="card payroll-preview" *ngIf="attendanceView() !== 'ACTUAL'">
+          <div class="section-top">
+            <div>
+              <p class="eyebrow subtle">{{ monthLabel() }}</p>
+              <h2>{{ attendanceView() === 'CLOSED' ? 'Kỳ công đã chốt' : 'Tổng hợp công tính lương' }}</h2>
+            </div>
+            <span class="chip chip-soft" *ngIf="attendanceView() === 'CLOSED'">Chốt bởi {{ payrollClosedBy() }}</span>
+          </div>
+          <p class="muted" *ngIf="attendanceView() === 'PAYROLL'">
+            Công tính lương gồm công thực tế và ngày phép năm đã duyệt; không cộng ngày nghỉ không lương.
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Nhân viên</th><th>Công tính lương</th><th>Công thực tế</th><th>Phép năm đã duyệt</th><th>Nghỉ không lương</th><th>Giờ đã ghi nhận</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let row of payrollRows()">
+                  <td>{{ row.fullName }}</td>
+                  <td>{{ row.payrollWorkDays }}</td>
+                  <td>{{ row.workDays }}</td>
+                  <td>{{ row.annualLeaveDays }}</td>
+                  <td>{{ row.unpaidLeaveDays }}</td>
+                  <td>{{ row.workedHours }}h</td>
+                </tr>
+                <tr *ngIf="!payrollRows().length"><td colspan="6">Chưa có dữ liệu kỳ công.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="muted" *ngIf="attendanceView() === 'CLOSED'">Kỳ công đang ở chế độ chỉ xem. Mở lại kỳ để điều chỉnh giờ chấm công.</p>
+        </section>
+
+        <ng-container *ngIf="attendanceView() === 'ACTUAL'">
+        <section class="card payroll-preview department-actual" *ngIf="isManager()">
+          <div class="section-top">
+            <div><p class="eyebrow subtle">{{ monthLabel() }}</p><h2>Công thực tế trong phòng ban</h2></div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Nhân viên</th><th>Ngày công thực tế</th><th>Giờ đã ghi nhận</th><th>Đi muộn</th><th>Vắng mặt</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let row of payrollRows()">
+                  <td>{{ row.fullName }}</td><td>{{ row.workDays }}</td><td>{{ row.workedHours }}h</td>
+                  <td>{{ row.lateDays }}</td><td>{{ row.absentDays }}</td>
+                </tr>
+                <tr *ngIf="!payrollRows().length"><td colspan="5">Chưa có dữ liệu công trong phòng ban.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
         <section class="stats attendance-stats">
           <article class="stat-card accent-blue">
-            <span class="stat-label">Ngày làm việc</span
+            <span class="stat-label">Ngày làm tại công ty</span
             ><strong class="stat-value">{{ summary().workingDays }}</strong
             ><small>Trong tháng chọn</small>
           </article>
           <article class="stat-card accent-green">
-            <span class="stat-label">Ngày nghỉ</span
-            ><strong class="stat-value">{{ summary().leaveDays }}</strong
-            ><small>Attendance status LEAVE</small>
-          </article>
-          <article class="stat-card accent-purple">
             <span class="stat-label">Giờ làm đã ghi nhận</span
             ><strong class="stat-value">{{ summary().hours }}h</strong
-            ><small>Từ check-in / check-out</small>
+            ><small>Tổng các phiên đã checkout</small>
           </article>
           <article class="stat-card accent-blue">
-            <span class="stat-label">Đi muộn</span
-            ><strong class="stat-value">{{ summary().lateDays }}</strong
-            ><small>Trong tháng chọn</small>
+            <span class="stat-label">Phép năm còn khả dụng</span
+            ><strong class="stat-value">{{ summary().annualLeaveRemaining }}</strong
+            ><small>Đã trừ các đơn đang chờ</small>
+          </article>
+          <article class="stat-card accent-green">
+            <span class="stat-label">Ngày nghỉ không lương</span
+            ><strong class="stat-value">{{ summary().unpaidDays }}</strong
+            ><small>Đã duyệt trong tháng</small>
           </article>
         </section>
 
-        <section class="card attendance-table-card">
-          <div class="section-top">
-            <div class="pagination-controls">
-              <label
-                >Số dòng<select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)">
-                  <option [ngValue]="10">10</option>
-                  <option [ngValue]="20">20</option>
-                  <option [ngValue]="50">50</option>
-                </select></label
-              >
-              <p class="eyebrow subtle">Lịch sử</p>
-              <h2>Attendance history</h2>
-            </div>
-            <span class="chip chip-soft">{{ filteredAttendanceCount() }} bản ghi</span>
+        <section class="card personal-calendar">
+          <div class="calendar-legend" aria-label="Chú giải trạng thái">
+            <span><i class="legend-dot status-PRESENT"></i>Có mặt</span>
+            <span><i class="legend-dot status-LATE"></i>Đi muộn</span>
+            <span><i class="legend-dot status-LEAVE"></i>Nghỉ phép</span>
+            <span><i class="legend-dot status-ABSENT"></i>Vắng mặt</span>
           </div>
-          <div class="table-scroll" *ngIf="!loadingAttendance() && filteredAttendanceCount()">
-            <table>
-              <thead>
-                <tr>
-                  <th>Ngày</th>
-                  <th>Thứ</th>
-                  <th>Check-in</th>
-                  <th>Check-out</th>
-                  <th>Trạng thái</th>
-                  <th>Giờ làm</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let record of visibleAttendance()">
-                  <td>
-                    <strong>{{ record.date | date: 'dd/MM/yyyy' }}</strong>
-                  </td>
-                  <td>{{ dayName(record.date) }}</td>
-                  <td>{{ time(record.checkInTime) }}</td>
-                  <td>{{ time(record.checkOutTime) }}</td>
-                  <td>
-                    <span class="badge status-{{ record.status }}">{{ workStatus(record) }}</span>
-                  </td>
-                  <td>
-                    {{ duration(record) }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="calendar-grid">
+            <div class="calendar-weekday" *ngFor="let weekday of weekdayLabels()">{{ weekday }}</div>
+            <article
+              class="calendar-day"
+              *ngFor="let day of calendarDays()"
+              [class.outside-month]="!day.inMonth"
+              [class.today]="day.date === localDate()"
+            >
+              <header><span>{{ day.day }}</span><small *ngIf="day.date === localDate()">Hôm nay</small></header>
+              <ng-container *ngIf="attendanceForDate(day.date) as record">
+                <span class="calendar-status status-{{ record.status }}">{{ attendanceStatusLabel(record.status) }}</span>
+                <div class="calendar-sessions" *ngFor="let session of attendanceSessions(record)">
+                  <span>{{ time(session.checkInTime) }} – {{ time(session.checkOutTime) }}</span>
+                  <button type="button" class="calendar-edit" *ngIf="session.id && canAdjustAttendance(record.date)" (click)="startAdjustment(record, session)">Điều chỉnh giờ</button>
+                </div>
+              </ng-container>
+              <span class="calendar-leave" *ngIf="leaveForDate(day.date) as leave">{{ leaveTypeLabel(leave.type) }}</span>
+            </article>
           </div>
           <p class="loading-state" *ngIf="loadingAttendance()">Đang tải dữ liệu chấm công...</p>
           <p class="error-state" *ngIf="!loadingAttendance() && errorMessage()">
@@ -216,32 +260,11 @@
               Thử lại
             </button>
           </p>
-          <p class="empty-state" *ngIf="!loadingAttendance() && !filteredAttendanceCount()">
+          <p class="empty-state" *ngIf="!loadingAttendance() && !attendance().length">
             Không có bản ghi chấm công cho nhân viên trong tháng này.
           </p>
-          <div class="pagination" *ngIf="!loadingAttendance() && filteredAttendanceCount()">
-            <span
-              >Hiển thị {{ (page - 1) * pageSize + 1 }}–{{
-                page * pageSize > filteredAttendanceCount()
-                  ? filteredAttendanceCount()
-                  : page * pageSize
-              }}
-              trên {{ filteredAttendanceCount() }} bản ghi</span
-            >
-            <div>
-              <button type="button" class="secondary small" (click)="setPage(page - 1)">‹</button
-              ><button
-                type="button"
-                class="secondary small"
-                *ngFor="let item of pages()"
-                [class.current]="page === item"
-                (click)="setPage(item)"
-              >
-                {{ item }}</button
-              ><button type="button" class="secondary small" (click)="setPage(page + 1)">›</button>
-            </div>
-          </div>
         </section>
+        </ng-container>
       </ng-container>
     </ng-container>
 
@@ -250,6 +273,7 @@
         {{ errorMessage() }}
         <button type="button" class="secondary small" (click)="retryAttendance()">Thử lại</button>
       </div>
+      <div *ngIf="successMessage()" class="alert alert-success">{{ successMessage() }}</div>
       <section class="card status-panel">
         <div class="section-top">
           <h2>Chấm công cá nhân</h2>
@@ -260,20 +284,116 @@
           mình.
         </p>
         <div class="attendance-actions">
-          <button type="button" [disabled]="!!selfToday()?.checkInTime" (click)="checkIn()">
-            {{ selfToday()?.checkInTime ? 'Đã check-in' : 'Check-in' }}
+          <button type="button" [disabled]="!canCheckIn()" (click)="checkIn()">
+            {{ canCheckIn() && selfToday()?.checkOutTime ? 'Check-in lại' : selfToday()?.checkInTime ? 'Đã check-in' : 'Check-in' }}
           </button>
           <button
             type="button"
             class="secondary"
-            [disabled]="!selfToday()?.checkInTime || !!selfToday()?.checkOutTime"
+            [disabled]="!canCheckOut()"
             (click)="checkOut()"
           >
-            {{ selfToday()?.checkOutTime ? 'Đã check-out' : 'Check-out' }}
+            {{ selfToday()?.checkOutTime && !canCheckOut() ? 'Đã check-out' : 'Check-out' }}
           </button>
         </div>
         <p class="loading-state" *ngIf="loadingAttendance()">Đang tải lịch sử chấm công...</p>
       </section>
+      <div class="attendance-view-tabs" role="tablist" aria-label="Loại công">
+        <button type="button" role="tab" [attr.aria-selected]="attendanceView() === 'ACTUAL'"
+          [class.active]="attendanceView() === 'ACTUAL'" (click)="selectAttendanceView('ACTUAL')">
+          Công thực tế
+        </button>
+        <button type="button" role="tab" [attr.aria-selected]="attendanceView() === 'PAYROLL'"
+          [class.active]="attendanceView() === 'PAYROLL'" (click)="selectAttendanceView('PAYROLL')">
+          Công tính lương
+        </button>
+        <button type="button" role="tab" *ngIf="payrollClosed()" [attr.aria-selected]="attendanceView() === 'CLOSED'"
+          [class.active]="attendanceView() === 'CLOSED'" (click)="selectAttendanceView('CLOSED')">
+          Công đã chốt
+        </button>
+      </div>
+      <div class="calendar-toolbar period-toolbar">
+        <button type="button" class="secondary small" (click)="currentMonth()">Tháng hiện tại</button>
+        <div class="month-nav">
+          <button type="button" class="secondary small" aria-label="Tháng trước" (click)="shiftMonth(-1)">‹</button>
+          <strong>{{ monthLabel() }}</strong>
+          <button type="button" class="secondary small" aria-label="Tháng sau" (click)="shiftMonth(1)">›</button>
+        </div>
+      </div>
+      <section class="card payroll-preview" *ngIf="attendanceView() !== 'ACTUAL'">
+        <div class="section-top">
+          <div><p class="eyebrow subtle">{{ monthLabel() }}</p><h2>{{ attendanceView() === 'CLOSED' ? 'Kỳ công đã chốt' : 'Tổng hợp công tính lương' }}</h2></div>
+          <span class="chip chip-soft" *ngIf="attendanceView() === 'CLOSED'">Chốt bởi {{ payrollClosedBy() }}</span>
+        </div>
+        <p class="muted" *ngIf="attendanceView() === 'PAYROLL'">
+          Công tính lương gồm công thực tế và ngày phép năm đã duyệt; không cộng ngày nghỉ không lương.
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Công tính lương</th><th>Công thực tế</th><th>Phép năm đã duyệt</th><th>Nghỉ không lương</th><th>Giờ đã ghi nhận</th></tr></thead>
+            <tbody>
+              <tr *ngIf="selfPayrollRow() as row">
+                <td>{{ row.payrollWorkDays }}</td><td>{{ row.workDays }}</td><td>{{ row.annualLeaveDays }}</td>
+                <td>{{ row.unpaidLeaveDays }}</td><td>{{ row.workedHours }}h</td>
+              </tr>
+              <tr *ngIf="!selfPayrollRow()"><td colspan="5">Chưa có dữ liệu kỳ công.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted" *ngIf="attendanceView() === 'CLOSED'">Kỳ công đã được chốt và chỉ ở chế độ xem.</p>
+      </section>
+      <ng-container *ngIf="attendanceView() === 'ACTUAL'">
+      <section class="stats attendance-stats personal-attendance-stats">
+        <article class="stat-card accent-blue">
+          <span class="stat-label">Ngày làm tại công ty</span>
+          <strong class="stat-value">{{ selfSummary().workingDays }}</strong>
+          <small>{{ monthLabel() }}</small>
+        </article>
+        <article class="stat-card accent-green">
+          <span class="stat-label">Giờ làm đã ghi nhận</span>
+          <strong class="stat-value">{{ selfSummary().hours }}h</strong>
+          <small>Tổng các phiên đã checkout</small>
+        </article>
+        <article class="stat-card accent-blue">
+          <span class="stat-label">Phép năm còn khả dụng</span>
+          <strong class="stat-value">{{ selfSummary().annualLeaveRemaining }}</strong>
+          <small>Đã trừ các đơn đang chờ</small>
+        </article>
+        <article class="stat-card accent-green">
+          <span class="stat-label">Ngày nghỉ không lương</span>
+          <strong class="stat-value">{{ selfSummary().unpaidDays }}</strong>
+          <small>Đã duyệt trong tháng</small>
+        </article>
+      </section>
+      <section class="card personal-calendar">
+        <div class="calendar-legend" aria-label="Chú giải trạng thái">
+          <span><i class="legend-dot status-PRESENT"></i>Có mặt</span>
+          <span><i class="legend-dot status-LATE"></i>Đi muộn</span>
+          <span><i class="legend-dot status-LEAVE"></i>Nghỉ phép</span>
+          <span><i class="legend-dot status-ABSENT"></i>Vắng mặt</span>
+        </div>
+        <div class="calendar-grid">
+          <div class="calendar-weekday" *ngFor="let weekday of weekdayLabels()">{{ weekday }}</div>
+          <article
+            class="calendar-day"
+            *ngFor="let day of calendarDays()"
+            [class.outside-month]="!day.inMonth"
+            [class.today]="day.date === localDate()"
+          >
+            <header><span>{{ day.day }}</span><small *ngIf="day.date === localDate()">Hôm nay</small></header>
+            <ng-container *ngIf="attendanceForDate(day.date) as record">
+              <span class="calendar-status status-{{ record.status }}">{{ attendanceStatusLabel(record.status) }}</span>
+              <div class="calendar-sessions" *ngFor="let session of attendanceSessions(record)">
+                <span>{{ time(session.checkInTime) }} – {{ time(session.checkOutTime) }}</span>
+                  <button type="button" class="calendar-edit" *ngIf="session.id && canAdjustAttendance(record.date)" (click)="startAdjustment(record, session)">Đề nghị sửa giờ</button>
+              </div>
+            </ng-container>
+              <span class="calendar-leave" *ngIf="leaveForDate(day.date) as leave">{{ leaveTypeLabel(leave.type) }}</span>
+          </article>
+        </div>
+        <p class="loading-state" *ngIf="loadingAttendance()">Đang tải lịch chấm công...</p>
+      </section>
+      </ng-container>
     </ng-template>
   </main>
 </div>

@@ -3,6 +3,7 @@ package com.example.demo.config;
 import com.example.demo.entity.*;
 import com.example.demo.repository.AttendanceRepository;
 import com.example.demo.repository.DepartmentRepository;
+import com.example.demo.repository.LeaveRequestRepository;
 import com.example.demo.repository.ProjectRepository;
 import com.example.demo.repository.TaskRepository;
 import com.example.demo.repository.UserRepository;
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Seeds demo data: one PO (manager) + four role-specific staff (DEV/QA/QC/TEST) per department,
+ * Seeds demo data: one working manager + two role-specific staff (DEV/QA/QC/TEST) per department,
  * three projects per department covering every {@link ProjectStatus}, tasks covering every
  * {@link TaskStatus} (with a tester assigned on some of them), and a 7-day attendance history
  * covering every {@link AttendanceStatus}.
@@ -31,6 +32,7 @@ import java.util.List;
 public class DataInitializer {
     private final UserRepository users;
     private final DepartmentRepository departments;
+    private final LeaveRequestRepository leaveRequests;
     private final ProjectRepository projects;
     private final TaskRepository tasks;
     private final AttendanceRepository attendance;
@@ -52,7 +54,7 @@ public class DataInitializer {
         };
     }
 
-    /** Drops the old generic manager/employee (IT) demo accounts — redundant with lead1/staff1 style accounts. */
+    /** Drops old generic demo accounts that are not part of the department dataset. */
     private void removeLegacyDemoAccounts() {
         departments.findAll().stream().filter(d -> "IT".equals(d.getCode())).findFirst().ifPresent(it -> {
             if (it.getManager() != null) { it.setManager(null); departments.save(it); }
@@ -70,45 +72,97 @@ public class DataInitializer {
             String code = String.format("D%02d", number);
             String deptName = DEPARTMENT_NAMES[i];
 
-            Department department = findOrCreateDepartment(code, deptName, "Demo " + deptName + " department");
+            Department department = findOrCreateDepartment(code, deptName,
+                "Responsible for " + deptName.toLowerCase() + " planning, delivery, and employee support.");
 
-            User po = createIfMissing("lead" + number, "lead123", deptName + " PO", "lead" + number + "@company.local", Role.MANAGER, department, "PO");
-            if (department.getManager() == null) { department.setManager(po); departments.save(department); }
+            User manager = createOrMigrateDemoUser("manager_" + number, "lead" + number, "lead123",
+                deptName + " Manager", "manager_" + number + "@company.local", Role.MANAGER, department, "Manager");
+            if (department.getManager() == null || !department.getManager().getId().equals(manager.getId())) {
+                department.setManager(manager);
+                departments.save(department);
+            }
 
-            User dev = createIfMissing("dev" + number, "dev123", deptName + " Developer", "dev" + number + "@company.local", Role.EMPLOYEE, department, "DEV");
-            User qa = createIfMissing("qa" + number, "qa123", deptName + " QA", "qa" + number + "@company.local", Role.EMPLOYEE, department, "QA");
-            User qc = createIfMissing("qc" + number, "qc123", deptName + " QC", "qc" + number + "@company.local", Role.EMPLOYEE, department, "QC");
-            User tester = createIfMissing("test" + number, "test123", deptName + " Tester", "test" + number + "@company.local", Role.EMPLOYEE, department, "TEST");
-            List<User> employees = List.of(dev, qa, qc, tester);
+            User dev1 = createOrMigrateDemoUser("dev_" + number + "_1", "dev" + number, "dev123",
+                deptName + " Developer 1", "dev_" + number + "_1@company.local", Role.EMPLOYEE, department, "DEV");
+            User dev2 = createIfMissing("dev_" + number + "_2", "dev123", deptName + " Developer 2",
+                "dev_" + number + "_2@company.local", Role.EMPLOYEE, department, "DEV");
+            User qa1 = createOrMigrateDemoUser("qa_" + number + "_1", "qa" + number, "qa123",
+                deptName + " QA 1", "qa_" + number + "_1@company.local", Role.EMPLOYEE, department, "QA");
+            User qa2 = createIfMissing("qa_" + number + "_2", "qa123", deptName + " QA 2",
+                "qa_" + number + "_2@company.local", Role.EMPLOYEE, department, "QA");
+            User qc1 = createOrMigrateDemoUser("qc_" + number + "_1", "qc" + number, "qc123",
+                deptName + " QC 1", "qc_" + number + "_1@company.local", Role.EMPLOYEE, department, "QC");
+            User qc2 = createIfMissing("qc_" + number + "_2", "qc123", deptName + " QC 2",
+                "qc_" + number + "_2@company.local", Role.EMPLOYEE, department, "QC");
+            User tester1 = createOrMigrateDemoUser("test_" + number + "_1", "test" + number, "test123",
+                deptName + " Tester 1", "test_" + number + "_1@company.local", Role.EMPLOYEE, department, "TEST");
+            User tester2 = createIfMissing("test_" + number + "_2", "test123", deptName + " Tester 2",
+                "test_" + number + "_2@company.local", Role.EMPLOYEE, department, "TEST");
+            List<User> employees = List.of(dev1, qa1, qc1, tester1, dev2, qa2, qc2, tester2);
+            List<User> departmentMembers = List.of(manager, dev1, dev2, qa1, qa2, qc1, qc2, tester1, tester2);
 
             // 3 projects per department, one in each status
-            Project notStarted = findOrCreateProject(department, deptName + " Revamp " + number,
-                "Upcoming initiative for " + deptName, today.plusDays(10), today.plusDays(70), ProjectStatus.NOT_STARTED);
-            Project inProgress = findOrCreateProject(department, deptName + " Improvement " + number,
-                "Seeded demo project for " + deptName, today.minusDays(20), today.plusDays(40), ProjectStatus.IN_PROGRESS);
-            Project completed = findOrCreateProject(department, deptName + " Rollout " + number,
-                "Wrapped-up project for " + deptName, today.minusDays(90), today.minusDays(10), ProjectStatus.COMPLETED);
+            Project notStarted = findOrCreateProject(department, deptName + " Service Refresh " + number,
+                "Planned improvements to " + deptName.toLowerCase() + " workflows, reporting, and employee experience.",
+                today.plusDays(10), today.plusDays(70), ProjectStatus.NOT_STARTED);
+            Project inProgress = findOrCreateProject(department, deptName + " Workflow Automation " + number,
+                "Automating routine " + deptName.toLowerCase() + " processes with measurable delivery milestones.",
+                today.minusDays(20), today.plusDays(40), ProjectStatus.IN_PROGRESS);
+            Project completed = findOrCreateProject(department, deptName + " Quarterly Delivery " + number,
+                "Completed quarterly priorities, stakeholder review, and operational handover for " + deptName + ".",
+                today.minusDays(90), today.minusDays(10), ProjectStatus.COMPLETED);
 
             // NOT_STARTED project: tasks not begun yet, no tester needed
-            findOrCreateTask(notStarted, "Kickoff planning", dev, null, po, TaskStatus.TODO, today.plusDays(15));
-            findOrCreateTask(notStarted, "Requirements gathering", qa, null, po, TaskStatus.TODO, today.plusDays(20));
+            findOrCreateTask(notStarted, "Project kickoff and scope alignment", dev1, null, manager, TaskStatus.TODO, today.plusDays(15));
+            findOrCreateTask(notStarted, "Stakeholder requirements workshop", qa1, null, manager, TaskStatus.TODO, today.plusDays(20));
+            findOrCreateTask(notStarted, "Data inventory and migration plan", dev2, null, manager, TaskStatus.TODO, today.plusDays(25));
+            findOrCreateTask(notStarted, "Acceptance criteria and test plan", qa2, null, manager, TaskStatus.TODO, today.plusDays(28));
 
             // IN_PROGRESS project: tasks spread across the workflow, testers assigned once implementation exists
-            findOrCreateTask(inProgress, "Design phase", dev, qa, po, TaskStatus.DONE, today.minusDays(5));
-            findOrCreateTask(inProgress, "Implementation", dev, qc, po, TaskStatus.IN_PROGRESS, today.plusDays(5));
-            findOrCreateTask(inProgress, "Peer review", qc, tester, po, TaskStatus.REVIEW, today.plusDays(8));
-            findOrCreateTask(inProgress, "Backlog cleanup", null, null, po, TaskStatus.TODO, today.plusDays(15));
+            findOrCreateTask(inProgress, "Workflow mapping and solution design", dev1, qa1, manager, TaskStatus.DONE, today.minusDays(5));
+            findOrCreateTask(inProgress, "Build automation and reporting", dev1, qc1, manager, TaskStatus.IN_PROGRESS, today.plusDays(5));
+            findOrCreateTask(inProgress, "Regression testing and peer review", qc1, tester1, manager, TaskStatus.REVIEW, today.plusDays(8));
+            findOrCreateTask(inProgress, "Release checklist and user guide", manager, null, manager, TaskStatus.TODO, today.plusDays(15));
+            findOrCreateTask(inProgress, "Data validation and reconciliation", qc2, tester2, manager, TaskStatus.REVIEW, today.plusDays(10));
+            findOrCreateTask(inProgress, "Business user acceptance session", tester2, qa2, manager, TaskStatus.TODO, today.plusDays(12));
 
             // COMPLETED project: everything finished and verified
-            findOrCreateTask(completed, "Final delivery", dev, tester, po, TaskStatus.DONE, today.minusDays(12));
-            findOrCreateTask(completed, "Handover documentation", qa, qc, po, TaskStatus.DONE, today.minusDays(11));
+            findOrCreateTask(completed, "Production rollout and acceptance", dev1, tester1, manager, TaskStatus.DONE, today.minusDays(12));
+            findOrCreateTask(completed, "Operations handover and documentation", qa1, qc1, manager, TaskStatus.DONE, today.minusDays(11));
 
-            // Attendance history: last 7 days per employee, varied statuses
-            for (User employee : employees) {
+            seedLeaveRequests(employees, manager, today);
+
+            // Attendance history: last 7 days for every department member, including its manager.
+            for (User employee : departmentMembers) {
                 // Offset each department's pattern so dashboard totals differ across departments.
-                seedAttendanceHistory(employee, today, (number * 3 + employees.indexOf(employee) * 2) % 7);
+                seedAttendanceHistory(employee, today, (number * 3 + departmentMembers.indexOf(employee) * 2) % 7);
             }
         }
+    }
+
+    private void seedLeaveRequests(List<User> employees, User manager, LocalDate today) {
+        findOrCreateLeaveRequest(employees.get(0), manager, LeaveRequestType.ANNUAL,
+            today.plusDays(12), today.plusDays(14), "Family trip planned in advance", LeaveRequestStatus.PENDING);
+        findOrCreateLeaveRequest(employees.get(1), manager, LeaveRequestType.PERSONAL,
+            today.minusDays(18), today.minusDays(18), "Personal appointment", LeaveRequestStatus.APPROVED);
+        findOrCreateLeaveRequest(employees.get(2), manager, LeaveRequestType.SICK,
+            today.minusDays(32), today.minusDays(31), "Recovery from seasonal illness", LeaveRequestStatus.REJECTED);
+    }
+
+    private void findOrCreateLeaveRequest(User employee, User manager, LeaveRequestType type,
+                                           LocalDate from, LocalDate to, String reason, LeaveRequestStatus status) {
+        LeaveRequest request = leaveRequests.findByUserOrderByCreatedAtDesc(employee).stream()
+            .filter(existing -> existing.getType() == type && reason.equals(existing.getReason()))
+            .findFirst()
+            .orElseGet(LeaveRequest::new);
+        request.setUser(employee);
+        request.setType(type);
+        request.setFromDate(from);
+        request.setToDate(to);
+        request.setReason(reason);
+        request.setStatus(status);
+        if (status != LeaveRequestStatus.PENDING) request.setApprovedBy(manager);
+        leaveRequests.save(request);
     }
 
     private void seedAttendanceHistory(User employee, LocalDate today, int variant) {
@@ -133,25 +187,59 @@ public class DataInitializer {
 
     private Project findOrCreateProject(Department department, String name, String description,
                                          LocalDate start, LocalDate end, ProjectStatus status) {
-        return projects.findByDepartmentId(department.getId()).stream()
-            .filter(p -> name.equals(p.getProjectName())).findFirst().orElseGet(() -> {
-                Project p = new Project();
-                p.setProjectName(name); p.setDescription(description); p.setDepartment(department);
-                p.setStartDate(start); p.setEndDate(end); p.setStatus(status);
-                return projects.save(p);
-            });
+        String legacyName = name.replace(" Service Refresh ", " Revamp ")
+            .replace(" Workflow Automation ", " Improvement ")
+            .replace(" Quarterly Delivery ", " Rollout ");
+        Project existing = projects.findByDepartmentId(department.getId()).stream()
+            .filter(project -> name.equals(project.getProjectName()) || legacyName.equals(project.getProjectName()))
+            .findFirst().orElse(null);
+        if (existing != null) {
+            if (!name.equals(existing.getProjectName())) {
+                existing.setProjectName(name);
+                existing.setDescription(description);
+                return projects.save(existing);
+            }
+            return existing;
+        }
+        Project project = new Project();
+        project.setProjectName(name); project.setDescription(description); project.setDepartment(department);
+        project.setStartDate(start); project.setEndDate(end); project.setStatus(status);
+        return projects.save(project);
     }
 
     private Task findOrCreateTask(Project project, String name, User assignee, User tester, User creator,
                                    TaskStatus status, LocalDate deadline) {
-        return tasks.findByProjectId(project.getId()).stream()
-            .filter(t -> name.equals(t.getTaskName())).findFirst().orElseGet(() -> {
-                Task t = new Task();
-                t.setTaskName(name); t.setDescription("Demo task for " + project.getProjectName());
-                t.setProject(project); t.setAssignedTo(assignee); t.setTester(tester); t.setCreatedBy(creator);
-                t.setStatus(status); t.setDeadline(deadline);
-                return tasks.save(t);
-            });
+        String legacyName = switch (name) {
+            case "Project kickoff and scope alignment" -> "Kickoff planning";
+            case "Stakeholder requirements workshop" -> "Requirements gathering";
+            case "Workflow mapping and solution design" -> "Design phase";
+            case "Build automation and reporting" -> "Implementation";
+            case "Regression testing and peer review" -> "Peer review";
+            case "Release checklist and user guide" -> "Backlog cleanup";
+            case "Production rollout and acceptance" -> "Final delivery";
+            case "Operations handover and documentation" -> "Handover documentation";
+            default -> name;
+        };
+        Task existing = tasks.findByProjectId(project.getId()).stream()
+            .filter(task -> name.equals(task.getTaskName()) || legacyName.equals(task.getTaskName()))
+            .findFirst().orElse(null);
+        if (existing != null) {
+            if (!name.equals(existing.getTaskName())) {
+                existing.setTaskName(name);
+                existing.setDescription(name + " for the " + project.getProjectName() + " project.");
+                return tasks.save(existing);
+            }
+            if (assignee != null && existing.getAssignedTo() == null) {
+                existing.setAssignedTo(assignee);
+                return tasks.save(existing);
+            }
+            return existing;
+        }
+        Task task = new Task();
+        task.setTaskName(name); task.setDescription(name + " for the " + project.getProjectName() + " project.");
+        task.setProject(project); task.setAssignedTo(assignee); task.setTester(tester); task.setCreatedBy(creator);
+        task.setStatus(status); task.setDeadline(deadline);
+        return tasks.save(task);
     }
 
     /**
@@ -190,5 +278,21 @@ public class DataInitializer {
             user.setJobTitle(jobTitle);
             return users.save(user);
         });
+    }
+
+    private User createOrMigrateDemoUser(String username, String legacyUsername, String rawPassword,
+                                          String fullName, String email, Role role, Department department,
+                                          String jobTitle) {
+        return users.findByUsername(username).orElseGet(() -> users.findByUsername(legacyUsername)
+            .map(user -> {
+                user.setUsername(username);
+                user.setFullName(fullName);
+                user.setEmail(email);
+                user.setRole(role);
+                user.setDepartment(department);
+                user.setJobTitle(jobTitle);
+                return users.save(user);
+            })
+            .orElseGet(() -> createIfMissing(username, rawPassword, fullName, email, role, department, jobTitle)));
     }
 }

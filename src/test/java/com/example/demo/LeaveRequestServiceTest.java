@@ -4,6 +4,7 @@ import com.example.demo.dto.LeaveRequestDto;
 import com.example.demo.entity.*;
 import com.example.demo.exception.BussinessException;
 import com.example.demo.repository.LeaveRequestRepository;
+import com.example.demo.repository.AnnualLeaveBalanceRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.UserService;
 import com.example.demo.service.impl.LeaveRequestServiceImpl;
@@ -27,6 +28,9 @@ class LeaveRequestServiceTest {
     private LeaveRequestRepository leaveRequestRepository;
 
     @Mock
+    private AnnualLeaveBalanceRepository annualLeaveBalanceRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -43,6 +47,9 @@ class LeaveRequestServiceTest {
         employee.setFullName("Alice");
 
         when(userService.currentUser()).thenReturn(employee);
+        when(annualLeaveBalanceRepository.findByUserIdAndYear(10L, LocalDate.now().getYear())).thenReturn(Optional.empty());
+        when(annualLeaveBalanceRepository.save(any(AnnualLeaveBalance.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(leaveRequestRepository.findByUserOrderByCreatedAtDesc(employee)).thenReturn(java.util.List.of());
         when(leaveRequestRepository.save(any(LeaveRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         LeaveRequestDto.SaveRequest request = new LeaveRequestDto.SaveRequest(
@@ -54,13 +61,13 @@ class LeaveRequestServiceTest {
 
         LeaveRequestDto.Response response = leaveRequestService.create(request);
 
-        assertEquals(LeaveRequestStatus.PENDING, response.status());
+        assertEquals(LeaveRequestStatus.PENDING_MANAGER, response.status());
         assertEquals("Alice", response.userName());
         assertEquals("Nghỉ phép năm", response.reason());
     }
 
     @Test
-    void shouldApproveLeaveRequestForManager() {
+    void managerApprovalMustBeFollowedByAdminApproval() {
         User manager = new User();
         manager.setId(20L);
         manager.setRole(Role.MANAGER);
@@ -84,10 +91,18 @@ class LeaveRequestServiceTest {
         when(leaveRequestRepository.findById(99L)).thenReturn(Optional.of(leaveRequest));
         when(leaveRequestRepository.save(any(LeaveRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        LeaveRequestDto.Response response = leaveRequestService.approve(99L, LeaveRequestStatus.APPROVED);
+        LeaveRequestDto.Response managerResponse = leaveRequestService.approve(99L, LeaveRequestStatus.APPROVED);
+        assertEquals(LeaveRequestStatus.PENDING_ADMIN, managerResponse.status());
+        assertEquals("PO Nguyen", managerResponse.managerApprovedBy());
 
-        assertEquals(LeaveRequestStatus.APPROVED, response.status());
-        assertEquals("PO Nguyen", response.approvedBy());
+        User admin = new User();
+        admin.setId(1L);
+        admin.setRole(Role.ADMIN);
+        admin.setFullName("Admin");
+        when(userService.currentUser()).thenReturn(admin);
+        LeaveRequestDto.Response adminResponse = leaveRequestService.approve(99L, LeaveRequestStatus.APPROVED);
+        assertEquals(LeaveRequestStatus.APPROVED, adminResponse.status());
+        assertEquals("Admin", adminResponse.approvedBy());
     }
 
     @Test

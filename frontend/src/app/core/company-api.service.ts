@@ -3,11 +3,14 @@ import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs';
 import {
   ApiResponse,
+  AnnualLeaveBalance,
+  AttendanceAdjustment,
   Attendance,
   DashboardSummary,
   Department,
   LeaveRequest,
   NotificationItem,
+  PayrollMonthlyReport,
   Project,
   Task,
   TaskSaveRequest,
@@ -46,6 +49,30 @@ export class CompanyApiService {
       .pipe(map((r) => r.data));
   }
 
+  leaveRequestsForUser(userId: number) {
+    return this.http
+      .get<ApiResponse<LeaveRequest[]>>(`${API}/leave-requests/user/${userId}`)
+      .pipe(map((r) => r.data));
+  }
+
+  annualLeaveBalance(year: number) {
+    return this.http
+      .get<ApiResponse<AnnualLeaveBalance>>(`${API}/leave-requests/balance`, { params: { year } })
+      .pipe(map((r) => r.data));
+  }
+
+  annualLeaveBalanceForUser(userId: number, year: number) {
+    return this.http
+      .get<ApiResponse<AnnualLeaveBalance>>(`${API}/leave-requests/balance/${userId}`, { params: { year } })
+      .pipe(map((r) => r.data));
+  }
+
+  setAnnualLeaveBalance(userId: number, year: number, entitledDays: number) {
+    return this.http
+      .put<ApiResponse<AnnualLeaveBalance>>(`${API}/leave-requests/balance/${userId}`, { entitledDays }, { params: { year } })
+      .pipe(map((r) => r.data));
+  }
+
   pendingLeaveRequests() {
     return this.http
       .get<ApiResponse<LeaveRequest[]>>(`${API}/leave-requests/pending`)
@@ -66,6 +93,12 @@ export class CompanyApiService {
   approveLeaveRequest(id: number, status: 'APPROVED' | 'REJECTED') {
     return this.http
       .patch<ApiResponse<LeaveRequest>>(`${API}/leave-requests/${id}/approve`, { status })
+      .pipe(map((r) => r.data));
+  }
+
+  cancelLeaveRequest(id: number) {
+    return this.http
+      .post<ApiResponse<LeaveRequest>>(`${API}/leave-requests/${id}/cancel`, {})
       .pipe(map((r) => r.data));
   }
 
@@ -187,5 +220,49 @@ export class CompanyApiService {
   }
   allAttendance() {
     return this.http.get<ApiResponse<Attendance[]>>(`${API}/attendance`).pipe(map((r) => r.data));
+  }
+  myAttendanceAdjustments() {
+    return this.http
+      .get<ApiResponse<AttendanceAdjustment[]>>(`${API}/attendance/adjustments/my`)
+      .pipe(map((r) => r.data));
+  }
+  pendingAttendanceAdjustments() {
+    return this.http
+      .get<ApiResponse<AttendanceAdjustment[]>>(`${API}/attendance/adjustments/pending`)
+      .pipe(map((r) => r.data));
+  }
+  createAttendanceAdjustment(request: {
+    userId?: number;
+    sessionId: number;
+    requestedCheckIn: string;
+    requestedCheckOut: string;
+    reason: string;
+  }) {
+    return this.http
+      .post<ApiResponse<AttendanceAdjustment>>(`${API}/attendance/adjustments`, request)
+      .pipe(map((r) => r.data));
+  }
+  decideAttendanceAdjustment(id: number, status: 'APPROVED' | 'REJECTED_MANAGER' | 'REJECTED_ADMIN') {
+    return this.http
+      .patch<ApiResponse<AttendanceAdjustment>>(`${API}/attendance/adjustments/${id}/decision`, { status })
+      .pipe(map((r) => r.data));
+  }
+  payrollMonthly(year: number, month: number) {
+    return this.http
+      .get<ApiResponse<PayrollMonthlyReport>>(`${API}/payroll/monthly`, { params: { year, month } })
+      .pipe(map((r) => r.data));
+  }
+  payrollExcel(year: number, month: number) {
+    return this.http.get(`${API}/payroll/monthly.xlsx`, { params: { year, month }, responseType: 'blob' });
+  }
+  closePayrollPeriod(year: number, month: number) {
+    return this.http
+      .post<ApiResponse<PayrollMonthlyReport>>(`${API}/payroll/${year}/${month}/close`, {})
+      .pipe(map((r) => r.data));
+  }
+  reopenPayrollPeriod(year: number, month: number, reason: string) {
+    return this.http
+      .post<ApiResponse<PayrollMonthlyReport>>(`${API}/payroll/${year}/${month}/reopen`, { reason })
+      .pipe(map((r) => r.data));
   }
 }

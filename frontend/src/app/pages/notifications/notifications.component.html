@@ -26,11 +26,19 @@
         <strong>Thành công:</strong> {{ successMessage() }}
       </div>
 
+      <div class="leave-balance-strip" *ngIf="balance() as leaveBalance">
+        <div><small>Phép năm được cấp</small><strong>{{ leaveBalance.entitledDays }} ngày</strong></div>
+        <div><small>Đã sử dụng</small><strong>{{ leaveBalance.usedDays }} ngày</strong></div>
+        <div><small>Đang chờ duyệt</small><strong>{{ leaveBalance.pendingDays }} ngày</strong></div>
+        <div><small>Còn khả dụng</small><strong>{{ leaveBalance.remainingDays - leaveBalance.pendingDays }} ngày</strong></div>
+      </div>
+
       <div class="form-grid">
         <label>
           Loại nghỉ
           <select [(ngModel)]="draft.type">
             <option value="ANNUAL">Nghỉ phép năm</option>
+            <option value="UNPAID">Nghỉ không lương</option>
             <option value="PERSONAL">Nghỉ cá nhân</option>
             <option value="SICK">Nghỉ ốm</option>
             <option value="MATERNITY">Nghỉ thai sản</option>
@@ -40,6 +48,12 @@
           Từ ngày
           <input type="date" [(ngModel)]="draft.fromDate" />
         </label>
+        <p class="leave-policy-note" *ngIf="draft.type === 'ANNUAL'">
+          Đơn phép năm chỉ trừ số dư sau khi admin duyệt cuối; ngày nghỉ tính theo thứ Hai đến thứ Sáu.
+        </p>
+        <p class="leave-policy-note" *ngIf="draft.type === 'UNPAID'">
+          Nghỉ không lương không trừ quota phép năm.
+        </p>
         <label>
           Đến ngày
           <input type="date" [(ngModel)]="draft.toDate" />
@@ -60,6 +74,51 @@
         <button type="button" [disabled]="loading()" (click)="submitLeaveRequest()">
           {{ loading() ? 'Đang gửi...' : 'Gửi đơn xin nghỉ' }}
         </button>
+      </div>
+    </section>
+
+    <section class="card correction-compose" *ngIf="showAdjustmentForm()">
+      <div class="section-top">
+        <div><p class="eyebrow subtle">Chấm công · {{ adjustmentDraft.date }}</p><h2>Điều chỉnh giờ làm</h2></div>
+        <span class="chip chip-soft">{{ adjustmentDraft.requestedCheckIn | date: 'dd/MM/yyyy' }}</span>
+      </div>
+      <p class="muted">Yêu cầu áp dụng cho ngày hiện tại hoặc 2 ngày trước đó, cần manager rồi admin duyệt. Giờ công chỉ cập nhật sau khi được duyệt cuối.</p>
+      <div class="form-grid">
+        <label>Check-in<input type="datetime-local" [(ngModel)]="adjustmentDraft.requestedCheckIn" /></label>
+        <label>Check-out<input type="datetime-local" [(ngModel)]="adjustmentDraft.requestedCheckOut" /></label>
+        <label class="full-width">Lý do<textarea rows="3" maxlength="500" [(ngModel)]="adjustmentDraft.reason" placeholder="Nêu lý do cần chỉnh sửa giờ"></textarea></label>
+      </div>
+      <div class="form-actions">
+        <button type="button" [disabled]="savingAdjustment()" (click)="submitAdjustment()">{{ savingAdjustment() ? 'Đang gửi...' : 'Gửi yêu cầu' }}</button>
+        <button type="button" class="secondary" (click)="cancelAdjustment()">Hủy</button>
+      </div>
+    </section>
+
+    <section class="notification-grid correction-grid">
+      <div class="card panel-card">
+        <div class="section-top"><div><p class="eyebrow subtle">Theo dõi</p><h2>Yêu cầu điều chỉnh của tôi</h2></div><span class="chip chip-soft">{{ myAdjustments().length }}</span></div>
+        <div class="leave-list">
+          <article class="leave-item" *ngFor="let item of myAdjustments()">
+            <div class="leave-head"><strong>{{ item.userName }} · {{ item.date }}</strong><span class="badge pending">{{ adjustmentStatusLabel(item.status) }}</span></div>
+            <p class="leave-type">{{ adjustmentTime(item.originalCheckIn) }}–{{ adjustmentTime(item.originalCheckOut || item.originalCheckIn) }} → {{ adjustmentTime(item.requestedCheckIn) }}–{{ adjustmentTime(item.requestedCheckOut) }}</p>
+            <p>{{ item.reason }}</p>
+            <small *ngIf="item.managerApprovedBy">Manager: {{ item.managerApprovedBy }}</small>
+            <small *ngIf="item.adminApprovedBy">Admin: {{ item.adminApprovedBy }}</small>
+          </article>
+          <p class="empty-state" *ngIf="!myAdjustments().length">Chưa có yêu cầu điều chỉnh.</p>
+        </div>
+      </div>
+      <div class="card panel-card" *ngIf="isPo()">
+        <div class="section-top"><div><p class="eyebrow subtle">Hàng chờ của bạn</p><h2>{{ auth.user()?.role === 'ADMIN' ? 'Chờ admin duyệt cuối' : 'Chờ manager duyệt' }}</h2></div><span class="chip soft">{{ pendingAdjustments().length }}</span></div>
+        <div class="leave-list">
+          <article class="leave-item" *ngFor="let item of pendingAdjustments()">
+            <div class="leave-head"><strong>{{ item.userName }} · {{ item.date }}</strong><span class="badge pending">{{ adjustmentStatusLabel(item.status) }}</span></div>
+            <p class="leave-type">{{ adjustmentTime(item.originalCheckIn) }}–{{ adjustmentTime(item.originalCheckOut || item.originalCheckIn) }} → {{ adjustmentTime(item.requestedCheckIn) }}–{{ adjustmentTime(item.requestedCheckOut) }}</p>
+            <p><strong>{{ item.requestedBy }}:</strong> {{ item.reason }}</p>
+            <div class="inline-actions"><button type="button" class="secondary small" (click)="decideAdjustment(item, true)">Duyệt</button><button type="button" class="danger small" (click)="decideAdjustment(item, false)">Từ chối</button></div>
+          </article>
+          <p class="empty-state" *ngIf="!pendingAdjustments().length">Không có yêu cầu chờ bạn duyệt.</p>
+        </div>
       </div>
     </section>
 
@@ -100,24 +159,52 @@
       <div class="card panel-card">
         <div class="section-top">
           <div>
-            <p class="eyebrow subtle">Phê duyệt</p>
-            <h2>Đơn nghỉ phép</h2>
+            <p class="eyebrow subtle">Lịch sử cá nhân</p>
+            <h2>Đơn nghỉ của tôi</h2>
           </div>
-          <span class="chip soft" *ngIf="isPo()">{{ pendingRequests().length }} chờ duyệt</span>
         </div>
 
         <div class="leave-list">
-          <div class="leave-item" *ngFor="let item of isPo() ? pendingRequests() : leaveRequests()">
+          <div class="leave-item" *ngFor="let item of leaveRequests()">
             <div class="leave-head">
-              <strong>{{ item.userName }}</strong>
-              <span class="badge {{ item.status.toLowerCase() }}">{{ item.status }}</span>
+              <strong>{{ leaveTypeLabel(item.type) }}</strong>
+              <span class="badge {{ item.status.toLowerCase() }}">{{ leaveStatusLabel(item.status) }}</span>
             </div>
-            <p class="leave-type">{{ item.type }} · {{ item.fromDate }} → {{ item.toDate }}</p>
+            <p class="leave-type">{{ item.fromDate }} → {{ item.toDate }} · {{ item.requestedWorkdays }} ngày làm việc</p>
             <div class="leave-reason">
               <strong>Nguyên nhân:</strong>
               <p>{{ item.reason }}</p>
             </div>
-            <div class="inline-actions" *ngIf="isPo() && item.status === 'PENDING'">
+            <p class="approval-trail" *ngIf="item.managerApprovedBy || item.adminApprovedBy">
+              <span *ngIf="item.managerApprovedBy">Manager: {{ item.managerApprovedBy }}</span>
+              <span *ngIf="item.adminApprovedBy">Admin: {{ item.adminApprovedBy }}</span>
+            </p>
+            <div class="inline-actions" *ngIf="canCancel(item)">
+              <button type="button" class="danger small" [disabled]="loading()" (click)="cancelLeave(item.id)">
+                Hủy đơn
+              </button>
+            </div>
+          </div>
+          <p class="empty-state" *ngIf="!loadingLeaveRequests() && !leaveRequests().length">Bạn chưa gửi đơn nghỉ nào.</p>
+        </div>
+
+        <div class="approval-queue" *ngIf="isPo()">
+          <div class="section-top">
+            <div>
+              <p class="eyebrow subtle">Phê duyệt tuần tự</p>
+              <h2>{{ auth.user()?.role === 'ADMIN' ? 'Chờ admin duyệt cuối' : 'Chờ manager duyệt' }}</h2>
+            </div>
+            <span class="chip soft">{{ pendingRequests().length }} đơn</span>
+          </div>
+          <div class="leave-list">
+            <div class="leave-item" *ngFor="let item of pendingRequests()">
+              <div class="leave-head">
+                <strong>{{ item.userName }} · {{ leaveTypeLabel(item.type) }}</strong>
+                <span class="badge pending">{{ leaveStatusLabel(item.status) }}</span>
+              </div>
+              <p class="leave-type">{{ item.fromDate }} → {{ item.toDate }} · {{ item.requestedWorkdays }} ngày làm việc</p>
+              <div class="leave-reason"><strong>Nguyên nhân:</strong><p>{{ item.reason }}</p></div>
+              <div class="inline-actions">
               <button
                 type="button"
                 class="secondary small"
@@ -135,6 +222,8 @@
                 ✗ Từ chối
               </button>
             </div>
+            </div>
+            <p class="empty-state" *ngIf="!loadingPendingRequests() && !pendingRequests().length">Không có đơn ở bước duyệt của bạn.</p>
           </div>
         </div>
       </div>

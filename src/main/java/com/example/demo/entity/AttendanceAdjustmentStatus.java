@@ -1,12 +1,9 @@
 package com.example.demo.entity;
 
-public enum LeaveRequestStatus {
-    PENDING,
+public enum AttendanceAdjustmentStatus {
     PENDING_MANAGER,
     PENDING_ADMIN,
     APPROVED,
-    REJECTED,
     REJECTED_MANAGER,
-    REJECTED_ADMIN,
-    CANCELLED
+    REJECTED_ADMIN
 }

@@ -44,6 +44,33 @@ public class LeaveRequest {
     @JoinColumn(name = "approved_by_id")
     private User approvedBy;
 
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_approved_by_id")
+    private User managerApprovedBy;
+
+    @Column(name = "manager_approved_at")
+    private LocalDateTime managerApprovedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "admin_approved_by_id")
+    private User adminApprovedBy;
+
+    @Column(name = "admin_approved_at")
+    private LocalDateTime adminApprovedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cancelled_by_id")
+    private User cancelledBy;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 

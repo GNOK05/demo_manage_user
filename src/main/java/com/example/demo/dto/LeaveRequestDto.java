@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public final class LeaveRequestDto {
     private LeaveRequestDto() {}
@@ -20,6 +21,9 @@ public final class LeaveRequestDto {
 
     public record DecisionRequest(@NotNull LeaveRequestStatus status) {}
 
+        public record BalanceResponse(Long userId, String userName, int year, int entitledDays,
+                                                                  double usedDays, double pendingDays, double remainingDays) {}
+
     public record Response(
             Long id,
             Long userId,
@@ -30,6 +34,11 @@ public final class LeaveRequestDto {
             String reason,
             LeaveRequestStatus status,
             String approvedBy,
-            String createdAt
+                        String createdAt,
+                        String managerApprovedBy,
+                        String adminApprovedBy,
+                        String rejectionReason,
+                        LocalDateTime cancelledAt,
+                        int requestedWorkdays
     ) {}
 }
