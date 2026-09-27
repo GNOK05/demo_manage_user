@@ -1,6 +1,7 @@
 package com.example.demo.dto;
 
 import com.example.demo.entity.LeaveRequestStatus;
+import com.example.demo.entity.LeaveDayPart;
 import com.example.demo.entity.LeaveRequestType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,8 +17,14 @@ public final class LeaveRequestDto {
             @NotNull LeaveRequestType type,
             @NotNull LocalDate fromDate,
             @NotNull LocalDate toDate,
+            LeaveDayPart fromDayPart,
+            LeaveDayPart toDayPart,
             @NotBlank @Size(max = 500) String reason
-    ) {}
+    ) {
+        public SaveRequest(LeaveRequestType type, LocalDate fromDate, LocalDate toDate, String reason) {
+            this(type, fromDate, toDate, LeaveDayPart.FULL_DAY, LeaveDayPart.FULL_DAY, reason);
+        }
+    }
 
     public record DecisionRequest(@NotNull LeaveRequestStatus status) {}
 
@@ -31,6 +38,8 @@ public final class LeaveRequestDto {
             LeaveRequestType type,
             LocalDate fromDate,
             LocalDate toDate,
+            LeaveDayPart fromDayPart,
+            LeaveDayPart toDayPart,
             String reason,
             LeaveRequestStatus status,
             String approvedBy,
@@ -39,6 +48,6 @@ public final class LeaveRequestDto {
                         String adminApprovedBy,
                         String rejectionReason,
                         LocalDateTime cancelledAt,
-                        int requestedWorkdays
+                        double requestedWorkdays
     ) {}
 }

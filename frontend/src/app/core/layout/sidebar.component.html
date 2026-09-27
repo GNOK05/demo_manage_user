@@ -21,6 +21,7 @@
         <small>{{ auth.user()?.jobTitle || auth.user()?.role || 'EMPLOYEE' }}</small>
       </div>
     </div>
+    <a class="account-settings" routerLink="/settings" routerLinkActive="active">Thiết lập tài khoản</a>
     <button type="button" class="logout" (click)="auth.logout()">Đăng xuất</button>
   </div>
 </aside>

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth.service';
 import { CompanyApiService } from '../../core/company-api.service';
 import { SidebarComponent } from '../../core/layout/sidebar.component';
-import { AnnualLeaveBalance, Attendance, Department, LeaveRequest, PayrollMonthlyReport, User } from '../../core/models';
+import { AnnualLeaveBalance, Attendance, Department, DepartmentAttendanceSummary, LeaveRequest, PayrollMonthlyReport, User } from '../../core/models';
 import { computeWorkStatus, isAttendanceAdjustmentDateAllowed, localDateIso, parseVietnamDateTime, vietnamTime, WORK_STATUS_LABEL } from '../../core/work-status';
 import { finalize } from 'rxjs';
 import { Router } from '@angular/router';
@@ -25,6 +25,8 @@ export class AttendanceComponent implements OnInit {
   selectedBalance = signal<AnnualLeaveBalance | null>(null);
   selfBalance = signal<AnnualLeaveBalance | null>(null);
   payrollReport = signal<PayrollMonthlyReport | null>(null);
+  departmentAttendanceSummary = signal<DepartmentAttendanceSummary | null>(null);
+  selectedAttendanceDate = localDateIso();
   selectedDepartmentId = signal<number | null>(null);
   selectedEmployeeId = signal<number | null>(null);
   search = signal('');
@@ -55,7 +57,10 @@ export class AttendanceComponent implements OnInit {
 
   ngOnInit() {
     this.loadMyLeaveData();
-    if (this.isManager()) this.loadSelfAttendance();
+    if (this.isManager()) {
+      this.loadSelfAttendance();
+      this.loadDepartmentAttendanceSummary();
+    }
     if (this.isSelf()) {
       this.loadSelfAttendance();
       this.loadPayrollReport();
@@ -95,18 +100,57 @@ export class AttendanceComponent implements OnInit {
     });
   }
 
+  loadDepartmentAttendanceSummary() {
+    if (!this.isManager() || !this.selectedAttendanceDate) return;
+    this.api.departmentAttendanceSummary(this.selectedAttendanceDate).subscribe({
+      next: (summary) => this.departmentAttendanceSummary.set(summary),
+      error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tải biểu đồ chấm công phòng ban.'),
+    });
+  }
+
+  departmentAttendanceRate() {
+    const summary = this.departmentAttendanceSummary();
+    return summary?.totalEmployees
+      ? Math.round(((summary.present + summary.late) / summary.totalEmployees) * 100)
+      : 0;
+  }
+
+  departmentAttendanceChart() {
+    const summary = this.departmentAttendanceSummary();
+    if (!summary || summary.totalEmployees === 0) return 'conic-gradient(#e7edf8 0 100%)';
+    const total = summary.totalEmployees;
+    const stops = [
+      { value: summary.present, color: '#4354d8' },
+      { value: summary.late, color: '#f2b640' },
+      { value: summary.absent, color: '#ef6470' },
+      { value: summary.leave, color: '#8f6fe8' },
+    ];
+    let position = 0;
+    const segments = stops.map((segment) => {
+      const start = position;
+      position += (segment.value / total) * 100;
+      return `${segment.color} ${start}% ${position}%`;
+    });
+    return `conic-gradient(${segments.join(', ')})`;
+  }
+
   private loadDepartmentsAndEmployees() {
-    this.loadingDepartments.set(true);
     this.loadingEmployees.set(true);
-    const peopleRequest =
-      this.auth.user()?.role === 'ADMIN' ? this.api.users() : this.api.departmentMembers();
-    this.api
-      .departments()
-      .pipe(finalize(() => this.loadingDepartments.set(false)))
-      .subscribe({
-        next: (departments) => this.departments.set(departments),
-        error: () => this.errorMessage.set('Không thể tải danh sách phòng ban. Vui lòng thử lại.'),
-      });
+    const admin = this.isAdmin();
+    const managerDepartmentId = this.auth.user()?.departmentId ?? null;
+    if (admin) {
+      this.loadingDepartments.set(true);
+      this.api
+        .departments()
+        .pipe(finalize(() => this.loadingDepartments.set(false)))
+        .subscribe({
+          next: (departments) => this.departments.set(departments),
+          error: () => this.errorMessage.set('Không thể tải danh sách phòng ban. Vui lòng thử lại.'),
+        });
+    } else {
+      this.selectedDepartmentId.set(managerDepartmentId);
+    }
+    const peopleRequest = admin ? this.api.users() : this.api.departmentMembers();
     peopleRequest.pipe(finalize(() => this.loadingEmployees.set(false))).subscribe({
       next: (employees) => {
         this.employees.set(employees);
@@ -118,7 +162,7 @@ export class AttendanceComponent implements OnInit {
 
   departmentEmployees(departmentId: number | null) {
     const people =
-      departmentId === null
+      !this.isAdmin() || departmentId === null
         ? this.employees()
         : this.employees().filter((employee) => employee.departmentId === departmentId);
     const query = this.search().trim().toLowerCase();
@@ -133,6 +177,10 @@ export class AttendanceComponent implements OnInit {
 
   departmentEmployeeCount(departmentId: number) {
     return this.employees().filter((employee) => employee.departmentId === departmentId).length;
+  }
+
+  departmentHeading() {
+    return this.isAdmin() ? 'Phòng ban' : 'Nhân viên trong phòng ban của bạn';
   }
 
   onSearch(value: string) {
@@ -421,14 +469,32 @@ export class AttendanceComponent implements OnInit {
     const monthEnd = localDateIso(new Date(Date.UTC(this.year, this.month, 0, 12)));
     let days = 0;
     for (const request of requests) {
-      let date = new Date(`${request.fromDate > monthStart ? request.fromDate : monthStart}T12:00:00Z`);
-      const end = new Date(`${request.toDate < monthEnd ? request.toDate : monthEnd}T12:00:00Z`);
+      const clippedFrom = request.fromDate > monthStart ? request.fromDate : monthStart;
+      const clippedTo = request.toDate < monthEnd ? request.toDate : monthEnd;
+      let date = new Date(`${clippedFrom}T12:00:00Z`);
+      const end = new Date(`${clippedTo}T12:00:00Z`);
+      let requestDays = 0;
       while (date <= end) {
-        if (date.getUTCDay() !== 0 && date.getUTCDay() !== 6) days++;
+        if (date.getUTCDay() !== 0 && date.getUTCDay() !== 6) requestDays++;
         date.setUTCDate(date.getUTCDate() + 1);
       }
+      if (requestDays > 0) {
+        if (clippedFrom === request.fromDate && this.isPartialDay(request.fromDayPart) && this.isWeekday(clippedFrom)) requestDays -= 0.5;
+        if (clippedTo === request.toDate && clippedTo !== clippedFrom
+          && this.isPartialDay(request.toDayPart) && this.isWeekday(clippedTo)) requestDays -= 0.5;
+      }
+      days += requestDays;
     }
     return days;
+  }
+
+  private isPartialDay(part: LeaveRequest['fromDayPart'] | undefined) {
+    return part === 'MORNING' || part === 'AFTERNOON';
+  }
+
+  private isWeekday(date: string) {
+    const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+    return weekday !== 0 && weekday !== 6;
   }
 
   workStatus(record: Attendance) {

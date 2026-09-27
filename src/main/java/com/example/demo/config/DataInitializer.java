@@ -15,13 +15,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
  * Seeds demo data: one working manager + two role-specific staff (DEV/QA/QC/TEST) per department,
  * three projects per department covering every {@link ProjectStatus}, tasks covering every
  * {@link TaskStatus} (with a tester assigned on some of them), and a 7-day attendance history
- * covering every {@link AttendanceStatus}.
+ * covering a mix of working, late, and absent {@link AttendanceStatus} values.
  *
  * Every entity is looked up by its natural key before being created, so restarting the app is
  * safe and will not duplicate records. For a completely fresh dataset, stop the app, delete the
@@ -65,7 +66,7 @@ public class DataInitializer {
     }
 
     private void seedDemoData() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
 
         for (int i = 0; i < DEPARTMENT_NAMES.length; i++) {
             int number = i + 1;
@@ -130,7 +131,7 @@ public class DataInitializer {
             findOrCreateTask(completed, "Production rollout and acceptance", dev1, tester1, manager, TaskStatus.DONE, today.minusDays(12));
             findOrCreateTask(completed, "Operations handover and documentation", qa1, qc1, manager, TaskStatus.DONE, today.minusDays(11));
 
-            seedLeaveRequests(employees, manager, today);
+            seedLeaveRequests(employees, manager, users.findByUsername("admin").orElseThrow(), today);
 
             // Attendance history: last 7 days for every department member, including its manager.
             for (User employee : departmentMembers) {
@@ -140,19 +141,31 @@ public class DataInitializer {
         }
     }
 
-    private void seedLeaveRequests(List<User> employees, User manager, LocalDate today) {
+    private void seedLeaveRequests(List<User> employees, User manager, User admin, LocalDate today) {
         findOrCreateLeaveRequest(employees.get(0), manager, LeaveRequestType.ANNUAL,
             today.plusDays(12), today.plusDays(14), "Family trip planned in advance", LeaveRequestStatus.PENDING);
-        findOrCreateLeaveRequest(employees.get(1), manager, LeaveRequestType.PERSONAL,
-            today.minusDays(18), today.minusDays(18), "Personal appointment", LeaveRequestStatus.APPROVED);
+        LocalDate pastAnnualDay = today.minusDays(18);
+        while (pastAnnualDay.getDayOfWeek() == java.time.DayOfWeek.SATURDAY
+                || pastAnnualDay.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) {
+            pastAnnualDay = pastAnnualDay.minusDays(1);
+        }
+        findOrCreateLeaveRequest(employees.get(1), manager, admin, LeaveRequestType.ANNUAL,
+            pastAnnualDay, pastAnnualDay, "Previously approved annual leave (demo)", LeaveRequestStatus.APPROVED);
         findOrCreateLeaveRequest(employees.get(2), manager, LeaveRequestType.SICK,
             today.minusDays(32), today.minusDays(31), "Recovery from seasonal illness", LeaveRequestStatus.REJECTED);
     }
 
     private void findOrCreateLeaveRequest(User employee, User manager, LeaveRequestType type,
                                            LocalDate from, LocalDate to, String reason, LeaveRequestStatus status) {
+        findOrCreateLeaveRequest(employee, manager, null, type, from, to, reason, status);
+    }
+
+    private void findOrCreateLeaveRequest(User employee, User manager, User admin, LeaveRequestType type,
+                                           LocalDate from, LocalDate to, String reason, LeaveRequestStatus status) {
         LeaveRequest request = leaveRequests.findByUserOrderByCreatedAtDesc(employee).stream()
-            .filter(existing -> existing.getType() == type && reason.equals(existing.getReason()))
+            .filter(existing -> reason.equals(existing.getReason())
+                || "Previously approved annual leave (demo)".equals(reason)
+                && "Personal appointment".equals(existing.getReason()))
             .findFirst()
             .orElseGet(LeaveRequest::new);
         request.setUser(employee);
@@ -161,14 +174,23 @@ public class DataInitializer {
         request.setToDate(to);
         request.setReason(reason);
         request.setStatus(status);
-        if (status != LeaveRequestStatus.PENDING) request.setApprovedBy(manager);
+        if (status == LeaveRequestStatus.APPROVED && admin != null) {
+            request.setManagerApprovedBy(manager);
+            request.setManagerApprovedAt(LocalDateTime.now());
+            request.setAdminApprovedBy(admin);
+            request.setAdminApprovedAt(LocalDateTime.now());
+            request.setApprovedBy(admin);
+            request.setApprovedAt(LocalDateTime.now());
+        } else if (status == LeaveRequestStatus.REJECTED && manager != null) {
+            request.setApprovedBy(manager);
+        }
         leaveRequests.save(request);
     }
 
     private void seedAttendanceHistory(User employee, LocalDate today, int variant) {
         AttendanceStatus[] pattern = {
             AttendanceStatus.PRESENT, AttendanceStatus.PRESENT, AttendanceStatus.LATE,
-            AttendanceStatus.PRESENT, AttendanceStatus.ABSENT, AttendanceStatus.PRESENT, AttendanceStatus.LEAVE
+            AttendanceStatus.PRESENT, AttendanceStatus.ABSENT, AttendanceStatus.PRESENT, AttendanceStatus.PRESENT
         };
         for (int d = 0; d < 7; d++) {
             LocalDate date = today.minusDays(d);

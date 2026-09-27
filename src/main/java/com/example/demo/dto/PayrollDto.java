@@ -8,8 +8,8 @@ public final class PayrollDto {
 
     public record EmployeeRow(Long userId, String username, String fullName, String department,
                               int workDays, int lateDays, int absentDays, double workedHours,
-                              int annualLeaveDays, int unpaidLeaveDays, int otherLeaveDays,
-                              int payrollWorkDays) {}
+                              double annualLeaveDays, double unpaidLeaveDays, double otherLeaveDays,
+                              double payrollWorkDays) {}
 
     public record MonthlyReport(int year, int month, boolean closed, LocalDateTime closedAt,
                                 String closedBy, LocalDateTime reopenedAt, String reopenedBy,

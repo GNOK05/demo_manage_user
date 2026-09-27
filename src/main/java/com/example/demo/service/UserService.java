@@ -12,6 +12,7 @@ public interface UserService {
     void delete(Long id);
     User currentUser();
     UserResponse currentProfile();
+    void changeCurrentPassword(String currentPassword, String newPassword);
     User findEntity(Long id);
     User findEntityByUsername(String username);
     UserResponse toResponse(User user);

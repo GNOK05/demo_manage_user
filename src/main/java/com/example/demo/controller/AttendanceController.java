@@ -1,6 +1,5 @@
 package com.example.demo.controller;
 import com.example.demo.dto.*;
-import com.example.demo.entity.AttendanceAdjustmentStatus;
 import com.example.demo.service.AttendanceService;
 import com.example.demo.service.AttendanceAdjustmentService;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +14,7 @@ public class AttendanceController {private final AttendanceService service; priv
  @PostMapping("/check-out") public ApiResponse<AttendanceDto.Response> out(){return ApiResponse.ok(service.checkOut());}
  @GetMapping("/my") public ApiResponse<List<AttendanceDto.Response>> mine(){return ApiResponse.ok(service.myAttendance());}
  @GetMapping("/department") @PreAuthorize("hasRole('MANAGER')") public ApiResponse<List<AttendanceDto.Response>> department(){return ApiResponse.ok(service.departmentAttendance());}
+ @GetMapping("/department/summary") @PreAuthorize("hasRole('MANAGER')") public ApiResponse<AttendanceDto.DepartmentSummary> departmentSummary(@RequestParam java.time.LocalDate date){return ApiResponse.ok(service.departmentSummary(date));}
  @GetMapping("/user/{userId}") @PreAuthorize("hasAnyRole('ADMIN','MANAGER')") public ApiResponse<List<AttendanceDto.Response>> employee(@PathVariable Long userId, @RequestParam @Min(1) @Max(12) int month, @RequestParam @Min(2000) int year){return ApiResponse.ok(service.employeeAttendance(userId, month, year));}
  @GetMapping @PreAuthorize("hasRole('ADMIN')") public ApiResponse<List<AttendanceDto.Response>> all(){return ApiResponse.ok(service.all());}
  @PostMapping("/adjustments") public ApiResponse<AttendanceAdjustmentDto.Response> requestAdjustment(@jakarta.validation.Valid @RequestBody AttendanceAdjustmentDto.SaveRequest request){return ApiResponse.ok(adjustments.create(request));}

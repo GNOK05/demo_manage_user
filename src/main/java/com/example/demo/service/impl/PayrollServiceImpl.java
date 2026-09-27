@@ -5,6 +5,7 @@ import com.example.demo.entity.*;
 import com.example.demo.exception.BussinessException;
 import com.example.demo.repository.*;
 import com.example.demo.service.PayrollService;
+import com.example.demo.service.LeaveWorkdayCalculator;
 import com.example.demo.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -63,11 +64,11 @@ public class PayrollServiceImpl implements PayrollService {
                     .filter(request -> request.getStatus() == LeaveRequestStatus.APPROVED
                             && !request.getFromDate().isAfter(to) && !request.getToDate().isBefore(from))
                     .toList();
-            int annual = leaveDays(leaves, LeaveRequestType.ANNUAL, from, to);
-            int unpaid = leaveDays(leaves, LeaveRequestType.UNPAID, from, to);
-            int other = leaves.stream().filter(request -> request.getType() != LeaveRequestType.ANNUAL
+            double annual = leaveDays(leaves, LeaveRequestType.ANNUAL, from, to);
+            double unpaid = leaveDays(leaves, LeaveRequestType.UNPAID, from, to);
+            double other = leaves.stream().filter(request -> request.getType() != LeaveRequestType.ANNUAL
                             && request.getType() != LeaveRequestType.UNPAID)
-                    .mapToInt(request -> workdays(max(request.getFromDate(), from), min(request.getToDate(), to))).sum();
+                    .mapToDouble(request -> leaveDays(request, from, to)).sum();
             return new PayrollDto.EmployeeRow(user.getId(), user.getUsername(), user.getFullName(),
                     user.getDepartment() == null ? "" : user.getDepartment().getName(), workDays, lateDays,
                     absentDays, Math.round(workedHours * 100.0) / 100.0, annual, unpaid, other,
@@ -175,14 +176,19 @@ public class PayrollServiceImpl implements PayrollService {
         return YearMonth.of(year, month);
     }
 
-    private int leaveDays(List<LeaveRequest> requests, LeaveRequestType type, LocalDate from, LocalDate to) {
+    private double leaveDays(List<LeaveRequest> requests, LeaveRequestType type, LocalDate from, LocalDate to) {
         return requests.stream().filter(request -> request.getType() == type)
-                .mapToInt(request -> workdays(max(request.getFromDate(), from), min(request.getToDate(), to))).sum();
+                .mapToDouble(request -> leaveDays(request, from, to)).sum();
     }
 
-    private int workdays(LocalDate from, LocalDate to) {
-        if (from.isAfter(to)) return 0;
-        return (int) from.datesUntil(to.plusDays(1)).filter(date -> date.getDayOfWeek().getValue() < 6).count();
+    private double leaveDays(LeaveRequest request, LocalDate from, LocalDate to) {
+        LocalDate clippedFrom = max(request.getFromDate(), from);
+        LocalDate clippedTo = min(request.getToDate(), to);
+        LeaveDayPart fromPart = clippedFrom.equals(request.getFromDate())
+                ? request.getFromDayPart() : LeaveDayPart.FULL_DAY;
+        LeaveDayPart toPart = clippedTo.equals(request.getToDate())
+                ? request.getToDayPart() : LeaveDayPart.FULL_DAY;
+        return LeaveWorkdayCalculator.calculate(clippedFrom, clippedTo, fromPart, toPart);
     }
 
     private LocalDate max(LocalDate left, LocalDate right) { return left.isAfter(right) ? left : right; }

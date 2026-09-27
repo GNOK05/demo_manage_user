@@ -162,6 +162,8 @@ CREATE TABLE leave_requests (
   type VARCHAR(20) NOT NULL,
   from_date DATE NOT NULL,
   to_date DATE NOT NULL,
+  from_day_part VARCHAR(20) NOT NULL DEFAULT 'FULL_DAY',
+  to_day_part VARCHAR(20) NOT NULL DEFAULT 'FULL_DAY',
   reason VARCHAR(500) NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
   approved_by_id BIGINT NULL,
@@ -186,6 +188,10 @@ CREATE TABLE leave_requests (
   CONSTRAINT fk_leave_admin_approver FOREIGN KEY (admin_approved_by_id) REFERENCES users(id),
   CONSTRAINT fk_leave_canceller FOREIGN KEY (cancelled_by_id) REFERENCES users(id),
   CONSTRAINT chk_leave_type CHECK (type IN ('ANNUAL', 'UNPAID', 'PERSONAL', 'SICK', 'MATERNITY')),
+  CONSTRAINT chk_leave_day_parts CHECK (
+    from_day_part IN ('FULL_DAY', 'MORNING', 'AFTERNOON')
+    AND to_day_part IN ('FULL_DAY', 'MORNING', 'AFTERNOON')
+  ),
   CONSTRAINT chk_leave_status CHECK (status IN ('PENDING', 'PENDING_MANAGER', 'PENDING_ADMIN', 'APPROVED', 'REJECTED', 'REJECTED_MANAGER', 'REJECTED_ADMIN', 'CANCELLED')),
   CONSTRAINT chk_leave_dates CHECK (to_date >= from_date)
 ) ENGINE=InnoDB;

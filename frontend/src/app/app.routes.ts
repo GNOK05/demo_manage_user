@@ -26,5 +26,10 @@ export const routes: Routes = [
   },
   { path: 'attendance', component: AttendanceComponent, canActivate: [authGuard] },
   { path: 'notifications', component: NotificationsComponent, canActivate: [authGuard] },
+  {
+    path: 'settings',
+    loadComponent: () => import('./pages/settings/settings.component').then((module) => module.SettingsComponent),
+    canActivate: [authGuard],
+  },
   { path: '**', redirectTo: '' },
 ];

@@ -6,6 +6,7 @@ import {
   AnnualLeaveBalance,
   AttendanceAdjustment,
   Attendance,
+  DepartmentAttendanceSummary,
   DashboardSummary,
   Department,
   LeaveRequest,
@@ -210,6 +211,14 @@ export class CompanyApiService {
     return this.http
       .get<ApiResponse<Attendance[]>>(`${API}/attendance/department`)
       .pipe(map((r) => r.data));
+  }
+  departmentAttendanceSummary(date: string) {
+    return this.http
+      .get<ApiResponse<DepartmentAttendanceSummary>>(`${API}/attendance/department/summary`, { params: { date } })
+      .pipe(map((r) => r.data));
+  }
+  changePassword(currentPassword: string, newPassword: string) {
+    return this.http.patch<ApiResponse<void>>(`${API}/auth/change-password`, { currentPassword, newPassword });
   }
   employeeAttendance(userId: number, month: number, year: number) {
     return this.http

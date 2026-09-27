@@ -29,6 +29,33 @@
         </div>
       </section>
 
+      <section class="card department-attendance-card" *ngIf="isManager()">
+        <div class="section-top">
+          <div>
+            <p class="eyebrow subtle">Phòng ban của bạn</p>
+            <h2>Chấm công ngày {{ selectedAttendanceDate | date:'dd/MM/yyyy':'':'vi-VN' }}</h2>
+          </div>
+          <label class="attendance-date-filter">
+            Chọn ngày
+            <input type="date" [(ngModel)]="selectedAttendanceDate"
+              [max]="localDate()" (ngModelChange)="loadDepartmentAttendanceSummary()" />
+          </label>
+        </div>
+        <div class="department-attendance-content" *ngIf="departmentAttendanceSummary() as summary; else loadingDepartmentChart">
+          <div class="attendance-ring" [style.background]="departmentAttendanceChart()">
+            <strong>{{ departmentAttendanceRate() }}%</strong>
+            <small>{{ summary.present + summary.late }}/{{ summary.totalEmployees }}</small>
+          </div>
+          <div class="attendance-legend">
+            <span><i class="present"></i>Có mặt <b>{{ summary.present }}</b></span>
+            <span><i class="late"></i>Đi muộn <b>{{ summary.late }}</b></span>
+            <span><i class="absent"></i>Vắng mặt <b>{{ summary.absent }}</b></span>
+            <span><i class="leave"></i>Nghỉ phép <b>{{ summary.leave }}</b></span>
+          </div>
+        </div>
+        <ng-template #loadingDepartmentChart><p class="loading-state">Đang tải dữ liệu chấm công...</p></ng-template>
+      </section>
+
       <section class="card filter-card">
         <div class="section-top">
           <div>
@@ -57,12 +84,12 @@
       <section class="card hierarchy-card">
         <div class="section-top">
           <div>
-            <p class="eyebrow subtle">Cấp 1</p>
-            <h2>Phòng ban</h2>
+            <p class="eyebrow subtle">{{ isAdmin() ? 'Cấp 1' : 'Phạm vi được quản lý' }}</p>
+            <h2>{{ departmentHeading() }}</h2>
           </div>
           <span class="muted">{{ employees().length }} nhân sự</span>
         </div>
-        <div class="tab-strip department-tabs" *ngIf="!loadingDepartments()">
+        <div class="tab-strip department-tabs" *ngIf="isAdmin() && !loadingDepartments()">
           <button
             type="button"
             [class.active]="selectedDepartmentId() === null"
@@ -79,7 +106,7 @@
             {{ department.name }} <span>{{ departmentEmployeeCount(department.id) }}</span>
           </button>
         </div>
-        <p class="loading-state" *ngIf="loadingDepartments()">Đang tải phòng ban...</p>
+        <p class="loading-state" *ngIf="isAdmin() && loadingDepartments()">Đang tải phòng ban...</p>
 
         <div class="employee-tabs-wrap" *ngIf="!loadingEmployees()">
           <p class="eyebrow subtle">Cấp 2 · Nhân viên</p>

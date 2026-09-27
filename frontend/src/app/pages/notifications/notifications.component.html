@@ -10,7 +10,7 @@
       <span class="chip chip-soft" *ngIf="unreadCount()">{{ unreadCount() }} cập nhật mới</span>
     </header>
 
-    <section class="card request-card">
+    <section class="card request-card" *ngIf="!isAdmin()">
       <div class="section-top">
         <div>
           <p class="eyebrow subtle">Yêu cầu</p>
@@ -27,10 +27,10 @@
       </div>
 
       <div class="leave-balance-strip" *ngIf="balance() as leaveBalance">
-        <div><small>Phép năm được cấp</small><strong>{{ leaveBalance.entitledDays }} ngày</strong></div>
-        <div><small>Đã sử dụng</small><strong>{{ leaveBalance.usedDays }} ngày</strong></div>
-        <div><small>Đang chờ duyệt</small><strong>{{ leaveBalance.pendingDays }} ngày</strong></div>
-        <div><small>Còn khả dụng</small><strong>{{ leaveBalance.remainingDays - leaveBalance.pendingDays }} ngày</strong></div>
+        <div><small>Phép năm được cấp</small><strong>{{ leaveBalance.entitledDays | number:'1.0-1' }} ngày</strong></div>
+        <div><small>Đã sử dụng</small><strong>{{ leaveBalance.usedDays | number:'1.0-1' }} ngày</strong></div>
+        <div><small>Đang chờ duyệt</small><strong>{{ leaveBalance.pendingDays | number:'1.0-1' }} ngày</strong></div>
+        <div><small>Còn khả dụng</small><strong>{{ leaveBalance.remainingDays - leaveBalance.pendingDays | number:'1.0-1' }} ngày</strong></div>
       </div>
 
       <div class="form-grid">
@@ -46,7 +46,15 @@
         </label>
         <label>
           Từ ngày
-          <input type="date" [(ngModel)]="draft.fromDate" />
+          <input type="date" [(ngModel)]="draft.fromDate" (ngModelChange)="fromDateChanged()" />
+        </label>
+        <label>
+          Buổi nghỉ ngày bắt đầu
+          <select [(ngModel)]="draft.fromDayPart" (ngModelChange)="fromDatePartChanged()">
+            <option value="FULL_DAY">Cả ngày</option>
+            <option value="MORNING">Buổi sáng (0,5 ngày)</option>
+            <option value="AFTERNOON">Buổi chiều (0,5 ngày)</option>
+          </select>
         </label>
         <p class="leave-policy-note" *ngIf="draft.type === 'ANNUAL'">
           Đơn phép năm chỉ trừ số dư sau khi admin duyệt cuối; ngày nghỉ tính theo thứ Hai đến thứ Sáu.
@@ -56,8 +64,19 @@
         </p>
         <label>
           Đến ngày
-          <input type="date" [(ngModel)]="draft.toDate" />
+          <input type="date" [(ngModel)]="draft.toDate" (ngModelChange)="toDateChanged()" />
         </label>
+        <label *ngIf="draft.toDate !== draft.fromDate">
+          Buổi nghỉ ngày kết thúc
+          <select [(ngModel)]="draft.toDayPart">
+            <option value="FULL_DAY">Cả ngày</option>
+            <option value="MORNING">Buổi sáng (0,5 ngày)</option>
+            <option value="AFTERNOON">Buổi chiều (0,5 ngày)</option>
+          </select>
+        </label>
+        <p class="leave-policy-note full-width">
+          Với đơn nhiều ngày, ngày ở giữa tính đủ; có thể chọn nửa ngày riêng cho ngày đầu/cuối. Chỉ ngày làm việc thứ Hai–thứ Sáu mới được trừ phép.
+        </p>
         <label class="full-width">
           Nguyên nhân & mô tả chi tiết
           <textarea
@@ -159,18 +178,18 @@
       <div class="card panel-card">
         <div class="section-top">
           <div>
-            <p class="eyebrow subtle">Lịch sử cá nhân</p>
-            <h2>Đơn nghỉ của tôi</h2>
+            <p class="eyebrow subtle">{{ isAdmin() ? 'Quy trình duyệt' : 'Lịch sử cá nhân' }}</p>
+            <h2>{{ isAdmin() ? 'Đơn nghỉ cần xử lý' : 'Đơn nghỉ của tôi' }}</h2>
           </div>
         </div>
 
-        <div class="leave-list">
+        <div class="leave-list" *ngIf="!isAdmin()">
           <div class="leave-item" *ngFor="let item of leaveRequests()">
             <div class="leave-head">
               <strong>{{ leaveTypeLabel(item.type) }}</strong>
               <span class="badge {{ item.status.toLowerCase() }}">{{ leaveStatusLabel(item.status) }}</span>
             </div>
-            <p class="leave-type">{{ item.fromDate }} → {{ item.toDate }} · {{ item.requestedWorkdays }} ngày làm việc</p>
+            <p class="leave-type">{{ item.fromDate }} ({{ leaveDayPartLabel(item.fromDayPart) }}) → {{ item.toDate }} ({{ leaveDayPartLabel(item.toDayPart) }}) · {{ item.requestedWorkdays | number:'1.0-1' }} ngày làm việc</p>
             <div class="leave-reason">
               <strong>Nguyên nhân:</strong>
               <p>{{ item.reason }}</p>
@@ -202,7 +221,7 @@
                 <strong>{{ item.userName }} · {{ leaveTypeLabel(item.type) }}</strong>
                 <span class="badge pending">{{ leaveStatusLabel(item.status) }}</span>
               </div>
-              <p class="leave-type">{{ item.fromDate }} → {{ item.toDate }} · {{ item.requestedWorkdays }} ngày làm việc</p>
+              <p class="leave-type">{{ item.fromDate }} ({{ leaveDayPartLabel(item.fromDayPart) }}) → {{ item.toDate }} ({{ leaveDayPartLabel(item.toDayPart) }}) · {{ item.requestedWorkdays | number:'1.0-1' }} ngày làm việc</p>
               <div class="leave-reason"><strong>Nguyên nhân:</strong><p>{{ item.reason }}</p></div>
               <div class="inline-actions">
               <button

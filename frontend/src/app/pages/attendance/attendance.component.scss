@@ -112,6 +112,89 @@
   margin-bottom: 18px;
 }
 
+.department-attendance-card {
+  margin-bottom: 18px;
+}
+
+.attendance-date-filter {
+  width: min(230px, 45%);
+}
+
+.attendance-date-filter input {
+  margin-top: 6px;
+}
+
+.department-attendance-content {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(200px, 1.4fr);
+  align-items: center;
+  gap: 24px;
+  max-width: 560px;
+  margin: 8px auto;
+}
+
+.department-attendance-card .attendance-ring {
+  width: 150px;
+  height: 150px;
+  margin: 12px auto;
+  display: grid;
+  place-content: center;
+  position: relative;
+  border-radius: 50%;
+  text-align: center;
+}
+
+.department-attendance-card .attendance-ring::before {
+  position: absolute;
+  content: '';
+  inset: 14px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.department-attendance-card .attendance-ring strong,
+.department-attendance-card .attendance-ring small {
+  position: relative;
+  z-index: 1;
+}
+
+.department-attendance-card .attendance-ring strong {
+  font-size: 1.6rem;
+}
+
+.department-attendance-card .attendance-ring small {
+  color: var(--muted);
+}
+
+.department-attendance-card .attendance-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.department-attendance-card .attendance-legend span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.department-attendance-card .attendance-legend b {
+  margin-left: auto;
+  color: var(--text);
+}
+
+.department-attendance-card .attendance-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #4354d8;
+}
+
+.department-attendance-card .attendance-legend i.late { background: #f2b640; }
+.department-attendance-card .attendance-legend i.absent { background: #ef6470; }
+.department-attendance-card .attendance-legend i.leave { background: #8f6fe8; }
+
 .personal-attendance-stats {
   margin-top: 18px;
 }

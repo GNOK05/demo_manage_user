@@ -61,6 +61,17 @@ public class UserServiceImpl implements UserService {
         return users.findByUsername(username).orElseThrow(() -> new BussinessException("Current user not found"));
     }
     @Override public UserResponse currentProfile() { return response(currentUser()); }
+    @Override public void changeCurrentPassword(String currentPassword, String newPassword) {
+        User user = currentUser();
+        if (!encoder.matches(currentPassword, user.getPassword())) {
+            throw new BussinessException("Current password is incorrect");
+        }
+        if (encoder.matches(newPassword, user.getPassword())) {
+            throw new BussinessException("New password must be different from the current password");
+        }
+        user.setPassword(encoder.encode(newPassword));
+        users.save(user);
+    }
     @Override @Transactional(readOnly = true) public User findEntity(Long id) { return users.findById(id).orElseThrow(() -> new BussinessException("User not found: " + id)); }
     @Override @Transactional(readOnly = true) public User findEntityByUsername(String username) { return users.findByUsername(username).orElseThrow(() -> new BussinessException("User not found")); }
     @Override public UserResponse toResponse(User user) { return response(user); }

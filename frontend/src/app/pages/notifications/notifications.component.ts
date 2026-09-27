@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth.service';
 import { CompanyApiService } from '../../core/company-api.service';
 import { SidebarComponent } from '../../core/layout/sidebar.component';
-import { AnnualLeaveBalance, LeaveRequest, NotificationItem } from '../../core/models';
+import { AnnualLeaveBalance, LeaveDayPart, LeaveRequest, NotificationItem } from '../../core/models';
 import { finalize } from 'rxjs';
 import { isAttendanceAdjustmentDateAllowed, localDateIso } from '../../core/work-status';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -44,6 +44,8 @@ export class NotificationsComponent implements OnInit {
     type: 'ANNUAL' as LeaveRequest['type'],
     fromDate: localDateIso(),
     toDate: localDateIso(),
+    fromDayPart: 'FULL_DAY' as LeaveDayPart,
+    toDayPart: 'FULL_DAY' as LeaveDayPart,
     reason: '',
   };
 
@@ -89,18 +91,20 @@ export class NotificationsComponent implements OnInit {
         next: (items) => this.notifications.set(items),
         error: () => this.errorMessage.set('Không thể tải thông báo từ máy chủ'),
       });
-    this.loadingLeaveRequests.set(true);
-    this.api
-      .leaveRequests()
-      .pipe(finalize(() => this.loadingLeaveRequests.set(false)))
-      .subscribe({
-        next: (items) => this.leaveRequests.set(items),
-        error: () => this.errorMessage.set('Không thể tải danh sách đơn nghỉ phép'),
+    if (!this.isAdmin()) {
+      this.loadingLeaveRequests.set(true);
+      this.api
+        .leaveRequests()
+        .pipe(finalize(() => this.loadingLeaveRequests.set(false)))
+        .subscribe({
+          next: (items) => this.leaveRequests.set(items),
+          error: () => this.errorMessage.set('Không thể tải danh sách đơn nghỉ phép'),
+        });
+      this.api.annualLeaveBalance(Number(localDateIso().slice(0, 4))).subscribe({
+        next: (balance) => this.balance.set(balance),
+        error: () => this.errorMessage.set('Không thể tải số dư phép năm'),
       });
-    this.api.annualLeaveBalance(Number(localDateIso().slice(0, 4))).subscribe({
-      next: (balance) => this.balance.set(balance),
-      error: () => this.errorMessage.set('Không thể tải số dư phép năm'),
-    });
+    }
     if (this.isPo()) {
       this.loadingPendingRequests.set(true);
       this.api
@@ -121,24 +125,27 @@ export class NotificationsComponent implements OnInit {
     this.errorMessage.set('');
     this.successMessage.set('');
 
-    // Validate dates
-    const fromDate = new Date(`${this.draft.fromDate}T00:00:00`);
-    const toDate = new Date(`${this.draft.toDate}T00:00:00`);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     if (!this.draft.type || !this.draft.fromDate || !this.draft.toDate) {
       this.errorMessage.set('Vui lòng nhập đầy đủ loại nghỉ và thời gian nghỉ');
       return;
     }
 
-    if (fromDate < today) {
+    if (this.draft.fromDate < localDateIso()) {
       this.errorMessage.set('Ngày bắt đầu phải từ hôm nay hoặc sau đó');
       return;
     }
 
-    if (toDate < fromDate) {
+    if (this.draft.toDate < this.draft.fromDate) {
       this.errorMessage.set('Ngày kết thúc phải sau ngày bắt đầu');
+      return;
+    }
+
+    if (this.draft.fromDate === this.draft.toDate) {
+      this.draft.toDayPart = this.draft.fromDayPart;
+    }
+    if ((this.draft.fromDayPart !== 'FULL_DAY' && !this.isWorkdayDate(this.draft.fromDate))
+      || (this.draft.toDayPart !== 'FULL_DAY' && !this.isWorkdayDate(this.draft.toDate))) {
+      this.errorMessage.set('Chỉ chọn nghỉ nửa ngày vào ngày làm việc từ thứ Hai đến thứ Sáu.');
       return;
     }
 
@@ -163,6 +170,8 @@ export class NotificationsComponent implements OnInit {
           this.draft.fromDate = localDateIso();
           this.draft.toDate = localDateIso();
           this.draft.type = 'ANNUAL';
+          this.draft.fromDayPart = 'FULL_DAY';
+          this.draft.toDayPart = 'FULL_DAY';
           this.load();
         },
         error: (err) => {
@@ -224,6 +233,29 @@ export class NotificationsComponent implements OnInit {
       SICK: 'Nghỉ ốm', MATERNITY: 'Nghỉ thai sản' } as Record<LeaveRequest['type'], string>)[type];
   }
 
+  leaveDayPartLabel(part: LeaveDayPart) {
+    return ({ FULL_DAY: 'Cả ngày', MORNING: 'Buổi sáng', AFTERNOON: 'Buổi chiều' } as Record<LeaveDayPart, string>)[part];
+  }
+
+  fromDateChanged() {
+    if (!this.isWorkdayDate(this.draft.fromDate)) this.draft.fromDayPart = 'FULL_DAY';
+    if (this.draft.fromDate === this.draft.toDate) this.draft.toDayPart = this.draft.fromDayPart;
+  }
+
+  fromDatePartChanged() {
+    if (this.draft.fromDate === this.draft.toDate) this.draft.toDayPart = this.draft.fromDayPart;
+  }
+
+  toDateChanged() {
+    if (!this.isWorkdayDate(this.draft.toDate)) this.draft.toDayPart = 'FULL_DAY';
+    if (this.draft.fromDate === this.draft.toDate) this.draft.toDayPart = this.draft.fromDayPart;
+  }
+
+  isWorkdayDate(date: string) {
+    const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+    return weekday !== 0 && weekday !== 6;
+  }
+
   submitAdjustment() {
     const draft = this.adjustmentDraft;
     if (!isAttendanceAdjustmentDateAllowed(draft.date)) {
@@ -280,6 +312,10 @@ export class NotificationsComponent implements OnInit {
 
   unreadCount() {
     return this.notifications().filter((item) => item.unread).length;
+  }
+
+  isAdmin() {
+    return this.auth.user()?.role === 'ADMIN';
   }
 
   markRead(item: NotificationItem) {

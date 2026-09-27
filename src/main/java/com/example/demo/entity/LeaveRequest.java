@@ -30,6 +30,14 @@ public class LeaveRequest {
     @Column(name = "to_date", nullable = false)
     private LocalDate toDate;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "from_day_part", nullable = false, length = 20)
+    private LeaveDayPart fromDayPart = LeaveDayPart.FULL_DAY;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "to_day_part", nullable = false, length = 20)
+    private LeaveDayPart toDayPart = LeaveDayPart.FULL_DAY;
+
     @Column(nullable = false, length = 500)
     private String reason;
 

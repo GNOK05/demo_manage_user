@@ -84,6 +84,15 @@ export interface Attendance {
   sessions?: { id?: number; checkInTime: string; checkOutTime?: string }[];
 }
 
+export interface DepartmentAttendanceSummary {
+  date: string;
+  totalEmployees: number;
+  present: number;
+  late: number;
+  absent: number;
+  leave: number;
+}
+
 export type LeaveStatus =
   | 'PENDING'
   | 'PENDING_MANAGER'
@@ -95,6 +104,7 @@ export type LeaveStatus =
   | 'CANCELLED';
 
 export type LeaveType = 'ANNUAL' | 'UNPAID' | 'PERSONAL' | 'SICK' | 'MATERNITY';
+export type LeaveDayPart = 'FULL_DAY' | 'MORNING' | 'AFTERNOON';
 
 export interface LeaveRequest {
   id: number;
@@ -103,6 +113,8 @@ export interface LeaveRequest {
   type: LeaveType;
   fromDate: string;
   toDate: string;
+  fromDayPart: LeaveDayPart;
+  toDayPart: LeaveDayPart;
   reason: string;
   status: LeaveStatus;
   createdAt: string;
@@ -135,7 +147,7 @@ export interface PayrollMonthlyReport {
     username: string;
     fullName: string;
     department: string;
-    workDays: number;
+      workDays: number;
     payrollWorkDays: number;
     lateDays: number;
     absentDays: number;

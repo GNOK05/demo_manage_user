@@ -6,6 +6,7 @@ import com.example.demo.exception.BussinessException;
 import com.example.demo.repository.AnnualLeaveBalanceRepository;
 import com.example.demo.repository.LeaveRequestRepository;
 import com.example.demo.service.LeaveRequestService;
+import com.example.demo.service.LeaveWorkdayCalculator;
 import com.example.demo.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.DayOfWeek;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 
@@ -21,6 +22,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 @Transactional
 public class LeaveRequestServiceImpl implements LeaveRequestService {
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private final LeaveRequestRepository leaveRequests;
     private final AnnualLeaveBalanceRepository balances;
     private final UserService userService;
@@ -29,20 +31,25 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     public LeaveRequestDto.Response create(LeaveRequestDto.SaveRequest request) {
         User current = userService.currentUser();
         validateRequest(request, current);
+        LeaveDayPart fromPart = dayPart(request.fromDayPart());
+        LeaveDayPart toPart = dayPart(request.toDayPart());
+        validateDayParts(request.fromDate(), request.toDate(), fromPart, toPart);
 
         LeaveRequest entity = new LeaveRequest();
         entity.setUser(current);
         entity.setType(request.type());
         entity.setFromDate(request.fromDate());
         entity.setToDate(request.toDate());
+        entity.setFromDayPart(fromPart);
+        entity.setToDayPart(toPart);
         entity.setReason(request.reason());
         entity.setStatus(current.getRole() == Role.MANAGER
             ? LeaveRequestStatus.PENDING_ADMIN : LeaveRequestStatus.PENDING_MANAGER);
         if (current.getRole() == Role.MANAGER) {
             entity.setManagerApprovedBy(current);
-            entity.setManagerApprovedAt(LocalDateTime.now());
+            entity.setManagerApprovedAt(LocalDateTime.now(BUSINESS_ZONE));
         }
-        int requestedWorkdays = workdays(request.fromDate(), request.toDate());
+        double requestedWorkdays = requestedWorkdays(request.fromDate(), request.toDate(), fromPart, toPart);
         if (requestedWorkdays == 0) throw new BussinessException("Leave request must include at least one working day");
         if (request.type() == LeaveRequestType.ANNUAL) {
             if (request.fromDate().getYear() != request.toDate().getYear()) {
@@ -113,7 +120,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
             throw new BussinessException("You cannot approve your own leave request");
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(BUSINESS_ZONE);
         if (current.getRole() == Role.MANAGER) {
             verifyManagerDepartment(current, request.getUser());
             if (request.getStatus() != LeaveRequestStatus.PENDING_MANAGER && request.getStatus() != LeaveRequestStatus.PENDING) {
@@ -129,7 +136,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
             }
             if (status == LeaveRequestStatus.APPROVED && request.getType() == LeaveRequestType.ANNUAL) {
                 LeaveRequestDto.BalanceResponse balance = balance(request.getUser(), request.getFromDate().getYear());
-                if (balance.usedDays() + workdays(request.getFromDate(), request.getToDate()) > balance.entitledDays()) {
+                if (balance.usedDays() + balance.pendingDays() > balance.entitledDays()) {
                     throw new BussinessException("Insufficient annual leave balance");
                 }
             }
@@ -155,7 +162,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
         if (!request.getUser().getId().equals(current.getId())) {
             throw new BussinessException("You can only cancel your own leave requests");
         }
-        if (!request.getFromDate().isAfter(LocalDate.now())) {
+        if (!request.getFromDate().isAfter(LocalDate.now(BUSINESS_ZONE))) {
             throw new BussinessException("Only leave requests starting in the future can be cancelled");
         }
         if (request.getStatus() != LeaveRequestStatus.PENDING && request.getStatus() != LeaveRequestStatus.PENDING_MANAGER
@@ -164,7 +171,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
         }
         request.setStatus(LeaveRequestStatus.CANCELLED);
         request.setCancelledBy(current);
-        request.setCancelledAt(LocalDateTime.now());
+        request.setCancelledAt(LocalDateTime.now(BUSINESS_ZONE));
         return toResponse(leaveRequests.save(request));
     }
 
@@ -218,22 +225,46 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
                         && !request.getFromDate().isAfter(last) && !request.getToDate().isBefore(first))
                 .toList();
         double used = annualRequests.stream().filter(request -> request.getStatus() == LeaveRequestStatus.APPROVED)
-                .mapToInt(request -> workdays(request.getFromDate().isBefore(first) ? first : request.getFromDate(),
-                        request.getToDate().isAfter(last) ? last : request.getToDate())).sum();
+                .mapToDouble(request -> requestedWorkdays(request, first, last)).sum();
         double pending = annualRequests.stream().filter(request -> request.getStatus() == LeaveRequestStatus.PENDING
                         || request.getStatus() == LeaveRequestStatus.PENDING_MANAGER
                         || request.getStatus() == LeaveRequestStatus.PENDING_ADMIN)
-                .mapToInt(request -> workdays(request.getFromDate().isBefore(first) ? first : request.getFromDate(),
-                        request.getToDate().isAfter(last) ? last : request.getToDate())).sum();
+                .mapToDouble(request -> requestedWorkdays(request, first, last)).sum();
         return new LeaveRequestDto.BalanceResponse(user.getId(), user.getFullName(), year,
                 record.getEntitledDays(), used, pending, Math.max(0, record.getEntitledDays() - used));
     }
 
-    private int workdays(LocalDate from, LocalDate to) {
-        if (from.isAfter(to)) return 0;
-        return (int) from.datesUntil(to.plusDays(1))
-                .filter(date -> date.getDayOfWeek() != DayOfWeek.SATURDAY && date.getDayOfWeek() != DayOfWeek.SUNDAY)
-                .count();
+    private double requestedWorkdays(LeaveRequest request) {
+        return LeaveWorkdayCalculator.calculate(request.getFromDate(), request.getToDate(),
+                dayPart(request.getFromDayPart()), dayPart(request.getToDayPart()));
+    }
+
+    private double requestedWorkdays(LeaveRequest request, LocalDate rangeStart, LocalDate rangeEnd) {
+        LocalDate from = request.getFromDate().isBefore(rangeStart) ? rangeStart : request.getFromDate();
+        LocalDate to = request.getToDate().isAfter(rangeEnd) ? rangeEnd : request.getToDate();
+        LeaveDayPart fromPart = from.equals(request.getFromDate()) ? dayPart(request.getFromDayPart()) : LeaveDayPart.FULL_DAY;
+        LeaveDayPart toPart = to.equals(request.getToDate()) ? dayPart(request.getToDayPart()) : LeaveDayPart.FULL_DAY;
+        return LeaveWorkdayCalculator.calculate(from, to, fromPart, toPart);
+    }
+
+    private void validateDayParts(LocalDate from, LocalDate to, LeaveDayPart fromPart, LeaveDayPart toPart) {
+        if (from.equals(to) && fromPart != toPart) {
+            throw new BussinessException("A single-day request must use the same leave part for both boundaries");
+        }
+        if (!LeaveWorkdayCalculator.isWorkday(from) && fromPart != LeaveDayPart.FULL_DAY) {
+            throw new BussinessException("A half-day part can only be selected on a working day");
+        }
+        if (!LeaveWorkdayCalculator.isWorkday(to) && toPart != LeaveDayPart.FULL_DAY) {
+            throw new BussinessException("A half-day part can only be selected on a working day");
+        }
+    }
+
+    private LeaveDayPart dayPart(LeaveDayPart part) {
+        return part == null ? LeaveDayPart.FULL_DAY : part;
+    }
+
+    private double requestedWorkdays(LocalDate from, LocalDate to, LeaveDayPart fromPart, LeaveDayPart toPart) {
+        return LeaveWorkdayCalculator.calculate(from, to, fromPart, toPart);
     }
 
     private void verifyManagerDepartment(User manager, User employee) {
@@ -248,7 +279,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
             throw new BussinessException("From date must be before or equal to to date");
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(BUSINESS_ZONE);
         if (request.fromDate().isBefore(today)) {
             throw new BussinessException("Leave request dates must be today or in the future");
         }
@@ -271,6 +302,8 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
                 request.getType(),
                 request.getFromDate(),
                 request.getToDate(),
+                dayPart(request.getFromDayPart()),
+                dayPart(request.getToDayPart()),
                 request.getReason(),
                 request.getStatus(),
                 approvedByName,
@@ -279,7 +312,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
                 request.getAdminApprovedBy() == null ? null : request.getAdminApprovedBy().getFullName(),
                 request.getRejectionReason(),
                 request.getCancelledAt(),
-                workdays(request.getFromDate(), request.getToDate())
+                requestedWorkdays(request)
         );
     }
 }
