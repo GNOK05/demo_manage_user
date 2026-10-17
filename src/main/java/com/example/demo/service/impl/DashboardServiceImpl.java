@@ -48,7 +48,7 @@ public class DashboardServiceImpl implements DashboardService {
             visibleProjects = projects.findAll();
             visibleTasks = tasks.findAll();
             visibleAttendance = attendance.findAll();
-        } else if (current.getRole() == Role.MANAGER && current.getDepartment() != null) {
+        } else if (current.getRole().canReviewPeopleInDepartment() && current.getDepartment() != null) {
             visibleUsers = users.findByDepartmentId(current.getDepartment().getId());
             visibleProjects = projects.findByDepartmentId(current.getDepartment().getId());
             visibleTasks = visibleProjects.stream()
@@ -78,7 +78,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .count();
         long pendingLeaveRequests = current.getRole() == Role.ADMIN
                 ? leaveRequests.findByStatusOrderByCreatedAtDesc(com.example.demo.entity.LeaveRequestStatus.PENDING).size()
-                : current.getRole() == Role.MANAGER && current.getDepartment() != null
+                : current.getRole().canReviewPeopleInDepartment() && current.getDepartment() != null
                     ? leaveRequests.findByUserDepartmentIdOrderByCreatedAtDesc(current.getDepartment().getId()).stream()
                         .filter(request -> request.getStatus() == com.example.demo.entity.LeaveRequestStatus.PENDING).count()
                     : 0;

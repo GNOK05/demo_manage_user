@@ -70,19 +70,19 @@ export class AttendanceComponent implements OnInit {
   }
 
   title() {
-    return this.auth.user()?.role === 'ADMIN' ? 'Chấm công toàn công ty' : 'Chấm công phòng ban';
+    return this.auth.hasRole(['ADMIN', 'HR']) ? 'Chấm công toàn công ty' : 'Chấm công phòng ban';
   }
 
   isSelf() {
-    return this.auth.user()?.role === 'EMPLOYEE';
+    return this.auth.hasRole(['MEMBER', 'QA', 'VIEWER']);
   }
 
   localDate() {
     return localDateIso();
   }
 
-  isManager() { return this.auth.user()?.role === 'MANAGER'; }
-  isAdmin() { return this.auth.user()?.role === 'ADMIN'; }
+  isManager() { return this.auth.hasRole(['PROJECT_MANAGER', 'TEAM_LEAD']); }
+  isAdmin() { return this.auth.hasRole(['ADMIN', 'HR']); }
 
   private loadMyLeaveData() {
     const year = Number(localDateIso().slice(0, 4));
@@ -192,7 +192,7 @@ export class AttendanceComponent implements OnInit {
     this.loadingEmployees.set(true);
     this.errorMessage.set('');
     const request =
-      this.auth.user()?.role === 'ADMIN'
+      this.auth.hasRole(['ADMIN', 'HR'])
         ? this.api.users(this.search(), this.selectedDepartmentId())
         : this.api.departmentMembers(this.search());
     request

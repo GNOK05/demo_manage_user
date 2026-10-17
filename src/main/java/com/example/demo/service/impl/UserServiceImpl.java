@@ -24,6 +24,8 @@ import lombok.RequiredArgsConstructor;
 public class UserServiceImpl implements UserService {
     private final UserRepository users; private final DepartmentRepository departments; private final PasswordEncoder encoder;
     @Override public UserResponse create(UserDto.SaveRequest r) {
+        User current = currentUser();
+        validateRoleAssignment(current, r.role());
         if (users.existsByUsername(r.username())) throw new BussinessException("Username already exists");
         if (users.existsByEmail(r.email())) throw new BussinessException("Email already exists");
         User u = new User(); u.setUsername(r.username()); u.setPassword(encoder.encode(r.password()));
@@ -32,8 +34,18 @@ public class UserServiceImpl implements UserService {
         return response(users.save(u));
     }
     @Override public UserResponse update(Long id, UserDto.UpdateRequest r) {
-        User u = findEntity(id); u.setFullName(r.fullName()); u.setEmail(r.email()); u.setPhone(r.phone());
-        if (r.role() != null) u.setRole(r.role()); if (r.departmentId() != null) u.setDepartment(department(r.departmentId()));
+        User current = currentUser();
+        User u = findEntity(id);
+        if (current.getRole() == Role.HR && (u.getRole() == Role.ADMIN || u.getRole() == Role.HR)) {
+            throw new AccessDeniedException("HR cannot edit ADMIN or HR accounts.");
+        }
+        if (r.role() != null && r.role() != u.getRole()) validateRoleAssignment(current, r.role());
+        users.findByEmail(r.email()).filter(existing -> !existing.getId().equals(id)).ifPresent(existing -> {
+            throw new BussinessException("Email already exists");
+        });
+        u.setFullName(r.fullName()); u.setEmail(r.email()); u.setPhone(r.phone());
+        if (r.role() != null) u.setRole(r.role());
+        if (r.departmentId() != null) u.setDepartment(department(r.departmentId()));
         if (r.jobTitle() != null) u.setJobTitle(r.jobTitle());
         if (r.password() != null && !r.password().isBlank()) u.setPassword(encoder.encode(r.password())); return response(u);
     }
@@ -45,7 +57,7 @@ public class UserServiceImpl implements UserService {
         if (current.getId().equals(target.getId()) || roleRank(current.getRole()) <= roleRank(target.getRole())) {
             throw new AccessDeniedException("You do not have permission to delete this user.");
         }
-        if (current.getRole() == Role.MANAGER
+        if (current.getRole() != Role.ADMIN && current.getRole() != Role.HR
                 && (current.getDepartment() == null || target.getDepartment() == null
                 || !current.getDepartment().getId().equals(target.getDepartment().getId()))) {
             throw new AccessDeniedException("You can only delete users in your department.");
@@ -54,7 +66,24 @@ public class UserServiceImpl implements UserService {
     }
 
     private int roleRank(Role role) {
-        return role == Role.ADMIN ? 3 : role == Role.MANAGER ? 2 : 1;
+        return switch (role) {
+            case ADMIN -> 7;
+            case HR -> 6;
+            case PROJECT_MANAGER -> 5;
+            case TEAM_LEAD -> 4;
+            case QA -> 3;
+            case MEMBER -> 2;
+            case VIEWER -> 1;
+        };
+    }
+
+    private void validateRoleAssignment(User current, Role requestedRole) {
+        if (!current.getRole().canManageUsers()) {
+            throw new AccessDeniedException("You do not have permission to manage users.");
+        }
+        if (current.getRole() == Role.HR && (requestedRole == Role.ADMIN || requestedRole == Role.HR)) {
+            throw new AccessDeniedException("HR cannot assign ADMIN or HR roles.");
+        }
     }
     @Override @Transactional(readOnly = true) public User currentUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();

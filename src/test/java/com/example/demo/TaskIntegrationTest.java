@@ -109,14 +109,58 @@ public class TaskIntegrationTest {
                 "taskName", "Integration Task",
                 "description", "full",
                 "projectId", projId,
+                "startDate", LocalDate.now().toString(),
                 "deadline", LocalDate.now().plusDays(7).toString(),
-                "status", "TODO"
+                "status", "TODO",
+                "priority", "URGENT",
+                "estimatedHours", 12,
+                "acceptanceCriteria", "All automated tests pass"
         ));
 
-        mockMvc.perform(post("/api/v1/tasks").contentType(MediaType.APPLICATION_JSON).content(taskBody)
+        var taskResult = mockMvc.perform(post("/api/v1/tasks").contentType(MediaType.APPLICATION_JSON).content(taskBody)
                 .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.taskName").value("Integration Task"));
+                .andExpect(jsonPath("$.data.taskName").value("Integration Task"))
+                .andExpect(jsonPath("$.data.priority").value("URGENT"))
+                .andExpect(jsonPath("$.data.status").value("BACKLOG"))
+                .andExpect(jsonPath("$.data.estimatedHours").value(12))
+                .andExpect(jsonPath("$.data.acceptanceCriteria").value("All automated tests pass"))
+                .andReturn();
+
+        long taskId = mapper.readTree(taskResult.getResponse().getContentAsString()).at("/data/id").asLong();
+        mockMvc.perform(patch("/api/v1/tasks/{id}/status", taskId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"TODO\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/v1/tasks/{id}/status", taskId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"BLOCKED\"}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/status", taskId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"BLOCKED\",\"blockedReason\":\"Waiting for API access\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("BLOCKED"))
+                .andExpect(jsonPath("$.data.blockedReason").value("Waiting for API access"));
+
+        mockMvc.perform(get("/api/v1/tasks")
+                        .param("keyword", "Integration Task")
+                        .param("priority", "URGENT")
+                        .param("status", "BLOCKED")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(taskId));
+
+        mockMvc.perform(get("/api/v1/tasks")
+                        .param("keyword", "Integration Task")
+                        .param("overdue", "true")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isEmpty());
     }
 
         @Test
@@ -125,7 +169,7 @@ public class TaskIntegrationTest {
 
                 mockMvc.perform(get("/api/v1/tasks")
                                                 .param("keyword", "engineer")
-                                                .param("role", "EMPLOYEE")
+                                                .param("role", "MEMBER")
                                                 .param("status", "IN_PROGRESS")
                                                 .param("sort", "DEADLINE_ASC")
                                                 .header("Authorization", "Bearer " + token))
@@ -135,8 +179,8 @@ public class TaskIntegrationTest {
         }
 
         @Test
-        void managerMustCheckOutBeforeCompletingAssignedTask() throws Exception {
-                String body = mapper.writeValueAsString(Map.of("username", "manager_1", "password", "lead123"));
+        void taskCannotSkipWorkflowStages() throws Exception {
+                String body = mapper.writeValueAsString(Map.of("username", "lead_1", "password", "lead123"));
                 var loginResult = mockMvc.perform(post("/api/v1/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON).content(body))
                         .andExpect(status().isOk()).andReturn();
@@ -152,14 +196,9 @@ public class TaskIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON).content(statusBody))
                         .andExpect(status().isBadRequest());
 
-                mockMvc.perform(post("/api/v1/attendance/check-in").header("Authorization", "Bearer " + token))
-                        .andExpect(status().isOk());
-                mockMvc.perform(post("/api/v1/attendance/check-out").header("Authorization", "Bearer " + token))
-                        .andExpect(status().isOk());
                 mockMvc.perform(patch("/api/v1/tasks/{id}/status", taskId)
                                 .header("Authorization", "Bearer " + token)
                                 .contentType(MediaType.APPLICATION_JSON).content(statusBody))
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.data.status").value("DONE"));
+                        .andExpect(status().isBadRequest());
         }
 }

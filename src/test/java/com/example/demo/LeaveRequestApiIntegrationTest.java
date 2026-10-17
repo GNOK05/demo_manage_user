@@ -29,7 +29,7 @@ class LeaveRequestApiIntegrationTest {
 
     @Test
     void employeeCanSubmitAndManagerCanApproveUsingDecisionPayload() throws Exception {
-                String employeeToken = login("dev_1_1", "dev123");
+                String employeeToken = login("member_1_1", "member123");
         String requestBody = mapper.writeValueAsString(Map.of(
                 "type", "ANNUAL",
                 "fromDate", LocalDate.now().plusDays(2).toString(),
@@ -47,12 +47,12 @@ class LeaveRequestApiIntegrationTest {
         long requestId = mapper.readTree(createResult.getResponse().getContentAsString()).at("/data/id").asLong();
 
         mockMvc.perform(patch("/api/v1/leave-requests/{id}/approve", requestId)
-                        .header("Authorization", "Bearer " + login("manager_1", "lead123"))
+                        .header("Authorization", "Bearer " + login("lead_1", "lead123"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"APPROVED\"}"))
                 .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.status").value("PENDING_ADMIN"))
-                        .andExpect(jsonPath("$.data.managerApprovedBy").value("Engineering Manager"));
+                .andExpect(jsonPath("$.data.managerApprovedBy").value("Engineering Team Lead"));
 
                 mockMvc.perform(patch("/api/v1/leave-requests/{id}/approve", requestId)
                                 .header("Authorization", "Bearer " + login("admin", "admin123"))
@@ -65,7 +65,7 @@ class LeaveRequestApiIntegrationTest {
 
             @Test
             void employeeCanCancelFutureLeaveWithoutApprovalAndAnnualBalanceIsReported() throws Exception {
-                                String employeeToken = login("dev_1_2", "dev123");
+                                String employeeToken = login("member_1_2", "member123");
                 String requestBody = mapper.writeValueAsString(Map.of(
                         "type", "ANNUAL",
                         "fromDate", LocalDate.now().plusDays(10).toString(),
@@ -124,7 +124,7 @@ class LeaveRequestApiIntegrationTest {
                         .andExpect(jsonPath("$.data.usedDays").value(0.0));
 
         mockMvc.perform(patch("/api/v1/leave-requests/{id}/approve", requestId)
-                                .header("Authorization", "Bearer " + login("manager_1", "lead123"))
+                                .header("Authorization", "Bearer " + login("lead_1", "lead123"))
                                 .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"APPROVED\"}"))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.status").value("PENDING_ADMIN"));
@@ -147,7 +147,7 @@ class LeaveRequestApiIntegrationTest {
                                 .header("Authorization", "Bearer " + employeeToken))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.employees[0].annualLeaveDays").value(0.5))
-                        .andExpect(jsonPath("$.data.employees[0].payrollWorkDays").value(0.5));
+                        .andExpect(jsonPath("$.data.employees[0].payrollWorkDays").value(5.5));
     }
 
     @Test

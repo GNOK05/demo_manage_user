@@ -2,6 +2,88 @@
   display: block;
 }
 
+.task-criteria,
+.blocked-reason {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.blocked-reason {
+  padding: 8px;
+  border-radius: 6px;
+  color: #9a3412;
+  background: #fff7ed;
+}
+
+.priority-badge {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.priority-HIGH {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.priority-URGENT {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.overdue-label {
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: #b91c1c;
+  background: #fef2f2;
+  font-weight: 700;
+}
+
+.toolbar .overdue-filter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.overdue-filter input {
+  width: auto;
+}
+
+.task-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+
+.summary-item {
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.overdue-summary,
+.urgent-summary {
+  color: #b91c1c;
+}
+
+.blocked-summary {
+  color: #9a3412;
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -120,7 +202,8 @@
 
 .board {
   display: grid;
-  grid-template-columns: repeat(4, minmax(250px, 1fr));
+  grid-template-columns: repeat(5, minmax(220px, 1fr));
+  overflow-x: auto;
   gap: 16px;
   margin-bottom: 32px;
 }
@@ -159,6 +242,10 @@
 }
 
 .task-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 8px;
 }
 
@@ -225,7 +312,7 @@
 
 @media (max-width: 1200px) {
   .board {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, minmax(230px, 1fr));
   }
 }
 

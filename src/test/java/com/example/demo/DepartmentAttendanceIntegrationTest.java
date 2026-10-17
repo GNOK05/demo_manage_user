@@ -29,14 +29,14 @@ class DepartmentAttendanceIntegrationTest {
     @Test
     void managerCanViewHistoricalDepartmentAttendanceSummary() throws Exception {
         LocalDate pastDate = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusDays(2);
-        String token = login("manager_1", "lead123");
+        String token = login("lead_1", "lead123");
 
         mockMvc.perform(get("/api/v1/attendance/department/summary")
                         .param("date", pastDate.toString())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.date").value(pastDate.toString()))
-                .andExpect(jsonPath("$.data.totalEmployees").value(9))
+                .andExpect(jsonPath("$.data.totalEmployees").value(7))
                 .andExpect(jsonPath("$.data.absent").isNumber())
                 .andExpect(jsonPath("$.data.present").isNumber())
                 .andExpect(jsonPath("$.data.late").isNumber())
@@ -45,8 +45,8 @@ class DepartmentAttendanceIntegrationTest {
 
     @Test
     void employeeCannotReadDepartmentSummaryAndFutureDateIsRejected() throws Exception {
-        String manager = login("manager_1", "lead123");
-        String employee = login("dev_1_1", "dev123");
+        String manager = login("lead_1", "lead123");
+        String employee = login("member_1_1", "member123");
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
 
         mockMvc.perform(get("/api/v1/attendance/department/summary")
@@ -69,7 +69,7 @@ class DepartmentAttendanceIntegrationTest {
 
         mockMvc.perform(get("/api/v1/attendance/department/summary")
                         .param("date", leaveDate.toString())
-                        .header("Authorization", "Bearer " + login("manager_1", "lead123")))
+                        .header("Authorization", "Bearer " + login("lead_1", "lead123")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.leave").value(1));
     }

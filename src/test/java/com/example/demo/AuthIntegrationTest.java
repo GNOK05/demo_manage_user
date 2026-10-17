@@ -61,8 +61,8 @@ public class AuthIntegrationTest {
 
     @Test
     void authenticatedUserCanChangeAndRestoreOwnPassword() throws Exception {
-        String username = "dev_15_2";
-        String currentPassword = "dev123";
+        String username = "member_15_2";
+        String currentPassword = "member123";
         String replacementPassword = "change-me-123";
         String token = login(username, currentPassword);
 
@@ -97,7 +97,7 @@ public class AuthIntegrationTest {
     void changePasswordRequiresAuthentication() throws Exception {
         mockMvc.perform(patch("/api/v1/auth/change-password")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"currentPassword\":\"dev123\",\"newPassword\":\"new-pass-123\"}"))
+                        .content("{\"currentPassword\":\"member123\",\"newPassword\":\"new-pass-123\"}"))
                 .andExpect(status().isForbidden());
     }
 

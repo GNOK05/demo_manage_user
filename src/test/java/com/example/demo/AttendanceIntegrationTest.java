@@ -43,7 +43,7 @@ class AttendanceIntegrationTest {
 
     @Test
     void employeeCanCheckInAndOutMultipleTimesInOneDay() throws Exception {
-        String token = login("dev_1_1", "dev123");
+        String token = login("member_1_1", "member123");
 
         var firstCheckIn = mockMvc.perform(post("/api/v1/attendance/check-in").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -73,7 +73,7 @@ class AttendanceIntegrationTest {
 
     @Test
     void legacyAttendanceHistoryGetsSessionIdsForCorrectionRequests() throws Exception {
-        User employee = users.findByUsername("dev_1_2").orElseThrow();
+        User employee = users.findByUsername("member_1_2").orElseThrow();
         LocalDate legacyDate = LocalDate.of(2001, 1, 2);
         Attendance legacyRecord = attendance.findByUserIdAndDate(employee.getId(), legacyDate).orElseGet(() -> {
             Attendance record = new Attendance();
@@ -87,7 +87,7 @@ class AttendanceIntegrationTest {
         org.junit.jupiter.api.Assertions.assertNotNull(legacyRecord.getId());
 
         var response = mockMvc.perform(get("/api/v1/attendance/my")
-                        .header("Authorization", "Bearer " + login("dev_1_2", "dev123")))
+                        .header("Authorization", "Bearer " + login("member_1_2", "member123")))
                 .andExpect(status().isOk())
                 .andReturn();
         var records = mapper.readTree(response.getResponse().getContentAsString()).at("/data");

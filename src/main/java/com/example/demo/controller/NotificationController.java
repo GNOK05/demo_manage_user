@@ -53,7 +53,7 @@ public class NotificationController {
 
         if (current.getRole() == Role.ADMIN) {
             appendPending(result, id, leaveRequests.findByStatusOrderByCreatedAtDesc(LeaveRequestStatus.PENDING));
-        } else if (current.getRole() == Role.MANAGER && current.getDepartment() != null) {
+        } else if (current.getRole().canReviewPeopleInDepartment() && current.getDepartment() != null) {
             appendPending(result, id, leaveRequests.findByUserDepartmentIdOrderByCreatedAtDesc(current.getDepartment().getId()));
         }
 

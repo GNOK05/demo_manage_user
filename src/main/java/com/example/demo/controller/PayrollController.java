@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 @RestController
 @RequestMapping("/api/v1/payroll")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN','MANAGER','EMPLOYEE')")
+@PreAuthorize("hasAnyRole('ADMIN','HR','PROJECT_MANAGER','TEAM_LEAD','MEMBER','QA','VIEWER')")
 public class PayrollController {
     private final PayrollService payroll;
 
@@ -28,7 +28,7 @@ public class PayrollController {
     }
 
     @GetMapping(value = "/monthly.xlsx", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','PROJECT_MANAGER','TEAM_LEAD')")
     public ResponseEntity<byte[]> excel(@RequestParam int year, @RequestParam int month) {
         String filename = "payroll-inputs-%04d-%02d.xlsx".formatted(year, month);
         return ResponseEntity.ok()

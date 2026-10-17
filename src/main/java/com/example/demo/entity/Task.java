@@ -17,8 +17,13 @@ public class Task {
     /** QA/QC/Tester assigned to verify this task, independent of the implementer in {@link #assignedTo}. */
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "tester_id") private User tester;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "created_by_id", nullable = false) private User createdBy;
-    @Enumerated(EnumType.STRING) @Column(nullable = false) private TaskStatus status = TaskStatus.TODO;
+    @Enumerated(EnumType.STRING) @Column(nullable = false) private TaskStatus status = TaskStatus.BACKLOG;
+    @Enumerated(EnumType.STRING) @Column(nullable = false, length = 16) private TaskPriority priority = TaskPriority.NORMAL;
+    @Column(name = "start_date", nullable = false) private LocalDate startDate;
     @Column(nullable = false) private LocalDate deadline;
+    @Column(name = "estimated_hours") private Integer estimatedHours;
+    @Column(name = "acceptance_criteria", length = 2000) private String acceptanceCriteria;
+    @Column(name = "blocked_reason", length = 500) private String blockedReason;
     @Column(name = "created_at", nullable = false, updatable = false) private LocalDateTime createdAt;
     @Column(name = "updated_at", nullable = false) private LocalDateTime updatedAt;
     @Version @Column(nullable = false) private Long version;

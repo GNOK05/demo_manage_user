@@ -49,11 +49,11 @@ public class AttendanceAdjustmentServiceImpl implements AttendanceAdjustmentServ
         Attendance parent = session.getAttendance();
         User target = parent.getUser();
         ensurePeriodOpen(parent.getDate());
-        if (current.getRole() == Role.EMPLOYEE) {
+        if (!current.getRole().canReviewPeopleInDepartment() && current.getRole() != Role.ADMIN) {
             if (!target.getId().equals(current.getId()) || input.userId() != null && !input.userId().equals(current.getId())) {
                 throw new BussinessException("Employees can only request corrections to their own attendance");
             }
-        } else if (current.getRole() == Role.MANAGER) {
+        } else if (current.getRole().canReviewPeopleInDepartment()) {
             verifyManagerDepartment(current, target);
             if (input.userId() != null && !input.userId().equals(target.getId())) {
                 throw new BussinessException("Session does not belong to the selected employee");
@@ -85,7 +85,7 @@ public class AttendanceAdjustmentServiceImpl implements AttendanceAdjustmentServ
         request.setRequestedCheckIn(input.requestedCheckIn());
         request.setRequestedCheckOut(input.requestedCheckOut());
         request.setReason(input.reason().trim());
-        if (current.getRole() == Role.MANAGER) {
+        if (current.getRole().canReviewPeopleInDepartment()) {
             request.setStatus(AttendanceAdjustmentStatus.PENDING_ADMIN);
             if (!current.getId().equals(target.getId())) {
                 request.setManagerApprovedBy(current);
@@ -108,7 +108,7 @@ public class AttendanceAdjustmentServiceImpl implements AttendanceAdjustmentServ
     @Transactional(readOnly = true)
     public List<AttendanceAdjustmentDto.Response> pending() {
         User current = users.currentUser();
-        if (current.getRole() != Role.ADMIN && current.getRole() != Role.MANAGER) {
+        if (current.getRole() != Role.ADMIN && !current.getRole().canReviewPeopleInDepartment()) {
             throw new BussinessException("Only managers and admins can review attendance corrections");
         }
         AttendanceAdjustmentStatus stage = current.getRole() == Role.ADMIN
@@ -132,7 +132,7 @@ public class AttendanceAdjustmentServiceImpl implements AttendanceAdjustmentServ
         if (request.getUser().getId().equals(current.getId()) || request.getRequestedBy().getId().equals(current.getId())) {
             throw new BussinessException("You cannot approve your own attendance correction");
         }
-        if (current.getRole() == Role.MANAGER) {
+        if (current.getRole().canReviewPeopleInDepartment()) {
             verifyManagerDepartment(current, request.getUser());
             if (request.getStatus() != AttendanceAdjustmentStatus.PENDING_MANAGER) {
                 throw new BussinessException("This correction is not waiting for manager approval");

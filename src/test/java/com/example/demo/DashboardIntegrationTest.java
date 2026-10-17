@@ -27,7 +27,7 @@ class DashboardIntegrationTest {
     void adminReceivesCompanyDashboardSummary() throws Exception {
         mockMvc.perform(get("/api/v1/dashboard/summary").header("Authorization", "Bearer " + login("admin", "admin123")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalEmployees").value(136))
+                .andExpect(jsonPath("$.data.totalEmployees").value(107))
                 .andExpect(jsonPath("$.data.totalDepartments").value(15))
                 .andExpect(jsonPath("$.data.totalProjects").value(45))
                 .andExpect(jsonPath("$.data.totalTasks").value(180));
@@ -35,7 +35,7 @@ class DashboardIntegrationTest {
 
     @Test
     void employeeReceivesScopedDashboardSummary() throws Exception {
-        mockMvc.perform(get("/api/v1/dashboard/summary").header("Authorization", "Bearer " + login("dev_1_1", "dev123")))
+        mockMvc.perform(get("/api/v1/dashboard/summary").header("Authorization", "Bearer " + login("member_1_1", "member123")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalEmployees").value(1))
                 .andExpect(jsonPath("$.data.totalDepartments").value(1))
@@ -44,9 +44,9 @@ class DashboardIntegrationTest {
 
     @Test
     void managerReceivesDepartmentDashboardSummary() throws Exception {
-        mockMvc.perform(get("/api/v1/dashboard/summary").header("Authorization", "Bearer " + login("manager_1", "lead123")))
+        mockMvc.perform(get("/api/v1/dashboard/summary").header("Authorization", "Bearer " + login("lead_1", "lead123")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalEmployees").value(9))
+                .andExpect(jsonPath("$.data.totalEmployees").value(7))
                 .andExpect(jsonPath("$.data.totalDepartments").value(1))
                 .andExpect(jsonPath("$.data.totalProjects").value(3))
                 .andExpect(jsonPath("$.data.totalTasks").value(12));

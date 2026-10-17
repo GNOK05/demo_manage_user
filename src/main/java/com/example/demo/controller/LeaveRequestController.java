@@ -25,13 +25,13 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','PROJECT_MANAGER','TEAM_LEAD')")
     public ApiResponse<List<LeaveRequestDto.Response>> user(@PathVariable Long userId) {
         return ApiResponse.ok(service.requestsForUser(userId));
     }
 
     @GetMapping("/pending")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','PROJECT_MANAGER','TEAM_LEAD')")
     public ApiResponse<List<LeaveRequestDto.Response>> pending() {
         return ApiResponse.ok(service.pendingForApproval());
     }
@@ -42,7 +42,7 @@ public class LeaveRequestController {
     }
 
     @PatchMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','PROJECT_MANAGER','TEAM_LEAD')")
     public ApiResponse<LeaveRequestDto.Response> approve(
             @PathVariable Long id,
             @Valid @RequestBody LeaveRequestDto.DecisionRequest request) {
@@ -60,7 +60,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/balance/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','PROJECT_MANAGER','TEAM_LEAD')")
     public ApiResponse<LeaveRequestDto.BalanceResponse> userBalance(@PathVariable Long userId, @RequestParam int year) {
         return ApiResponse.ok(service.userBalance(userId, year));
     }

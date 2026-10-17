@@ -9,6 +9,7 @@ import {
   Role,
   Task,
   TaskSaveRequest,
+  TaskPriority,
   TaskSort,
   TaskStatus,
   User,
@@ -23,13 +24,16 @@ import { localDateIso } from '../../core/work-status';
   styleUrl: './task-board.component.scss',
 })
 export class TaskBoardComponent implements OnInit {
-  statuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'REVIEW'];
+  statuses: TaskStatus[] = ['BACKLOG', 'TODO', 'IN_PROGRESS', 'REVIEW', 'TESTING', 'BLOCKED', 'DONE', 'CANCELLED'];
+  priorities: TaskPriority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
   tasks = signal<Task[]>([]);
   employees = signal<User[]>([]);
   projects = signal<Project[]>([]);
   search = signal('');
   selectedRole = signal<Role | ''>('');
   selectedStatus = signal<TaskStatus | ''>('');
+  selectedPriority = signal<TaskPriority | ''>('');
+  selectedOverdue = signal(false);
   selectedSort = signal<TaskSort>('DEFAULT');
   selectedTask: Task | null = null;
   errorMessage = signal('');
@@ -44,7 +48,9 @@ export class TaskBoardComponent implements OnInit {
     projectId: null,
     assignedToId: null,
     testerId: null,
-    status: 'TODO',
+    status: 'BACKLOG',
+    priority: 'NORMAL',
+    startDate: localDateIso(),
     deadline: localDateIso(),
   };
 
@@ -55,14 +61,17 @@ export class TaskBoardComponent implements OnInit {
 
   ngOnInit() {
     this.load();
-    if (this.auth.hasRole(['ADMIN', 'MANAGER'])) {
-      const usersRequest = this.auth.hasRole(['ADMIN'])
-        ? this.api.users()
-        : this.api.departmentMembers();
-      usersRequest.subscribe({
-        next: (x) => this.employees.set(x),
-        error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tải nhân sự'),
-      });
+    if (this.canCreateTask()) {
+      if (this.auth.hasRole(['MEMBER', 'QA'])) {
+        const current = this.auth.user();
+        this.employees.set(current ? [current] : []);
+      } else {
+        const usersRequest = this.auth.hasRole(['ADMIN']) ? this.api.users() : this.api.departmentMembers();
+        usersRequest.subscribe({
+          next: (x) => this.employees.set(x),
+          error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tải nhân sự'),
+        });
+      }
       this.api.projects().subscribe({
         next: (projects) => {
           this.projects.set(projects);
@@ -81,6 +90,8 @@ export class TaskBoardComponent implements OnInit {
         this.selectedRole() || null,
         this.selectedStatus() || null,
         this.selectedSort(),
+        this.selectedPriority() || null,
+        this.selectedOverdue(),
       )
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
@@ -99,10 +110,17 @@ export class TaskBoardComponent implements OnInit {
 
   move(t: Task, status: TaskStatus) {
     if (this.operationLoading()) return;
+    const blockedReason = status === 'BLOCKED'
+      ? window.prompt('Nhập lý do công việc bị chặn')
+      : undefined;
+    if (status === 'BLOCKED' && (!blockedReason || !blockedReason.trim())) {
+      this.load();
+      return;
+    }
     this.errorMessage.set('');
     this.operationLoading.set(true);
     this.api
-      .updateTaskStatus(t.id, status)
+      .updateTaskStatus(t.id, status, blockedReason?.trim())
       .pipe(finalize(() => this.operationLoading.set(false)))
       .subscribe({
         next: () => {
@@ -128,7 +146,12 @@ export class TaskBoardComponent implements OnInit {
       assignedToId: task.assignedToId ?? null,
       testerId: task.testerId ?? null,
       status: task.status,
+      priority: task.priority,
+      startDate: task.startDate,
       deadline: task.deadline,
+      estimatedHours: task.estimatedHours ?? null,
+      acceptanceCriteria: task.acceptanceCriteria ?? '',
+      blockedReason: task.blockedReason ?? '',
     };
     this.taskModalOpen.set(true);
   }
@@ -161,7 +184,12 @@ export class TaskBoardComponent implements OnInit {
       assignedToId: this.draft.assignedToId || null,
       testerId: this.draft.testerId || null,
       status: this.draft.status,
+      priority: this.draft.priority,
+      startDate: this.draft.startDate,
       deadline: this.draft.deadline,
+      estimatedHours: this.draft.estimatedHours ?? null,
+      acceptanceCriteria: this.draft.acceptanceCriteria,
+      blockedReason: this.draft.blockedReason,
     };
 
     if (this.selectedTask) {
@@ -252,17 +280,46 @@ export class TaskBoardComponent implements OnInit {
       projectId: null,
       assignedToId: null,
       testerId: null,
-      status: 'TODO',
+      status: 'BACKLOG',
+      priority: 'NORMAL',
+      startDate: localDateIso(),
       deadline: localDateIso(),
     };
   }
 
   isPo() {
-    return this.auth.hasRole(['ADMIN', 'MANAGER']);
+    return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER', 'TEAM_LEAD']);
   }
 
   isAdmin() {
-    return this.auth.hasRole(['ADMIN']);
+    return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER', 'TEAM_LEAD']);
+  }
+
+  allowedStatuses(task: Task): TaskStatus[] {
+    const transitions: Record<TaskStatus, TaskStatus[]> = {
+      BACKLOG: ['TODO', 'CANCELLED'],
+      TODO: ['IN_PROGRESS', 'BACKLOG', 'BLOCKED', 'CANCELLED'],
+      IN_PROGRESS: ['REVIEW', 'BLOCKED', 'CANCELLED'],
+      REVIEW: ['TESTING', 'IN_PROGRESS', 'BLOCKED', 'CANCELLED'],
+      TESTING: ['DONE', 'IN_PROGRESS', 'BLOCKED', 'CANCELLED'],
+      BLOCKED: ['TODO', 'IN_PROGRESS', 'CANCELLED'],
+      DONE: [],
+      CANCELLED: [],
+    };
+    return [task.status, ...transitions[task.status]];
+  }
+
+  canCreateTask() {
+    return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER', 'TEAM_LEAD', 'MEMBER', 'QA']);
+  }
+
+  canEditTask(task: Task) {
+    const userId = this.auth.user()?.id;
+    return this.isPo() || !!userId && [task.assignedToId, task.testerId, task.createdById].includes(userId);
+  }
+
+  canMoveTask(task: Task) {
+    return this.canEditTask(task) && !['DONE', 'CANCELLED'].includes(task.status);
   }
 
   onEmployeeSelected() {
@@ -273,6 +330,46 @@ export class TaskBoardComponent implements OnInit {
     const project = this.projects().find((item) => item.id === Number(this.draft.projectId));
     if (project) {
       this.draft.projectId = project.id;
+      const startDate = this.draft.startDate || project.startDate;
+      if (startDate < project.startDate || startDate > project.endDate) {
+        this.draft.startDate = project.startDate;
+      }
+      if (this.draft.deadline < project.startDate || this.draft.deadline > project.endDate) {
+        this.draft.deadline = project.endDate;
+      }
     }
+  }
+
+  statusLabel(status: TaskStatus) {
+    return {
+      BACKLOG: 'Backlog',
+      TODO: 'Chưa bắt đầu',
+      IN_PROGRESS: 'Đang thực hiện',
+      REVIEW: 'Chờ review',
+      TESTING: 'Đang kiểm thử',
+      BLOCKED: 'Bị chặn',
+      DONE: 'Hoàn thành',
+      CANCELLED: 'Đã huỷ',
+    }[status];
+  }
+
+  priorityLabel(priority: TaskPriority) {
+    return { LOW: 'Thấp', NORMAL: 'Bình thường', HIGH: 'Cao', URGENT: 'Khẩn cấp' }[priority];
+  }
+
+  isOverdue(task: Task) {
+    return task.status !== 'DONE' && task.deadline < localDateIso();
+  }
+
+  countOverdue() {
+    return this.tasks().filter((task) => this.isOverdue(task)).length;
+  }
+
+  countBlocked() {
+    return this.tasks().filter((task) => task.status === 'BLOCKED').length;
+  }
+
+  countUrgent() {
+    return this.tasks().filter((task) => task.priority === 'URGENT').length;
   }
 }

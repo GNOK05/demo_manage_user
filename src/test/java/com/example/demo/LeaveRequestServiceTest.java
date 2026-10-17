@@ -43,7 +43,7 @@ class LeaveRequestServiceTest {
     void shouldCreatePendingLeaveRequestForEmployee() {
         User employee = new User();
         employee.setId(10L);
-        employee.setRole(Role.EMPLOYEE);
+        employee.setRole(Role.MEMBER);
         employee.setFullName("Alice");
 
         when(userService.currentUser()).thenReturn(employee);
@@ -70,7 +70,7 @@ class LeaveRequestServiceTest {
     void managerApprovalMustBeFollowedByAdminApproval() {
         User manager = new User();
         manager.setId(20L);
-        manager.setRole(Role.MANAGER);
+        manager.setRole(Role.TEAM_LEAD);
         manager.setFullName("PO Nguyen");
         Department department = new Department();
         department.setId(1L);
@@ -109,7 +109,7 @@ class LeaveRequestServiceTest {
     void managerWithoutDepartmentCannotApprove() {
         User manager = new User();
         manager.setId(20L);
-        manager.setRole(Role.MANAGER);
+        manager.setRole(Role.TEAM_LEAD);
         LeaveRequest request = pendingRequest(99L, 10L);
         when(userService.currentUser()).thenReturn(manager);
         when(leaveRequestRepository.findById(99L)).thenReturn(Optional.of(request));
@@ -122,7 +122,7 @@ class LeaveRequestServiceTest {
     void requesterCannotApproveOwnLeave() {
         User employee = new User();
         employee.setId(10L);
-        employee.setRole(Role.MANAGER);
+        employee.setRole(Role.TEAM_LEAD);
         Department department = new Department();
         department.setId(1L);
         employee.setDepartment(department);

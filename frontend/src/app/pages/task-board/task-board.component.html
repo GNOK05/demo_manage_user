@@ -9,7 +9,7 @@
       </div>
       <div class="header-actions">
         <span class="chip chip-soft">{{ tasks().length }} nhiệm vụ</span>
-        <button type="button" *ngIf="isPo()" (click)="openCreate()">Thêm công việc</button>
+        <button type="button" *ngIf="canCreateTask()" (click)="openCreate()">Thêm công việc</button>
       </div>
     </header>
 
@@ -22,7 +22,7 @@
     </div>
 
     <!-- PO/Admin Task Management Panel -->
-    <div class="modal-backdrop" *ngIf="isPo() && taskModalOpen()">
+    <div class="modal-backdrop" *ngIf="canCreateTask() && taskModalOpen()">
       <section class="card manager-panel modal-card">
         <div class="section-top">
           <div>
@@ -56,17 +56,25 @@
             </select>
           </label>
           <label>
+            Ngày bắt đầu
+            <input type="date" [(ngModel)]="draft.startDate" />
+          </label>
+          <label>
             Hạn chót
             <input type="date" [(ngModel)]="draft.deadline" />
           </label>
           <label>
-            Trạng thái
-            <select [(ngModel)]="draft.status">
-              <option value="TODO">Chưa bắt đầu</option>
-              <option value="IN_PROGRESS">Đang thực hiện</option>
-              <option value="DONE">Hoàn thành</option>
-              <option value="REVIEW">Cần review</option>
+            Mức ưu tiên
+            <select [(ngModel)]="draft.priority">
+              <option value="LOW">Thấp</option>
+              <option value="NORMAL">Bình thường</option>
+              <option value="HIGH">Cao</option>
+              <option value="URGENT">Khẩn cấp</option>
             </select>
+          </label>
+          <label>
+            Ước lượng (giờ)
+            <input type="number" min="1" max="1000" step="1" [(ngModel)]="draft.estimatedHours" />
           </label>
           <label class="full-width">
             Mô tả chi tiết
@@ -77,6 +85,16 @@
               maxlength="2000"
             ></textarea>
             <small class="field-hint">{{ (draft.description || '').length }}/2000</small>
+          </label>
+          <label class="full-width">
+            Tiêu chí nghiệm thu / checklist
+            <textarea
+              [(ngModel)]="draft.acceptanceCriteria"
+              rows="3"
+              maxlength="2000"
+              placeholder="Mô tả điều kiện để xác nhận công việc hoàn tất"
+            ></textarea>
+            <small class="field-hint">{{ (draft.acceptanceCriteria || '').length }}/2000</small>
           </label>
         </div>
 
@@ -140,16 +158,37 @@
       <select [ngModel]="selectedRole()" (ngModelChange)="selectedRole.set($event); searchTasks()">
         <option value="">Tất cả vai trò</option>
         <option value="ADMIN">ADMIN</option>
-        <option value="MANAGER">MANAGER</option>
-        <option value="EMPLOYEE">EMPLOYEE</option>
+        <option value="HR">HR</option>
+        <option value="PROJECT_MANAGER">PROJECT MANAGER</option>
+        <option value="TEAM_LEAD">TEAM LEAD</option>
+        <option value="MEMBER">MEMBER</option>
+        <option value="QA">QA</option>
+        <option value="VIEWER">VIEWER</option>
       </select>
       <select
         [ngModel]="selectedStatus()"
         (ngModelChange)="selectedStatus.set($event); searchTasks()"
       >
         <option value="">Tất cả trạng thái</option>
-        <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
+        <option *ngFor="let status of statuses" [value]="status">{{ statusLabel(status) }}</option>
       </select>
+      <select
+        [ngModel]="selectedPriority()"
+        (ngModelChange)="selectedPriority.set($event); searchTasks()"
+      >
+        <option value="">Mọi mức ưu tiên</option>
+        <option *ngFor="let priority of priorities" [value]="priority">
+          {{ priorityLabel(priority) }}
+        </option>
+      </select>
+      <label class="overdue-filter">
+        <input
+          type="checkbox"
+          [ngModel]="selectedOverdue()"
+          (ngModelChange)="selectedOverdue.set($event); searchTasks()"
+        />
+        Chỉ quá hạn
+      </label>
       <select [ngModel]="selectedSort()" (ngModelChange)="selectedSort.set($event); searchTasks()">
         <option value="DEFAULT">Mặc định</option>
         <option value="NEWEST">Mới nhất</option>
@@ -162,24 +201,44 @@
       <button type="button" (click)="searchTasks()" [disabled]="loading()">Tìm kiếm</button>
     </section>
 
+    <section class="task-summary">
+      <span class="summary-item">Tổng {{ tasks().length }}</span>
+      <span class="summary-item overdue-summary">Quá hạn {{ countOverdue() }}</span>
+      <span class="summary-item blocked-summary">Bị chặn {{ countBlocked() }}</span>
+      <span class="summary-item urgent-summary">Khẩn cấp {{ countUrgent() }}</span>
+    </section>
+
     <!-- Task Board -->
     <section class="board">
       <p class="loading-state" *ngIf="loading()">Đang tải công việc...</p>
       <div class="column" *ngFor="let status of statuses">
-        <h2 class="column-title">{{ status }}</h2>
+        <h2 class="column-title">{{ statusLabel(status) }}</h2>
 
         <article class="task" *ngFor="let task of items(status)">
           <div class="task-header">
             <strong class="task-name">{{ task.taskName }}</strong>
+            <span class="priority-badge" [class]="'priority-' + task.priority">
+              {{ priorityLabel(task.priority) }}
+            </span>
           </div>
           <p class="task-project">{{ task.projectName }}</p>
-          <small class="task-deadline">📅 Hạn: {{ task.deadline }}</small>
+          <small class="task-deadline">📅 {{ task.startDate }} → {{ task.deadline }}</small>
+          <small class="task-deadline overdue-label" *ngIf="isOverdue(task)">Quá hạn</small>
+          <small class="task-deadline" *ngIf="task.estimatedHours">
+            ⏱ Ước lượng: {{ task.estimatedHours }} giờ
+          </small>
+          <p class="task-criteria" *ngIf="task.acceptanceCriteria">
+            <strong>Tiêu chí:</strong> {{ task.acceptanceCriteria }}
+          </p>
+          <p class="blocked-reason" *ngIf="task.blockedReason">
+            <strong>Lý do bị chặn:</strong> {{ task.blockedReason }}
+          </p>
           <small class="task-assignee" *ngIf="task.assignedToName">
             👤 Phụ trách: {{ task.assignedToName }}
           </small>
 
           <div class="task-actions">
-            <button type="button" class="secondary small" (click)="editTask(task)" *ngIf="isPo()">
+            <button type="button" class="secondary small" (click)="editTask(task)" *ngIf="canEditTask(task)">
               Sửa
             </button>
             <button
@@ -192,16 +251,13 @@
             </button>
           </div>
 
-          <select
+          <select *ngIf="canMoveTask(task)"
             [value]="task.status"
             (change)="move(task, $any($event.target).value)"
             [disabled]="operationLoading()"
             class="status-select"
           >
-            <option value="TODO">Chưa bắt đầu</option>
-            <option value="IN_PROGRESS">Đang thực hiện</option>
-            <option value="DONE">Hoàn thành</option>
-            <option value="REVIEW">Cần review</option>
+            <option *ngFor="let status of allowedStatuses(task)" [value]="status">{{ statusLabel(status) }}</option>
           </select>
         </article>
 

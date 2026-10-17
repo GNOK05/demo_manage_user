@@ -42,7 +42,7 @@ CREATE TABLE users (
   KEY idx_user_department_status (department_id, account_status),
   KEY idx_user_role (role),
   CONSTRAINT fk_user_department FOREIGN KEY (department_id) REFERENCES departments(id),
-  CONSTRAINT chk_user_role CHECK (role IN ('ADMIN', 'MANAGER', 'EMPLOYEE')),
+  CONSTRAINT chk_user_role CHECK (role IN ('ADMIN', 'HR', 'PROJECT_MANAGER', 'TEAM_LEAD', 'MEMBER', 'QA', 'VIEWER')),
   CONSTRAINT chk_user_account_status CHECK (account_status IN ('ACTIVE', 'INACTIVE', 'LOCKED'))
 ) ENGINE=InnoDB;
 
@@ -138,8 +138,13 @@ CREATE TABLE tasks (
   assigned_to_id BIGINT NULL,
   tester_id BIGINT NULL,
   created_by_id BIGINT NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'TODO',
+  status VARCHAR(20) NOT NULL DEFAULT 'BACKLOG',
+  priority VARCHAR(16) NOT NULL DEFAULT 'NORMAL',
+  start_date DATE NOT NULL,
   deadline DATE NOT NULL,
+  estimated_hours INT NULL,
+  acceptance_criteria VARCHAR(2000) NULL,
+  blocked_reason VARCHAR(500) NULL,
   completed_at DATETIME(6) NULL,
   created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
@@ -153,7 +158,10 @@ CREATE TABLE tasks (
   CONSTRAINT fk_task_assignee FOREIGN KEY (assigned_to_id) REFERENCES users(id),
   CONSTRAINT fk_task_tester FOREIGN KEY (tester_id) REFERENCES users(id),
   CONSTRAINT fk_task_creator FOREIGN KEY (created_by_id) REFERENCES users(id),
-  CONSTRAINT chk_task_status CHECK (status IN ('TODO', 'IN_PROGRESS', 'DONE', 'REVIEW'))
+  CONSTRAINT chk_task_status CHECK (status IN ('BACKLOG', 'TODO', 'IN_PROGRESS', 'REVIEW', 'TESTING', 'BLOCKED', 'DONE', 'CANCELLED')),
+  CONSTRAINT chk_task_priority CHECK (priority IN ('LOW', 'NORMAL', 'HIGH', 'URGENT')),
+  CONSTRAINT chk_task_dates CHECK (deadline >= start_date),
+  CONSTRAINT chk_task_estimated_hours CHECK (estimated_hours IS NULL OR estimated_hours BETWEEN 1 AND 1000)
 ) ENGINE=InnoDB;
 
 CREATE TABLE leave_requests (

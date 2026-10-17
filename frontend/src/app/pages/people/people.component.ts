@@ -25,14 +25,14 @@ export class PeopleComponent implements OnInit {
   attendanceRecords = signal<import('../../core/models').Attendance[]>([]);
   modal = signal<'create' | 'edit' | 'delete' | null>(null);
   draftPassword = '';
-  readonly roles: Role[] = ['ADMIN', 'MANAGER', 'EMPLOYEE'];
+  readonly roles: Role[] = ['ADMIN', 'HR', 'PROJECT_MANAGER', 'TEAM_LEAD', 'MEMBER', 'QA', 'VIEWER'];
   selectedUser: User | null = null;
   draft: User = {
     id: 0,
     username: '',
     fullName: '',
     email: '',
-    role: 'EMPLOYEE',
+    role: 'MEMBER',
     jobTitle: 'Nhân viên',
     departmentName: 'Phòng ban',
   };
@@ -49,11 +49,11 @@ export class PeopleComponent implements OnInit {
   load() {
     this.loading.set(true);
     this.errorMessage.set('');
-    const isAdmin = this.auth.user()?.role === 'ADMIN';
-    const peopleRequest = isAdmin
+    const canViewAll = this.auth.hasRole(['ADMIN', 'HR']);
+    const peopleRequest = canViewAll
       ? this.api.users(this.search(), this.selectedDepartmentId())
       : this.api.departmentMembers(this.search());
-    const attendanceRequest = isAdmin ? this.api.allAttendance() : this.api.departmentAttendance();
+    const attendanceRequest = canViewAll ? this.api.allAttendance() : this.api.departmentAttendance();
     this.api.departments().subscribe({
       next: (departments) => this.departments.set(departments),
       error: () => this.errorMessage.set('Không thể tải danh sách phòng ban.'),
@@ -180,7 +180,7 @@ export class PeopleComponent implements OnInit {
   canDelete(user: User) {
     const current = this.auth.user();
     if (!current || current.id === user.id) return false;
-    const rank = (role: Role) => (role === 'ADMIN' ? 3 : role === 'MANAGER' ? 2 : 1);
+    const rank = (role: Role) => ({ ADMIN: 7, HR: 6, PROJECT_MANAGER: 5, TEAM_LEAD: 4, QA: 3, MEMBER: 2, VIEWER: 1 })[role];
     return rank(current.role) > rank(user.role);
   }
 
@@ -193,7 +193,7 @@ export class PeopleComponent implements OnInit {
       username: '',
       fullName: '',
       email: '',
-      role: 'EMPLOYEE',
+      role: 'MEMBER',
       jobTitle: 'Nhân viên',
       departmentName: 'Phòng ban',
     };

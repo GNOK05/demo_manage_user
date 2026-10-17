@@ -43,9 +43,9 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
         entity.setFromDayPart(fromPart);
         entity.setToDayPart(toPart);
         entity.setReason(request.reason());
-        entity.setStatus(current.getRole() == Role.MANAGER
+        entity.setStatus(current.getRole().canReviewPeopleInDepartment()
             ? LeaveRequestStatus.PENDING_ADMIN : LeaveRequestStatus.PENDING_MANAGER);
-        if (current.getRole() == Role.MANAGER) {
+        if (current.getRole().canReviewPeopleInDepartment()) {
             entity.setManagerApprovedBy(current);
             entity.setManagerApprovedAt(LocalDateTime.now(BUSINESS_ZONE));
         }
@@ -77,7 +77,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     public List<LeaveRequestDto.Response> requestsForUser(Long userId) {
         User current = userService.currentUser();
         User selected = userService.findEntity(userId);
-        if (current.getRole() == Role.MANAGER) verifyManagerDepartment(current, selected);
+        if (current.getRole().canReviewPeopleInDepartment()) verifyManagerDepartment(current, selected);
         else if (current.getRole() != Role.ADMIN && !current.getId().equals(selected.getId())) {
             throw new BussinessException("You can only view your own leave requests");
         }
@@ -93,7 +93,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
             return leaveRequests.findByStatusOrderByCreatedAtDesc(LeaveRequestStatus.PENDING_ADMIN).stream().map(this::toResponse).toList();
         }
 
-        if (current.getRole() == Role.MANAGER && current.getDepartment() != null) {
+        if (current.getRole().canReviewPeopleInDepartment() && current.getDepartment() != null) {
             return leaveRequests.findByUserDepartmentIdOrderByCreatedAtDesc(current.getDepartment().getId()).stream()
                     .filter(r -> r.getStatus() == LeaveRequestStatus.PENDING_MANAGER || r.getStatus() == LeaveRequestStatus.PENDING)
                     .map(this::toResponse)
@@ -121,7 +121,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
         }
 
         LocalDateTime now = LocalDateTime.now(BUSINESS_ZONE);
-        if (current.getRole() == Role.MANAGER) {
+        if (current.getRole().canReviewPeopleInDepartment()) {
             verifyManagerDepartment(current, request.getUser());
             if (request.getStatus() != LeaveRequestStatus.PENDING_MANAGER && request.getStatus() != LeaveRequestStatus.PENDING) {
                 throw new BussinessException("This request is not waiting for manager approval");
@@ -184,7 +184,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     public LeaveRequestDto.BalanceResponse userBalance(Long userId, int year) {
         User current = userService.currentUser();
         User selected = userService.findEntity(userId);
-        if (current.getRole() == Role.MANAGER) verifyManagerDepartment(current, selected);
+        if (current.getRole().canReviewPeopleInDepartment()) verifyManagerDepartment(current, selected);
         else if (current.getRole() != Role.ADMIN && !current.getId().equals(selected.getId())) {
             throw new BussinessException("You can only view your own annual leave balance");
         }
@@ -268,7 +268,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     }
 
     private void verifyManagerDepartment(User manager, User employee) {
-        if (manager.getRole() != Role.MANAGER || manager.getDepartment() == null || employee.getDepartment() == null
+        if (!manager.getRole().canReviewPeopleInDepartment() || manager.getDepartment() == null || employee.getDepartment() == null
                 || !manager.getDepartment().getId().equals(employee.getDepartment().getId())) {
             throw new BussinessException("You can only manage leave requests in your department");
         }

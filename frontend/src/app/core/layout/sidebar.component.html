@@ -6,8 +6,8 @@
 
   <nav class="nav" aria-label="Điều hướng chính">
     <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span class="nav-icon">⊞</span>Tổng quan</a>
-    <a *ngIf="auth.hasRole(['ADMIN', 'MANAGER'])" routerLink="/people" routerLinkActive="active"><span class="nav-icon">♧</span>{{ peopleLabel }}</a>
-    <a *ngIf="auth.hasRole(['ADMIN', 'MANAGER'])" routerLink="/projects" routerLinkActive="active"><span class="nav-icon">▣</span>Dự án</a>
+    <a *ngIf="auth.hasRole(['ADMIN', 'HR', 'PROJECT_MANAGER', 'TEAM_LEAD'])" routerLink="/people" routerLinkActive="active"><span class="nav-icon">♧</span>{{ peopleLabel }}</a>
+    <a *ngIf="!auth.hasRole(['HR'])" routerLink="/projects" routerLinkActive="active"><span class="nav-icon">▣</span>Dự án</a>
     <a routerLink="/attendance" routerLinkActive="active"><span class="nav-icon">◷</span>{{ attendanceLabel }}</a>
     <a routerLink="/tasks" routerLinkActive="active"><span class="nav-icon">✓</span>Quản lý công việc</a>
     <a routerLink="/notifications" routerLinkActive="active"><span class="nav-icon">♧</span>Thông báo <span class="nav-badge" *ngIf="notificationCount()">{{ notificationCount() }}</span></a>
@@ -18,7 +18,7 @@
       <span class="user-avatar">{{ (auth.user()?.fullName || 'U').charAt(0).toUpperCase() }}</span>
       <div>
         <strong>{{ auth.user()?.fullName || 'Người dùng' }}</strong>
-        <small>{{ auth.user()?.jobTitle || auth.user()?.role || 'EMPLOYEE' }}</small>
+        <small>{{ auth.user()?.jobTitle || auth.user()?.role || 'MEMBER' }}</small>
       </div>
     </div>
     <a class="account-settings" routerLink="/settings" routerLinkActive="active">Thiết lập tài khoản</a>

@@ -57,7 +57,7 @@ export class NotificationsComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.isPo.set(this.auth.hasRole(['ADMIN', 'MANAGER']));
+    this.isPo.set(this.auth.hasRole(['ADMIN', 'HR', 'PROJECT_MANAGER', 'TEAM_LEAD']));
     this.route.queryParamMap.subscribe((params) => {
       const sessionId = Number(params.get('adjustmentSessionId'));
       const userId = Number(params.get('adjustmentUserId'));

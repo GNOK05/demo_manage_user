@@ -1,5 +1,6 @@
-export type Role = 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
-export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'REVIEW';
+export type Role = 'ADMIN' | 'HR' | 'PROJECT_MANAGER' | 'TEAM_LEAD' | 'MEMBER' | 'QA' | 'VIEWER';
+export type TaskStatus = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'TESTING' | 'BLOCKED' | 'DONE' | 'CANCELLED';
+export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 export type TaskSort =
   'DEFAULT' | 'NEWEST' | 'OLDEST' | 'DEADLINE_ASC' | 'DEADLINE_DESC' | 'NAME_ASC' | 'NAME_DESC';
 export interface User {
@@ -61,8 +62,14 @@ export interface Task {
   assignedToName?: string;
   testerId?: number;
   testerName?: string;
+  createdById?: number;
   status: TaskStatus;
+  startDate: string;
   deadline: string;
+  priority: TaskPriority;
+  estimatedHours?: number;
+  acceptanceCriteria?: string;
+  blockedReason?: string;
 }
 export interface TaskSaveRequest {
   taskName: string;
@@ -71,7 +78,12 @@ export interface TaskSaveRequest {
   assignedToId: number | null;
   testerId: number | null;
   status?: TaskStatus;
+  startDate?: string;
   deadline: string;
+  priority?: TaskPriority;
+  estimatedHours?: number | null;
+  acceptanceCriteria?: string;
+  blockedReason?: string;
 }
 export interface Attendance {
   id: number;

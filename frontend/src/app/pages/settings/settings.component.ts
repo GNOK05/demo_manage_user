@@ -42,7 +42,7 @@ export class SettingsComponent implements OnInit {
   }
 
   roleLabel(role?: User['role']) {
-    return ({ ADMIN: 'Quản trị viên', MANAGER: 'Quản lý', EMPLOYEE: 'Nhân viên' } as Record<User['role'], string>)[role ?? 'EMPLOYEE'];
+    return ({ ADMIN: 'Quản trị viên', HR: 'Nhân sự', PROJECT_MANAGER: 'Quản lý dự án', TEAM_LEAD: 'Trưởng nhóm', MEMBER: 'Thành viên', QA: 'Kiểm thử', VIEWER: 'Chỉ xem' } as Record<User['role'], string>)[role ?? 'MEMBER'];
   }
 
   changePassword() {

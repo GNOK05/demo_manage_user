@@ -37,7 +37,8 @@ export class SidebarComponent implements OnInit {
   get attendanceLabel(): string {
     const role = this.auth.user()?.role;
     if (role === 'ADMIN') return 'Chấm công toàn công ty';
-    if (role === 'MANAGER') return 'Chấm công phòng ban';
+    if (role === 'HR') return 'Chấm công toàn công ty';
+    if (['PROJECT_MANAGER', 'TEAM_LEAD'].includes(role || '')) return 'Chấm công phòng ban';
     return 'Chấm công cá nhân';
   }
 }

@@ -5,11 +5,11 @@
     <header class="page-header">
       <div>
         <p class="eyebrow">
-          {{ auth.user()?.role === 'ADMIN' ? 'Quản trị hệ thống' : 'Quản lý phòng ban' }}
+          {{ auth.hasRole(['ADMIN', 'HR']) ? 'Quản trị nhân sự' : 'Quản lý phòng ban' }}
         </p>
         <h1>Quản Lý Nhân Sự</h1>
       </div>
-      <button type="button" *ngIf="auth.hasRole(['ADMIN'])" (click)="openCreate()">
+      <button type="button" *ngIf="auth.hasRole(['ADMIN', 'HR'])" (click)="openCreate()">
         Thêm nhân sự
       </button>
     </header>
@@ -131,7 +131,7 @@
             <button
               type="button"
               class="secondary small"
-              *ngIf="auth.hasRole(['ADMIN'])"
+              *ngIf="auth.hasRole(['ADMIN', 'HR'])"
               (click)="editUser(person)"
             >
               Sửa

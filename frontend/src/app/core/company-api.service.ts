@@ -14,6 +14,7 @@ import {
   PayrollMonthlyReport,
   Project,
   Task,
+  TaskPriority,
   TaskSaveRequest,
   TaskSort,
   TaskStatus,
@@ -137,6 +138,8 @@ export class CompanyApiService {
     role?: string | null,
     status?: TaskStatus | null,
     sort: TaskSort = 'DEFAULT',
+    priority?: TaskPriority | null,
+    overdue = false,
   ) {
     return this.http
       .get<ApiResponse<Task[]>>(`${API}/tasks`, {
@@ -144,6 +147,8 @@ export class CompanyApiService {
           keyword: keyword.trim(),
           ...(role ? { role } : {}),
           ...(status ? { status } : {}),
+          ...(priority ? { priority } : {}),
+          ...(overdue ? { overdue: true } : {}),
           sort,
         },
       })
@@ -163,9 +168,9 @@ export class CompanyApiService {
   deleteTask(id: number) {
     return this.http.delete<void>(`${API}/tasks/${id}`);
   }
-  updateTaskStatus(id: number, status: TaskStatus) {
+  updateTaskStatus(id: number, status: TaskStatus, blockedReason?: string) {
     return this.http
-      .patch<ApiResponse<Task>>(`${API}/tasks/${id}/status`, { status })
+      .patch<ApiResponse<Task>>(`${API}/tasks/${id}/status`, { status, blockedReason })
       .pipe(map((r) => r.data));
   }
   checkIn() {

@@ -32,17 +32,17 @@ class PayrollIntegrationTest {
     @Test
     void employeesSeeOnlyTheirOwnPayrollAndManagersSeeOnlyTheirDepartment() throws Exception {
         YearMonth period = YearMonth.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-        String employee = login("dev_1_1", "dev123");
+        String employee = login("member_1_1", "member123");
         mockMvc.perform(get("/api/v1/payroll/monthly")
                         .param("year", String.valueOf(period.getYear()))
                         .param("month", String.valueOf(period.getMonthValue()))
                         .header("Authorization", "Bearer " + employee))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.employees.length()").value(1))
-                .andExpect(jsonPath("$.data.employees[0].username").value("dev_1_1"))
+                .andExpect(jsonPath("$.data.employees[0].username").value("member_1_1"))
                 .andReturn();
 
-        String manager = login("manager_1", "lead123");
+        String manager = login("lead_1", "lead123");
         var managerReport = mockMvc.perform(get("/api/v1/payroll/monthly")
                         .param("year", String.valueOf(period.getYear()))
                         .param("month", String.valueOf(period.getMonthValue()))
@@ -67,7 +67,7 @@ class PayrollIntegrationTest {
     void payrollInputsCanBeReportedExportedAndClosedByAdmin() throws Exception {
         YearMonth period = YearMonth.now().minusMonths(1);
         String admin = login("admin", "admin123");
-        String manager = login("manager_1", "lead123");
+        String manager = login("lead_1", "lead123");
 
         mockMvc.perform(get("/api/v1/payroll/monthly")
                         .param("year", String.valueOf(period.getYear()))
