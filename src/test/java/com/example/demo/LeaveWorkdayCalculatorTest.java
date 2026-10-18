@@ -25,12 +25,26 @@ class LeaveWorkdayCalculatorTest {
     }
 
     @Test
+    void morningThroughAfternoonIncludesBothBoundaryDays() {
+        assertEquals(3.0, LeaveWorkdayCalculator.calculate(
+                LocalDate.of(2026, 10, 19), LocalDate.of(2026, 10, 21),
+                LeaveDayPart.MORNING, LeaveDayPart.AFTERNOON));
+    }
+
+    @Test
+    void morningToNextAfternoonCountsFourSessionsAsTwoDays() {
+        assertEquals(2.0, LeaveWorkdayCalculator.calculate(
+                LocalDate.of(2026, 10, 19), LocalDate.of(2026, 10, 20),
+                LeaveDayPart.MORNING, LeaveDayPart.AFTERNOON));
+    }
+
+    @Test
     void weekendDaysDoNotCountAsWorkdays() {
         assertEquals(1.0, LeaveWorkdayCalculator.calculate(
                 LocalDate.of(2026, 10, 9), LocalDate.of(2026, 10, 11),
                 LeaveDayPart.FULL_DAY, LeaveDayPart.FULL_DAY));
         assertEquals(0.5, LeaveWorkdayCalculator.calculate(
                 LocalDate.of(2026, 10, 9), LocalDate.of(2026, 10, 11),
-                LeaveDayPart.MORNING, LeaveDayPart.FULL_DAY));
+                LeaveDayPart.AFTERNOON, LeaveDayPart.FULL_DAY));
     }
 }

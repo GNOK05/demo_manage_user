@@ -19,7 +19,7 @@
           <span class="chip">{{ selfStatusLabel() }}</span>
         </div>
         <p class="muted">Ghi nhận giờ làm của tài khoản quản lý. Dữ liệu được lưu vào lịch sử chấm công cá nhân.</p>
-        <div class="attendance-actions">
+        <div class="attendance-actions" *ngIf="canCheckAttendance()">
           <button type="button" [disabled]="!canCheckIn()" (click)="checkIn()">
             {{ canCheckIn() && selfToday()?.checkOutTime ? 'Check-in lại' : selfToday()?.checkInTime ? 'Đã check-in · ' + time(currentCheckInTime()) : 'Check-in' }}
           </button>
@@ -140,18 +140,18 @@
           </div>
           <div class="payroll-actions">
             <button type="button" class="secondary small" (click)="exportPayroll()">Xuất Excel kỳ công</button>
-            <button type="button" class="small" *ngIf="isAdmin()" [disabled]="!canClosePayroll()" (click)="closePayroll()">
+            <button type="button" class="small" *ngIf="isPayrollAdmin()" [disabled]="!canClosePayroll()" (click)="closePayroll()">
               {{ payrollClosed() ? 'Đã chốt kỳ' : 'Chốt kỳ công' }}
             </button>
             <small *ngIf="payrollClosed()">Chốt bởi {{ payrollClosedBy() }}</small>
-            <ng-container *ngIf="isAdmin() && payrollClosed()">
+            <ng-container *ngIf="isPayrollAdmin() && payrollClosed()">
               <input class="reopen-reason" [(ngModel)]="reopenReason" placeholder="Lý do mở lại kỳ" />
               <button type="button" class="secondary small" [disabled]="!reopenReason.trim()" (click)="reopenPayroll()">Mở lại kỳ</button>
             </ng-container>
           </div>
         </section>
 
-        <section class="quota-editor" *ngIf="isAdmin() && selectedBalance()">
+        <section class="quota-editor" *ngIf="isPayrollAdmin() && selectedBalance()">
           <label>Quota phép năm
             <input type="number" min="0" max="366" [(ngModel)]="leaveQuotaDraft" />
           </label>
@@ -306,11 +306,13 @@
           <h2>Chấm công cá nhân</h2>
           <span class="chip">{{ selfStatusLabel() }}</span>
         </div>
-        <p class="muted">
-          Tài khoản nhân viên chỉ có quyền xem lịch sử và thực hiện check-in/check-out của chính
-          mình.
+        <p class="muted" *ngIf="canCheckAttendance()">
+          Bạn có thể xem lịch sử và thực hiện check-in/check-out của chính mình.
         </p>
-        <div class="attendance-actions">
+        <p class="muted" *ngIf="!canCheckAttendance()">
+          Tài khoản chỉ đọc có thể theo dõi lịch sử chấm công cá nhân.
+        </p>
+        <div class="attendance-actions" *ngIf="canCheckAttendance()">
           <button type="button" [disabled]="!canCheckIn()" (click)="checkIn()">
             {{ canCheckIn() && selfToday()?.checkOutTime ? 'Check-in lại' : selfToday()?.checkInTime ? 'Đã check-in' : 'Check-in' }}
           </button>

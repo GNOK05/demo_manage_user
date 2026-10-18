@@ -22,7 +22,7 @@ public final class LeaveRequestDto {
             @NotBlank @Size(max = 500) String reason
     ) {
         public SaveRequest(LeaveRequestType type, LocalDate fromDate, LocalDate toDate, String reason) {
-            this(type, fromDate, toDate, LeaveDayPart.FULL_DAY, LeaveDayPart.FULL_DAY, reason);
+            this(type, fromDate, toDate, LeaveDayPart.MORNING, LeaveDayPart.AFTERNOON, reason);
         }
     }
 

@@ -1,6 +1,8 @@
 export type Role = 'ADMIN' | 'HR' | 'PROJECT_MANAGER' | 'TEAM_LEAD' | 'MEMBER' | 'QA' | 'VIEWER';
 export type TaskStatus = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'TESTING' | 'BLOCKED' | 'DONE' | 'CANCELLED';
 export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+export type WorkRequestStatus = 'DRAFT' | 'READY' | 'IN_PROGRESS' | 'PENDING_ACCEPTANCE' | 'COMPLETED' | 'CANCELLED';
+export type WorkRequestHealth = 'ON_TRACK' | 'AT_RISK' | 'OVERDUE' | 'BLOCKED';
 export type TaskSort =
   'DEFAULT' | 'NEWEST' | 'OLDEST' | 'DEADLINE_ASC' | 'DEADLINE_DESC' | 'NAME_ASC' | 'NAME_DESC';
 export interface User {
@@ -43,6 +45,23 @@ export interface Project {
   totalTasks: number;
   completedTasks: number;
   progress: number;
+  totalRequests: number;
+  completedRequests: number;
+  participatingDepartments: ProjectDepartment[];
+}
+export interface ProjectSaveRequest {
+  projectName: string;
+  description?: string;
+  departmentId: number | null;
+  startDate: string;
+  endDate: string;
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD';
+}
+export interface ProjectDepartment {
+  id: number;
+  name: string;
+  code: string;
+  participationRole: 'OWNER' | 'PARTICIPANT';
 }
 export interface Department {
   id: number;
@@ -58,6 +77,11 @@ export interface Task {
   description?: string;
   projectId: number;
   projectName: string;
+  workRequestId: number;
+  workRequestCode: string;
+  workRequestTitle: string;
+  executingDepartmentId: number;
+  executingDepartmentName: string;
   assignedToId?: number;
   assignedToName?: string;
   testerId?: number;
@@ -75,6 +99,7 @@ export interface TaskSaveRequest {
   taskName: string;
   description?: string;
   projectId: number | null;
+  workRequestId: number | null;
   assignedToId: number | null;
   testerId: number | null;
   status?: TaskStatus;
@@ -84,6 +109,40 @@ export interface TaskSaveRequest {
   estimatedHours?: number | null;
   acceptanceCriteria?: string;
   blockedReason?: string;
+}
+export interface WorkRequest {
+  id: number;
+  requestCode: string;
+  projectId: number;
+  projectName: string;
+  executingDepartmentId: number;
+  executingDepartmentName: string;
+  coordinatorId?: number;
+  coordinatorName?: string;
+  createdById: number;
+  title: string;
+  description?: string;
+  acceptanceCriteria?: string;
+  priority: TaskPriority;
+  status: WorkRequestStatus;
+  health: WorkRequestHealth;
+  startDate: string;
+  deadline: string;
+  totalTasks: number;
+  completedTasks: number;
+  blockedTasks: number;
+  overdueTasks: number;
+  progress: number;
+}
+export interface WorkRequestSaveRequest {
+  title: string;
+  description?: string;
+  executingDepartmentId: number | null;
+  coordinatorId: number | null;
+  startDate: string;
+  deadline: string;
+  priority: TaskPriority;
+  acceptanceCriteria?: string;
 }
 export interface Attendance {
   id: number;
@@ -115,8 +174,8 @@ export type LeaveStatus =
   | 'REJECTED_ADMIN'
   | 'CANCELLED';
 
-export type LeaveType = 'ANNUAL' | 'UNPAID' | 'PERSONAL' | 'SICK' | 'MATERNITY';
-export type LeaveDayPart = 'FULL_DAY' | 'MORNING' | 'AFTERNOON';
+export type LeaveType = 'ANNUAL' | 'UNPAID' | 'MATERNITY';
+export type LeaveDayPart = 'MORNING' | 'AFTERNOON';
 
 export interface LeaveRequest {
   id: number;
@@ -146,6 +205,28 @@ export interface AnnualLeaveBalance {
   usedDays: number;
   pendingDays: number;
   remainingDays: number;
+}
+
+export type WorkLocationType = 'WORK_FROM_HOME' | 'CLIENT_SITE';
+
+export interface WorkLocationRequest {
+  id: number;
+  userId: number;
+  userName: string;
+  type: WorkLocationType;
+  fromDate: string;
+  toDate: string;
+  fromDayPart: LeaveDayPart;
+  toDayPart: LeaveDayPart;
+  requestedWorkdays: number;
+  clientName?: string;
+  clientAddress?: string;
+  reason: string;
+  status: LeaveStatus;
+  managerApprovedBy?: string;
+  adminApprovedBy?: string;
+  cancelledAt?: string;
+  createdAt: string;
 }
 
 export interface PayrollMonthlyReport {
@@ -197,7 +278,7 @@ export interface AttendanceAdjustment {
 
 export interface NotificationItem {
   id: number;
-  type: 'TASK' | 'SYSTEM' | 'LEAVE';
+  type: 'TASK' | 'REQUEST' | 'SYSTEM' | 'LEAVE';
   title: string;
   message: string;
   priority: 'LOW' | 'MEDIUM' | 'HIGH';

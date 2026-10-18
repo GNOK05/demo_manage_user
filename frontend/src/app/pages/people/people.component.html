@@ -54,7 +54,7 @@
           <label>
             Vai trò
             <select [(ngModel)]="draft.role">
-              <option *ngFor="let role of roles" [value]="role">{{ role }}</option>
+              <option *ngFor="let role of availableRoles()" [value]="role">{{ role }}</option>
             </select>
           </label>
           <label *ngIf="!selectedUser">
@@ -84,12 +84,12 @@
       </div>
     </section>
 
-    <section class="card department-filter">
+    <section class="card department-filter" *ngIf="canManageDepartments()">
       <div class="section-top">
         <h2>Phòng ban</h2>
         <span class="muted">{{ people().length }} người</span>
       </div>
-      <div class="tab-strip">
+      <div class="tab-strip" *ngIf="canManageDepartments()">
         <button
           type="button"
           [class.active]="selectedDepartmentId() === null"
@@ -131,7 +131,7 @@
             <button
               type="button"
               class="secondary small"
-              *ngIf="auth.hasRole(['ADMIN', 'HR'])"
+              *ngIf="canEditUser(person)"
               (click)="editUser(person)"
             >
               Sửa
@@ -184,7 +184,7 @@
           >
           <label
             >Vai trò<select [(ngModel)]="draft.role">
-              <option *ngFor="let role of roles" [value]="role">{{ role }}</option>
+              <option *ngFor="let role of availableRoles()" [value]="role">{{ role }}</option>
             </select></label
           >
         </div>

@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import com.example.demo.repository.UserRepository;
 
 import java.time.LocalDate;
 import java.time.DayOfWeek;
@@ -26,6 +27,43 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class LeaveRequestApiIntegrationTest {
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper mapper;
+    @Autowired UserRepository users;
+
+    @Test
+    void adminAndReadOnlyViewerCannotSubmitLeaveRequests() throws Exception {
+        String requestBody = mapper.writeValueAsString(Map.of(
+                "type", "ANNUAL",
+                "fromDate", LocalDate.now().plusDays(4).toString(),
+                "toDate", LocalDate.now().plusDays(4).toString(),
+                "reason", "Role restriction check"
+        ));
+        for (String[] credentials : new String[][] {
+                {"admin", "admin123"},
+                {"viewer_1", "viewer123"}
+        }) {
+            mockMvc.perform(post("/api/v1/leave-requests")
+                            .header("Authorization", "Bearer " + login(credentials[0], credentials[1]))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestBody))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
+    void hrCanViewCompanyLeaveHistoryAndBalancesButCannotApproveRequests() throws Exception {
+        long employeeId = users.findByUsername("member_1_1").orElseThrow().getId();
+        String hr = login("hr", "hr123");
+        mockMvc.perform(get("/api/v1/leave-requests/user/{userId}", employeeId)
+                        .header("Authorization", "Bearer " + hr))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/leave-requests/balance/{userId}", employeeId)
+                        .param("year", String.valueOf(LocalDate.now().getYear()))
+                        .header("Authorization", "Bearer " + hr))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/leave-requests/pending")
+                        .header("Authorization", "Bearer " + hr))
+                .andExpect(status().isForbidden());
+    }
 
     @Test
     void employeeCanSubmitAndManagerCanApproveUsingDecisionPayload() throws Exception {
@@ -87,7 +125,7 @@ class LeaveRequestApiIntegrationTest {
                 mockMvc.perform(get("/api/v1/leave-requests/balance").param("year", String.valueOf(LocalDate.now().getYear()))
                                 .header("Authorization", "Bearer " + employeeToken))
                         .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.data.entitledDays").value(12))
+                        .andExpect(jsonPath("$.data.entitledDays").value(15))
                         .andExpect(jsonPath("$.data.usedDays").value(0.0))
                         .andExpect(jsonPath("$.data.pendingDays").value(0.0));
             }
@@ -102,7 +140,7 @@ class LeaveRequestApiIntegrationTest {
                         "type", "ANNUAL",
                         "fromDate", friday.toString(),
                         "toDate", sunday.toString(),
-                        "fromDayPart", "MORNING",
+                        "fromDayPart", "AFTERNOON",
                         "toDayPart", "FULL_DAY",
                         "reason", "Half-day annual leave"
         ));
@@ -111,7 +149,7 @@ class LeaveRequestApiIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(requestBody))
                         .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.data.fromDayPart").value("MORNING"))
+                        .andExpect(jsonPath("$.data.fromDayPart").value("AFTERNOON"))
                         .andExpect(jsonPath("$.data.requestedWorkdays").value(0.5))
                         .andReturn();
         long requestId = mapper.readTree(created.getResponse().getContentAsString()).at("/data/id").asLong();

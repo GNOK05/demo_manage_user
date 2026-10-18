@@ -8,6 +8,7 @@ public interface AttendanceService {
     List<AttendanceDto.Response> myAttendance();
     List<AttendanceDto.Response> departmentAttendance();
     AttendanceDto.DepartmentSummary departmentSummary(LocalDate date);
+    List<AttendanceDto.Response> byDate(LocalDate date);
     List<AttendanceDto.Response> all();
     List<AttendanceDto.Response> employeeAttendance(Long userId, int month, int year);
 }

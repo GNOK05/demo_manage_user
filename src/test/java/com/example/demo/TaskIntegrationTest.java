@@ -40,6 +40,33 @@ public class TaskIntegrationTest {
     }
 
     @Test
+    void readOnlyViewerCannotUpdateTaskStatus() throws Exception {
+        String token = login("viewer_1", "viewer123");
+        var tasksResponse = mockMvc.perform(get("/api/v1/tasks")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        var taskData = mapper.readTree(tasksResponse.getResponse().getContentAsString()).at("/data");
+        org.junit.jupiter.api.Assertions.assertTrue(taskData.isArray());
+        org.junit.jupiter.api.Assertions.assertFalse(taskData.isEmpty());
+        long taskId = taskData.get(0).get("id").asLong();
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/status", taskId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"BLOCKED\",\"blockedReason\":\"Read-only test\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    private String login(String username, String password) throws Exception {
+        String body = mapper.writeValueAsString(Map.of("username", username, "password", password));
+        var result = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andReturn();
+        return mapper.readTree(result.getResponse().getContentAsString()).at("/data/token").asText();
+    }
+
+    @Test
     void createTaskMissingNameReturns400() throws Exception {
         String token = loginAdmin();
 
@@ -104,11 +131,28 @@ public class TaskIntegrationTest {
         var projNode = mapper.readTree(projRes.getResponse().getContentAsString());
         long projId = projNode.at("/data/id").asLong();
 
+        String requestBody = mapper.writeValueAsString(Map.of(
+                "title", "Integration Request",
+                "description", "Request for task integration test",
+                "executingDepartmentId", deptId,
+                "startDate", LocalDate.now().toString(),
+                "deadline", LocalDate.now().plusDays(30).toString(),
+                "priority", "URGENT"
+        ));
+        var requestResult = mockMvc.perform(post("/api/v1/projects/{projectId}/work-requests", projId)
+                        .contentType(MediaType.APPLICATION_JSON).content(requestBody)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.projectId").value(projId))
+                .andReturn();
+        long requestId = mapper.readTree(requestResult.getResponse().getContentAsString()).at("/data/id").asLong();
+
         // create task with required fields
         String taskBody = mapper.writeValueAsString(Map.of(
                 "taskName", "Integration Task",
                 "description", "full",
                 "projectId", projId,
+                "workRequestId", requestId,
                 "startDate", LocalDate.now().toString(),
                 "deadline", LocalDate.now().plusDays(7).toString(),
                 "status", "TODO",

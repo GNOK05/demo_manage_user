@@ -8,11 +8,11 @@
   display: grid;
   place-items: center;
   padding: 32px;
-  color: #10264b;
+  color: #1c2434;
   background:
-    radial-gradient(circle at 9% 12%, rgba(58, 145, 255, 0.14), transparent 27%),
-    radial-gradient(circle at 93% 84%, rgba(17, 170, 119, 0.1), transparent 25%),
-    #f3f8ff;
+    radial-gradient(circle at 9% 12%, rgba(91, 91, 214, 0.15), transparent 29%),
+    radial-gradient(circle at 93% 84%, rgba(22, 138, 107, 0.09), transparent 27%),
+    #f4f6fb;
 }
 
 .login-shell {
@@ -21,10 +21,10 @@
   display: grid;
   grid-template-columns: minmax(0, 1.12fr) minmax(360px, 0.88fr);
   overflow: hidden;
-  border: 1px solid #e2ebf8;
+  border: 1px solid #e2e5ef;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 24px 70px rgba(30, 76, 145, 0.14);
+  box-shadow: 0 28px 80px rgba(31, 38, 62, 0.16);
   animation: loginReveal 0.55s ease-out both;
 }
 
@@ -36,7 +36,7 @@
   min-height: 610px;
   padding: 42px 54px;
   overflow: hidden;
-  background: linear-gradient(145deg, #fafdff 0%, #eaf3ff 100%);
+  background: linear-gradient(145deg, #fafaff 0%, #ececff 100%);
 }
 
 .login-hero::after {
@@ -46,9 +46,9 @@
   bottom: -130px;
   width: 390px;
   height: 390px;
-  border: 1px solid rgba(23, 96, 219, 0.12);
+  border: 1px solid rgba(91, 91, 214, 0.15);
   border-radius: 50%;
-  box-shadow: 0 0 0 38px rgba(23, 96, 219, 0.035), 0 0 0 76px rgba(23, 96, 219, 0.025);
+  box-shadow: 0 0 0 38px rgba(91, 91, 214, 0.045), 0 0 0 76px rgba(91, 91, 214, 0.028);
 }
 
 .brand-wrap {
@@ -57,7 +57,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #12325e;
+  color: #202942;
   font-size: 17px;
   font-weight: 800;
 }
@@ -69,10 +69,10 @@
   height: 34px;
   border-radius: 10px;
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
-  background: linear-gradient(135deg, #3189f5, #1551c7);
-  box-shadow: 0 8px 18px rgba(23, 96, 219, 0.25);
+  background: linear-gradient(135deg, #7777ed, #5050c6);
+  box-shadow: 0 8px 18px rgba(91, 91, 214, 0.28);
 }
 
 .hero-copy {
@@ -86,7 +86,7 @@
 .eyebrow {
   margin: 0 0 10px;
   color: #4b80c9;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -137,7 +137,7 @@
   border-radius: 50%;
   color: #159467;
   background: #edfbf5;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .login-card {
@@ -151,7 +151,7 @@
 
 .login-card-header h2 {
   margin: 0;
-  color: #102e59;
+  color: #1c2434;
   font-size: 30px;
   line-height: 1.15;
   letter-spacing: -0.04em;
@@ -166,18 +166,18 @@
 .login-card label {
   margin: 0 0 18px;
   color: #40516b;
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .login-card input {
   height: 46px;
   margin-top: 8px;
   padding: 0 13px;
-  border: 1px solid #dce7f5;
-  border-radius: 8px;
-  color: #10264b;
-  background: #fbfdff;
+  border: 1px solid #dfe2eb;
+  border-radius: 10px;
+  color: #1c2434;
+  background: #fbfbfd;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
@@ -186,9 +186,9 @@
 }
 
 .login-card input:focus {
-  border-color: #5d9bf0;
+  border-color: #7777dc;
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(23, 96, 219, 0.1);
+  box-shadow: 0 0 0 4px rgba(91, 91, 214, 0.11);
 }
 
 .login-button {
@@ -199,17 +199,17 @@
   min-height: 47px;
   margin-top: 7px;
   padding: 0 16px 0 18px;
-  border-radius: 8px;
+  border-radius: 10px;
   color: #fff;
-  background: linear-gradient(135deg, #1762df, #1c55cf);
-  box-shadow: 0 9px 18px rgba(23, 96, 219, 0.2);
-  font-size: 12px;
+  background: linear-gradient(135deg, #6868df, #5050c6);
+  box-shadow: 0 9px 18px rgba(91, 91, 214, 0.22);
+  font-size: 13px;
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .login-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 12px 22px rgba(23, 96, 219, 0.26);
+  box-shadow: 0 12px 22px rgba(91, 91, 214, 0.28);
 }
 
 .button-arrow {
@@ -220,7 +220,7 @@
 .login-footer {
   margin: 28px 0 0;
   color: #a0aec1;
-  font-size: 10px;
+  font-size: 11px;
   text-align: center;
 }
 
@@ -258,13 +258,13 @@
   color: #d32f2f;
   font-weight: 600;
   margin-bottom: 3px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .error-content p {
   margin: 0;
   color: #c62828;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .input-error {
@@ -276,7 +276,7 @@
   display: block;
   margin-top: 6px;
   color: #c62828;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 @keyframes loginReveal {

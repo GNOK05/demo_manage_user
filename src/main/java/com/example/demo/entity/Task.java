@@ -13,6 +13,7 @@ public class Task {
     @Column(name = "task_name", nullable = false, length = 160) private String taskName;
     @Column(length = 2000) private String description;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "project_id", nullable = false) private Project project;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "work_request_id", nullable = false) private WorkRequest workRequest;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "assigned_to_id") private User assignedTo;
     /** QA/QC/Tester assigned to verify this task, independent of the implementer in {@link #assignedTo}. */
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "tester_id") private User tester;

@@ -4,9 +4,17 @@
 
 .filter-card,
 .hierarchy-card,
-.employee-heading,
-.attendance-table-card {
+.employee-heading {
   margin-bottom: 18px;
+}
+
+.filter-card {
+  width: min(100%, 650px);
+  padding: 18px 20px;
+}
+
+.filter-card .section-top {
+  margin-bottom: 12px;
 }
 
 .eyebrow.subtle {
@@ -16,16 +24,27 @@
 
 .filter-grid {
   display: grid;
-  grid-template-columns: 0.7fr 0.7fr 1fr 2fr;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
 }
 
 .filter-grid label {
   margin: 0;
+  min-width: 0;
 }
 .filter-grid input,
 .filter-grid select {
   margin-top: 7px;
+}
+
+.filter-card .search-button {
+  width: auto;
+  min-width: 132px;
+  min-height: 42px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  white-space: nowrap;
 }
 
 .tab-strip {
@@ -359,28 +378,6 @@
   overflow-wrap: anywhere;
 }
 
-.adjustment-form,
-.correction-list {
-  margin: 18px 0;
-}
-
-.correction-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 0;
-  border-top: 1px solid var(--line);
-}
-
-.correction-row p,
-.correction-row small {
-  display: block;
-  margin: 5px 0 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
 .quota-editor {
   display: flex;
   align-items: end;
@@ -458,39 +455,6 @@ tbody tr:hover {
   color: #b42318;
 }
 
-.pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 14px;
-  padding-top: 16px;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-.pagination > div {
-  display: flex;
-  gap: 6px;
-}
-.pagination-controls {
-  align-items: center;
-  flex-wrap: wrap;
-}
-.pagination-controls label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 8px 0 0;
-}
-.pagination-controls select {
-  width: auto;
-  margin: 0;
-  padding: 7px 28px 7px 9px;
-}
-.pagination button.current {
-  background: var(--primary);
-  color: #fff;
-}
-
 .loading-state {
   margin: 18px 0 0;
   color: var(--muted);
@@ -513,12 +477,6 @@ tbody tr:hover {
 }
 
 @media (max-width: 900px) {
-  .filter-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .search-field {
-    grid-column: 1 / -1;
-  }
   .attendance-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -533,14 +491,17 @@ tbody tr:hover {
 }
 
 @media (max-width: 640px) {
-  .filter-grid {
+  .filter-card {
+    padding: 16px;
+  }
+  .filter-card .filter-grid {
     grid-template-columns: 1fr;
+  }
+  .filter-card .search-button {
+    width: 100%;
   }
   .attendance-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .search-field {
-    grid-column: auto;
   }
   .employee-heading {
     align-items: flex-start;
@@ -550,10 +511,6 @@ tbody tr:hover {
     width: 100%;
     justify-content: flex-start;
   }
-  .pagination {
-    align-items: flex-start;
-    flex-direction: column;
-  }
   .personal-calendar {
     padding: 12px;
     overflow-x: auto;
@@ -562,10 +519,6 @@ tbody tr:hover {
     min-width: 680px;
   }
   .calendar-toolbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-  .correction-row {
     align-items: flex-start;
     flex-direction: column;
   }

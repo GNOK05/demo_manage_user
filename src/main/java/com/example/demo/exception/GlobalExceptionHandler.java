@@ -14,8 +14,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
     @ExceptionHandler(BussinessException.class)
     public ResponseEntity<Map<String,Object>> handleBusinessException(BussinessException exception){
@@ -48,6 +50,9 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, "Không thể xóa hoặc thay đổi dữ liệu đang được tham chiếu.");
     }
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String,Object>> handleException(Exception exception){return error(HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống. Vui lòng thử lại.");}
+    public ResponseEntity<Map<String,Object>> handleException(Exception exception){
+        log.error("Unhandled request error", exception);
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống. Vui lòng thử lại.");
+    }
     private ResponseEntity<Map<String,Object>> error(HttpStatus status,String message){Map<String,Object> body=new LinkedHashMap<>();body.put("timestamp", Instant.now());body.put("status",status.value());body.put("message",message);return ResponseEntity.status(status).body(body);}
 }

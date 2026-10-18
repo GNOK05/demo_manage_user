@@ -13,12 +13,19 @@ import {
   NotificationItem,
   PayrollMonthlyReport,
   Project,
+  ProjectDepartment,
+  ProjectSaveRequest,
   Task,
   TaskPriority,
   TaskSaveRequest,
   TaskSort,
   TaskStatus,
   User,
+  WorkRequest,
+  WorkRequestHealth,
+  WorkRequestSaveRequest,
+  WorkRequestStatus,
+  WorkLocationRequest,
 } from './models';
 
 // Use a relative URL so the application works behind a reverse proxy and on
@@ -88,6 +95,8 @@ export class CompanyApiService {
         fromDate: request.fromDate,
         toDate: request.toDate,
         reason: request.reason,
+        fromDayPart: request.fromDayPart,
+        toDayPart: request.toDayPart,
       })
       .pipe(map((r) => r.data));
   }
@@ -107,31 +116,16 @@ export class CompanyApiService {
   departments() {
     return this.http.get<ApiResponse<Department[]>>(`${API}/departments`).pipe(map((r) => r.data));
   }
-  project(id: number) {
-    return this.http.get<ApiResponse<Project>>(`${API}/projects/${id}`).pipe(map((r) => r.data));
-  }
-  projects(departmentId?: number | null, status?: string | null) {
+  projects(departmentId?: number | null, status?: string | null, keyword = '') {
     return this.http
       .get<ApiResponse<Project[]>>(`${API}/projects`, {
         params: {
+          keyword: keyword.trim(),
           ...(departmentId ? { departmentId } : {}),
           ...(status ? { status } : {}),
         },
       })
       .pipe(map((r) => r.data));
-  }
-  createProject(payload: Partial<Project>) {
-    return this.http
-      .post<ApiResponse<Project>>(`${API}/projects`, payload)
-      .pipe(map((r) => r.data));
-  }
-  updateProject(id: number, payload: Partial<Project>) {
-    return this.http
-      .put<ApiResponse<Project>>(`${API}/projects/${id}`, payload)
-      .pipe(map((r) => r.data));
-  }
-  deleteProject(id: number) {
-    return this.http.delete<void>(`${API}/projects/${id}`);
   }
   tasks(
     keyword = '',
@@ -140,6 +134,7 @@ export class CompanyApiService {
     sort: TaskSort = 'DEFAULT',
     priority?: TaskPriority | null,
     overdue = false,
+    workRequestId?: number | null,
   ) {
     return this.http
       .get<ApiResponse<Task[]>>(`${API}/tasks`, {
@@ -149,6 +144,7 @@ export class CompanyApiService {
           ...(status ? { status } : {}),
           ...(priority ? { priority } : {}),
           ...(overdue ? { overdue: true } : {}),
+          ...(workRequestId ? { workRequestId } : {}),
           sort,
         },
       })
@@ -158,6 +154,100 @@ export class CompanyApiService {
     return this.http
       .get<ApiResponse<Task[]>>(`${API}/tasks/project/${id}`)
       .pipe(map((r) => r.data));
+  }
+
+  workLocationRequests() {
+    return this.http.get<ApiResponse<WorkLocationRequest[]>>(`${API}/work-location-requests/my`).pipe(map((r) => r.data));
+  }
+
+  pendingWorkLocationRequests() {
+    return this.http.get<ApiResponse<WorkLocationRequest[]>>(`${API}/work-location-requests/pending`).pipe(map((r) => r.data));
+  }
+
+  createWorkLocationRequest(request: Partial<WorkLocationRequest>) {
+    return this.http.post<ApiResponse<WorkLocationRequest>>(`${API}/work-location-requests`, request).pipe(map((r) => r.data));
+  }
+
+  decideWorkLocationRequest(id: number, status: 'APPROVED' | 'REJECTED') {
+    return this.http.patch<ApiResponse<WorkLocationRequest>>(`${API}/work-location-requests/${id}/decision`, { status }).pipe(map((r) => r.data));
+  }
+
+  cancelWorkLocationRequest(id: number) {
+    return this.http.post<ApiResponse<WorkLocationRequest>>(`${API}/work-location-requests/${id}/cancel`, {}).pipe(map((r) => r.data));
+  }
+  project(id: number) {
+    return this.http.get<ApiResponse<Project>>(`${API}/projects/${id}`).pipe(map((r) => r.data));
+  }
+  createProject(payload: ProjectSaveRequest) {
+    return this.http.post<ApiResponse<Project>>(`${API}/projects`, payload).pipe(map((r) => r.data));
+  }
+  updateProject(id: number, payload: ProjectSaveRequest) {
+    return this.http.put<ApiResponse<Project>>(`${API}/projects/${id}`, payload).pipe(map((r) => r.data));
+  }
+  deleteProject(id: number) { return this.http.delete<void>(`${API}/projects/${id}`); }
+  addProjectDepartment(projectId: number, departmentId: number) {
+    return this.http
+      .post<ApiResponse<ProjectDepartment[]>>(`${API}/projects/${projectId}/departments/${departmentId}`, {})
+      .pipe(map((r) => r.data));
+  }
+  removeProjectDepartment(projectId: number, departmentId: number) {
+    return this.http
+      .delete<ApiResponse<ProjectDepartment[]>>(`${API}/projects/${projectId}/departments/${departmentId}`)
+      .pipe(map((r) => r.data));
+  }
+  tasksByWorkRequest(id: number) {
+    return this.http
+      .get<ApiResponse<Task[]>>(`${API}/tasks/work-request/${id}`)
+      .pipe(map((r) => r.data));
+  }
+  workRequests(filters: {
+    keyword?: string;
+    projectId?: number | null;
+    departmentId?: number | null;
+    status?: WorkRequestStatus | null;
+    priority?: TaskPriority | null;
+    health?: WorkRequestHealth | null;
+    overdue?: boolean;
+  } = {}) {
+    return this.http
+      .get<ApiResponse<WorkRequest[]>>(`${API}/work-requests`, {
+        params: {
+          keyword: filters.keyword?.trim() || '',
+          ...(filters.projectId ? { projectId: filters.projectId } : {}),
+          ...(filters.departmentId ? { departmentId: filters.departmentId } : {}),
+          ...(filters.status ? { status: filters.status } : {}),
+          ...(filters.priority ? { priority: filters.priority } : {}),
+          ...(filters.health ? { health: filters.health } : {}),
+          ...(filters.overdue ? { overdue: true } : {}),
+        },
+      })
+      .pipe(map((r) => r.data));
+  }
+  workRequestsByProject(projectId: number) {
+    return this.http
+      .get<ApiResponse<WorkRequest[]>>(`${API}/projects/${projectId}/work-requests`)
+      .pipe(map((r) => r.data));
+  }
+  workRequest(id: number) {
+    return this.http.get<ApiResponse<WorkRequest>>(`${API}/work-requests/${id}`).pipe(map((r) => r.data));
+  }
+  createWorkRequest(projectId: number, payload: WorkRequestSaveRequest) {
+    return this.http
+      .post<ApiResponse<WorkRequest>>(`${API}/projects/${projectId}/work-requests`, payload)
+      .pipe(map((r) => r.data));
+  }
+  updateWorkRequest(id: number, payload: WorkRequestSaveRequest) {
+    return this.http
+      .put<ApiResponse<WorkRequest>>(`${API}/work-requests/${id}`, payload)
+      .pipe(map((r) => r.data));
+  }
+  updateWorkRequestStatus(id: number, status: WorkRequestStatus, reason?: string) {
+    return this.http
+      .patch<ApiResponse<WorkRequest>>(`${API}/work-requests/${id}/status`, { status, reason })
+      .pipe(map((r) => r.data));
+  }
+  deleteWorkRequest(id: number) {
+    return this.http.delete<void>(`${API}/work-requests/${id}`);
   }
   createTask(payload: TaskSaveRequest) {
     return this.http.post<ApiResponse<Task>>(`${API}/tasks`, payload).pipe(map((r) => r.data));
@@ -210,6 +300,11 @@ export class CompanyApiService {
   myAttendance() {
     return this.http
       .get<ApiResponse<Attendance[]>>(`${API}/attendance/my`)
+      .pipe(map((r) => r.data));
+  }
+  attendanceByDate(date: string) {
+    return this.http
+      .get<ApiResponse<Attendance[]>>(`${API}/attendance/day`, { params: { date } })
       .pipe(map((r) => r.data));
   }
   departmentAttendance() {

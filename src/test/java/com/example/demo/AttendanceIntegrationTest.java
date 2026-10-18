@@ -72,6 +72,28 @@ class AttendanceIntegrationTest {
     }
 
     @Test
+    void readOnlyViewerCannotCheckInOrOut() throws Exception {
+        String token = login("viewer_1", "viewer123");
+        mockMvc.perform(post("/api/v1/attendance/check-in")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/v1/attendance/check-out")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void hrCanLoadCompanyEmployeeAttendanceHistory() throws Exception {
+        Long employeeId = users.findByUsername("member_1_1").orElseThrow().getId();
+        var today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        mockMvc.perform(get("/api/v1/attendance/user/{userId}", employeeId)
+                        .param("month", String.valueOf(today.getMonthValue()))
+                        .param("year", String.valueOf(today.getYear()))
+                        .header("Authorization", "Bearer " + login("hr", "hr123")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void legacyAttendanceHistoryGetsSessionIdsForCorrectionRequests() throws Exception {
         User employee = users.findByUsername("member_1_2").orElseThrow();
         LocalDate legacyDate = LocalDate.of(2001, 1, 2);

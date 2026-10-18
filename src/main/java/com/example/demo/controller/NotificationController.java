@@ -4,19 +4,26 @@ import com.example.demo.dto.ApiResponse;
 import com.example.demo.dto.NotificationDto;
 import com.example.demo.entity.LeaveRequestStatus;
 import com.example.demo.entity.Role;
+import com.example.demo.entity.TaskStatus;
+import com.example.demo.entity.WorkRequestStatus;
 import com.example.demo.service.UserService;
 import com.example.demo.repository.LeaveRequestRepository;
 import com.example.demo.repository.NotificationReadRepository;
 import com.example.demo.repository.TaskRepository;
+import com.example.demo.repository.WorkRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 
 @RestController
 @RequestMapping("/api/v1/notifications")
@@ -26,21 +33,44 @@ public class NotificationController {
     private final TaskRepository tasks;
     private final LeaveRequestRepository leaveRequests;
     private final NotificationReadRepository notificationReads;
+    private final WorkRequestRepository workRequests;
 
     @GetMapping
+    @Transactional(readOnly = true)
     public ApiResponse<List<NotificationDto.Response>> all() {
         var current = users.currentUser();
         var result = new ArrayList<NotificationDto.Response>();
         var id = new AtomicLong(1);
 
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         tasks.findByAssignedToIdOrderByDeadlineAsc(current.getId()).stream()
-                .filter(task -> task.getStatus().name().equals("REVIEW") || task.getStatus().name().equals("IN_PROGRESS"))
-                .filter(task -> task.getDeadline() != null && task.getStatus() != null)
-                .forEach(task -> result.add(new NotificationDto.Response(
-                        id.getAndIncrement(), "TASK", "Công việc cần theo dõi",
-                        task.getTaskName() + " đang ở trạng thái " + task.getStatus(),
-                        task.getStatus().name().equals("REVIEW") ? "HIGH" : "MEDIUM",
-                        task.getDeadline().atStartOfDay(), task.getId())));
+            .filter(task -> task.getDeadline() != null && task.getStatus() != TaskStatus.DONE && task.getStatus() != TaskStatus.CANCELLED)
+            .filter(task -> ChronoUnit.DAYS.between(today, task.getDeadline()) <= 3)
+            .forEach(task -> {
+                long days = ChronoUnit.DAYS.between(today, task.getDeadline());
+                String title = days < 0 ? "Công việc đã quá hạn" : days == 0 ? "Công việc đến hạn hôm nay" : "Công việc sắp đến hạn";
+                String message = task.getTaskName() + (days < 0 ? " đã quá hạn " + Math.abs(days) + " ngày"
+                    : " còn " + days + " ngày để hoàn thành");
+                result.add(new NotificationDto.Response(id.getAndIncrement(), "TASK", title, message,
+                    days <= 0 ? "HIGH" : "MEDIUM", task.getDeadline().atStartOfDay(), task.getId()));
+            });
+
+        workRequests.findAll().stream()
+            .filter(request -> request.getStatus() != WorkRequestStatus.COMPLETED && request.getStatus() != WorkRequestStatus.CANCELLED)
+            .filter(request -> request.getCoordinator() != null && request.getCoordinator().getId().equals(current.getId())
+                || current.getRole() == Role.PROJECT_MANAGER && current.getDepartment() != null
+                    && request.getProject().getDepartment().getId().equals(current.getDepartment().getId())
+                || current.getRole() == Role.TEAM_LEAD && current.getDepartment() != null
+                    && request.getExecutingDepartment().getId().equals(current.getDepartment().getId()))
+            .filter(request -> ChronoUnit.DAYS.between(today, request.getDeadline()) <= 7)
+            .forEach(request -> {
+                long days = ChronoUnit.DAYS.between(today, request.getDeadline());
+                String title = days < 0 ? "Phiếu yêu cầu đã quá hạn" : "Phiếu yêu cầu sắp đến hạn";
+                String message = request.getRequestCode() + " · " + request.getTitle()
+                    + (days < 0 ? " đã quá hạn " + Math.abs(days) + " ngày" : " còn " + days + " ngày");
+                result.add(new NotificationDto.Response(id.getAndIncrement(), "REQUEST", title, message,
+                    days <= 1 ? "HIGH" : "MEDIUM", request.getDeadline().atStartOfDay(), request.getId()));
+            });
 
         leaveRequests.findByUserOrderByCreatedAtDesc(current).stream()
             .filter(request -> request.getUser() != null && request.getFromDate() != null && request.getToDate() != null)
@@ -78,7 +108,7 @@ public class NotificationController {
     }
 
     private String notificationKey(NotificationDto.Response item) {
-        return item.type() + ":" + item.relatedId();
+        return item.type() + ":" + item.relatedId() + ":" + Integer.toHexString((item.title() + item.message()).hashCode());
     }
 
     private void appendPending(List<NotificationDto.Response> result, AtomicLong id, List<com.example.demo.entity.LeaveRequest> requests) {

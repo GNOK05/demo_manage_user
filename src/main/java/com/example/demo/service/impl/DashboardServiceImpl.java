@@ -43,32 +43,54 @@ public class DashboardServiceImpl implements DashboardService {
         List<Task> visibleTasks;
         List<Attendance> visibleAttendance;
 
-        if (current.getRole() == Role.ADMIN) {
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR) {
             visibleUsers = users.findAll();
             visibleProjects = projects.findAll();
             visibleTasks = tasks.findAll();
             visibleAttendance = attendance.findAll();
-        } else if (current.getRole().canReviewPeopleInDepartment() && current.getDepartment() != null) {
+        } else if (current.getRole() == Role.PROJECT_MANAGER) {
+            visibleUsers = current.getDepartment() == null ? List.of(current) : users.findByDepartmentId(current.getDepartment().getId());
+            visibleProjects = projects.findAll();
+            visibleTasks = tasks.findAll();
+            visibleAttendance = current.getDepartment() == null ? attendance.findByUserIdOrderByDateDesc(current.getId())
+                : attendance.findByUserDepartmentIdOrderByDateDesc(current.getDepartment().getId());
+        } else if (current.getRole() == Role.TEAM_LEAD && current.getDepartment() != null) {
             visibleUsers = users.findByDepartmentId(current.getDepartment().getId());
-            visibleProjects = projects.findByDepartmentId(current.getDepartment().getId());
-            visibleTasks = visibleProjects.stream()
-                    .flatMap(project -> tasks.findByProjectId(project.getId()).stream())
-                    .toList();
+            visibleProjects = projects.findByParticipantDepartmentId(current.getDepartment().getId());
+            visibleTasks = tasks.findAll().stream().filter(task -> task.getWorkRequest() != null
+                && task.getWorkRequest().getExecutingDepartment().getId().equals(current.getDepartment().getId())).toList();
             visibleAttendance = attendance.findByUserDepartmentIdOrderByDateDesc(current.getDepartment().getId());
-        } else {
+        } else if (current.getRole() == Role.MEMBER || current.getRole() == Role.QA) {
             visibleUsers = List.of(current);
             visibleProjects = projects.findAssignedToUser(current.getId());
-            visibleTasks = tasks.findByAssignedToIdOrderByDeadlineAsc(current.getId());
+            visibleTasks = tasks.findAssignedOrTesting(current.getId());
+            visibleAttendance = attendance.findByUserIdOrderByDateDesc(current.getId());
+        } else {
+            visibleUsers = List.of(current);
+            visibleProjects = current.getDepartment() == null ? projects.findAssignedToUser(current.getId())
+                    : projects.findByParticipantDepartmentId(current.getDepartment().getId());
+            visibleTasks = current.getDepartment() == null ? tasks.findAssignedOrTesting(current.getId())
+                    : tasks.findAll().stream().filter(task -> task.getWorkRequest() != null
+                        && task.getWorkRequest().getExecutingDepartment().getId().equals(current.getDepartment().getId())).toList();
             visibleAttendance = attendance.findByUserIdOrderByDateDesc(current.getId());
         }
 
         LocalDate today = LocalDate.now();
         Map<String, Long> attendanceToday = new java.util.HashMap<>();
+        attendanceToday.put("PRESENT", 0L);
+        attendanceToday.put("LATE", 0L);
+        attendanceToday.put("LEAVE", 0L);
+        attendanceToday.put("ABSENT", 0L);
         for (Attendance record : visibleAttendance) {
             if (today.equals(record.getDate()) && record.getStatus() != null) {
                 String status = record.getStatus().name();
                 attendanceToday.put(status, attendanceToday.getOrDefault(status, 0L) + 1L);
             }
+        }
+        long accountedToday = attendanceToday.get("PRESENT") + attendanceToday.get("LATE")
+                + attendanceToday.get("LEAVE") + attendanceToday.get("ABSENT");
+        if (accountedToday < visibleUsers.size()) {
+            attendanceToday.put("ABSENT", attendanceToday.get("ABSENT") + visibleUsers.size() - accountedToday);
         }
 
         long completedTasks = visibleTasks.stream().filter(task -> task.getStatus() == TaskStatus.DONE).count();
@@ -85,7 +107,8 @@ public class DashboardServiceImpl implements DashboardService {
 
         return new DashboardDto.Summary(
                 visibleUsers.size(),
-                current.getRole() == Role.ADMIN ? departments.count() : current.getDepartment() == null ? 0 : 1,
+                current.getRole() == Role.ADMIN || current.getRole() == Role.HR
+                        ? departments.count() : current.getDepartment() == null ? 0 : 1,
                 visibleProjects.size(),
                 visibleProjects.stream().filter(project -> project.getStatus() == com.example.demo.entity.ProjectStatus.IN_PROGRESS).count(),
                 visibleProjects.stream().filter(project -> project.getStatus() == com.example.demo.entity.ProjectStatus.COMPLETED).count(),

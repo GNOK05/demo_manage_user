@@ -50,14 +50,17 @@ export class PeopleComponent implements OnInit {
     this.loading.set(true);
     this.errorMessage.set('');
     const canViewAll = this.auth.hasRole(['ADMIN', 'HR']);
+    if (!canViewAll) this.selectedDepartmentId.set(this.auth.user()?.departmentId ?? null);
     const peopleRequest = canViewAll
       ? this.api.users(this.search(), this.selectedDepartmentId())
       : this.api.departmentMembers(this.search());
     const attendanceRequest = canViewAll ? this.api.allAttendance() : this.api.departmentAttendance();
-    this.api.departments().subscribe({
-      next: (departments) => this.departments.set(departments),
-      error: () => this.errorMessage.set('Không thể tải danh sách phòng ban.'),
-    });
+    if (canViewAll) {
+      this.api.departments().subscribe({
+        next: (departments) => this.departments.set(departments),
+        error: () => this.errorMessage.set('Không thể tải danh sách phòng ban.'),
+      });
+    }
     peopleRequest.pipe(finalize(() => this.loading.set(false))).subscribe({
       next: (people) => {
         this.people.set(people);
@@ -179,9 +182,24 @@ export class PeopleComponent implements OnInit {
 
   canDelete(user: User) {
     const current = this.auth.user();
-    if (!current || current.id === user.id) return false;
+    if (!current || !this.auth.hasRole(['ADMIN', 'HR']) || current.id === user.id) return false;
     const rank = (role: Role) => ({ ADMIN: 7, HR: 6, PROJECT_MANAGER: 5, TEAM_LEAD: 4, QA: 3, MEMBER: 2, VIEWER: 1 })[role];
     return rank(current.role) > rank(user.role);
+  }
+
+  canEditUser(user: User) {
+    if (!this.auth.hasRole(['ADMIN', 'HR'])) return false;
+    return !(this.auth.hasRole(['HR']) && ['ADMIN', 'HR'].includes(user.role));
+  }
+
+  canManageDepartments() {
+    return this.auth.hasRole(['ADMIN', 'HR']);
+  }
+
+  availableRoles(): Role[] {
+    return this.auth.hasRole(['HR'])
+      ? this.roles.filter((role) => role !== 'ADMIN' && role !== 'HR')
+      : this.roles;
   }
 
   resetForm() {

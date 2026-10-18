@@ -1,1 +1,15 @@
-:host { display: contents; }
+:host {
+  display: block;
+  min-width: 0;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 100%;
+}
+
+@media (max-width: 780px) {
+  :host {
+    height: 0;
+  }
+}

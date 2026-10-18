@@ -26,6 +26,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     public AttendanceDto.Response checkIn() {
         User u = users.currentUser();
+        if (u.getRole().isReadOnly()) throw new BussinessException("Read-only users cannot check in");
         LocalDate today = LocalDate.now();
         Attendance a = records.findByUserIdAndDate(u.getId(), today).orElseGet(() -> {
             Attendance n = new Attendance();
@@ -53,6 +54,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     public AttendanceDto.Response checkOut() {
         User u = users.currentUser();
+        if (u.getRole().isReadOnly()) throw new BussinessException("Read-only users cannot check out");
         Attendance a = records.findByUserIdAndDate(u.getId(), LocalDate.now()).orElseThrow(() -> new BussinessException("Please check in before checking out"));
         migrateLegacySession(a);
         AttendanceSession session = sessions.findFirstByAttendanceIdAndCheckOutTimeIsNullOrderByCheckInTimeDesc(a.getId()).orElseThrow(() -> new BussinessException("You must check in before checking out"));
@@ -102,6 +104,23 @@ public class AttendanceServiceImpl implements AttendanceService {
         return new AttendanceDto.DepartmentSummary(date, total, present, late, absent, leave);
     }
 
+    @Transactional(readOnly = true)
+    public List<AttendanceDto.Response> byDate(LocalDate date) {
+        if (date == null) throw new BussinessException("Attendance date is required");
+        if (date.isAfter(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"))))
+            throw new BussinessException("Future attendance records are not available");
+        User current = users.currentUser();
+        List<Attendance> dayRecords;
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR) {
+            dayRecords = records.findByDate(date);
+        } else if (current.getRole().canReviewPeopleInDepartment() && current.getDepartment() != null) {
+            dayRecords = records.findByUserDepartmentIdAndDate(current.getDepartment().getId(), date);
+        } else {
+            dayRecords = records.findByUserIdAndDate(current.getId(), date).map(List::of).orElseGet(List::of);
+        }
+        return dayRecords.stream().map(this::response).toList();
+    }
+
     public List<AttendanceDto.Response> all() {
         return responses(records.findAll());
     }
@@ -111,9 +130,10 @@ public class AttendanceServiceImpl implements AttendanceService {
         if (year < 2000 || year > 2100) throw new BussinessException("Year must be between 2000 and 2100");
         User current = users.currentUser();
         User selected = users.findEntity(userId);
-        if (current.getRole() != Role.ADMIN && (!current.getRole().canReviewPeopleInDepartment() || current.getDepartment() == null || selected.getDepartment() == null || !current.getDepartment().getId().equals(selected.getDepartment().getId())))
+        if (current.getRole() != Role.ADMIN && current.getRole() != Role.HR
+                && (!current.getRole().canReviewPeopleInDepartment() || current.getDepartment() == null || selected.getDepartment() == null || !current.getDepartment().getId().equals(selected.getDepartment().getId())))
             throw new BussinessException("You can only view attendance in your department");
-        if (current.getRole() != Role.ADMIN && !current.getRole().canReviewPeopleInDepartment())
+        if (current.getRole() != Role.ADMIN && current.getRole() != Role.HR && !current.getRole().canReviewPeopleInDepartment())
             throw new BussinessException("Your role cannot view employee attendance");
         LocalDate from = LocalDate.of(year, month, 1);
         return responses(records.findByUserIdAndDateBetweenOrderByDateDesc(userId, from, from.withDayOfMonth(from.lengthOfMonth())));

@@ -5,7 +5,7 @@ import { AuthService } from '../../core/auth.service';
 import { CompanyApiService } from '../../core/company-api.service';
 import { SidebarComponent } from '../../core/layout/sidebar.component';
 import { AnnualLeaveBalance, Attendance, Department, DepartmentAttendanceSummary, LeaveRequest, PayrollMonthlyReport, User } from '../../core/models';
-import { computeWorkStatus, isAttendanceAdjustmentDateAllowed, localDateIso, parseVietnamDateTime, vietnamTime, WORK_STATUS_LABEL } from '../../core/work-status';
+import { computeWorkStatus, isAttendanceAdjustmentDateAllowed, localDateIso, parseVietnamDateTime, WORK_STATUS_LABEL } from '../../core/work-status';
 import { finalize } from 'rxjs';
 import { Router } from '@angular/router';
 
@@ -30,19 +30,16 @@ export class AttendanceComponent implements OnInit {
   selectedDepartmentId = signal<number | null>(null);
   selectedEmployeeId = signal<number | null>(null);
   search = signal('');
-  statusFilter = signal('ALL');
   attendanceView = signal<'ACTUAL' | 'PAYROLL' | 'CLOSED'>('ACTUAL');
   selfStatusLabel = signal('');
   month = Number(localDateIso().slice(5, 7));
   year = Number(localDateIso().slice(0, 4));
-  page = 1;
-  pageSize = 10;
   loadingDepartments = signal(false);
   loadingEmployees = signal(false);
   loadingAttendance = signal(false);
   errorMessage = signal('');
   successMessage = signal('');
-  leaveQuotaDraft = 12;
+  leaveQuotaDraft = 15;
   reopenReason = '';
   payrollClosed = signal(false);
   payrollClosedBy = signal('');
@@ -83,6 +80,7 @@ export class AttendanceComponent implements OnInit {
 
   isManager() { return this.auth.hasRole(['PROJECT_MANAGER', 'TEAM_LEAD']); }
   isAdmin() { return this.auth.hasRole(['ADMIN', 'HR']); }
+  isPayrollAdmin() { return this.auth.hasRole(['ADMIN']); }
 
   private loadMyLeaveData() {
     const year = Number(localDateIso().slice(0, 4));
@@ -222,7 +220,6 @@ export class AttendanceComponent implements OnInit {
 
   selectEmployee(id: number) {
     this.selectedEmployeeId.set(id);
-    this.page = 1;
     this.loadEmployeeAttendance();
   }
 
@@ -258,7 +255,6 @@ export class AttendanceComponent implements OnInit {
         next: (records) => {
           if (requestId !== this.attendanceRequestId) return;
           this.attendance.set(records);
-          this.page = 1;
         },
         error: (error) => {
           if (requestId !== this.attendanceRequestId) return;
@@ -340,11 +336,6 @@ export class AttendanceComponent implements OnInit {
     this.loadEmployeeAttendance();
   }
 
-  onPageSizeChange(value: number | string) {
-    this.pageSize = Number(value);
-    this.page = 1;
-  }
-
   monthLabel() {
     return new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric' }).format(
       new Date(this.year, this.month - 1, 1),
@@ -369,9 +360,11 @@ export class AttendanceComponent implements OnInit {
   }
 
   attendanceSessions(record: Attendance) {
-    return record.sessions?.length ? record.sessions : record.checkInTime
+    const sessions = record.sessions?.length ? record.sessions : record.checkInTime
       ? [{ checkInTime: record.checkInTime, checkOutTime: record.checkOutTime }]
       : [];
+    return sessions.filter((session, index, all) => all.findIndex((candidate) =>
+      candidate.checkInTime === session.checkInTime && candidate.checkOutTime === session.checkOutTime) === index);
   }
 
   attendanceStatusLabel(status: string) {
@@ -384,36 +377,11 @@ export class AttendanceComponent implements OnInit {
   }
 
   leaveTypeLabel(type: LeaveRequest['type']) {
-    return ({ ANNUAL: 'Phép năm', UNPAID: 'Không lương', PERSONAL: 'Cá nhân', SICK: 'Nghỉ ốm', MATERNITY: 'Thai sản' } as Record<LeaveRequest['type'], string>)[type];
+    return ({ ANNUAL: 'Phép năm', UNPAID: 'Không lương', MATERNITY: 'Thai sản' } as Record<LeaveRequest['type'], string>)[type];
   }
 
   selectedEmployee() {
     return this.employees().find((employee) => employee.id === this.selectedEmployeeId());
-  }
-
-  visibleAttendance() {
-    const records =
-      this.statusFilter() === 'ALL'
-        ? this.attendance()
-        : this.attendance().filter((record) => record.status === this.statusFilter());
-    const start = (this.page - 1) * this.pageSize;
-    return records.slice(start, start + this.pageSize);
-  }
-
-  filteredAttendanceCount() {
-    return this.statusFilter() === 'ALL'
-      ? this.attendance().length
-      : this.attendance().filter((record) => record.status === this.statusFilter()).length;
-  }
-
-  totalPages() {
-    return Math.max(1, Math.ceil(this.filteredAttendanceCount() / this.pageSize));
-  }
-  pages() {
-    return Array.from({ length: this.totalPages() }, (_, index) => index + 1);
-  }
-  setPage(page: number) {
-    this.page = Math.min(Math.max(1, page), this.totalPages());
   }
 
   summary() {
@@ -479,17 +447,12 @@ export class AttendanceComponent implements OnInit {
         date.setUTCDate(date.getUTCDate() + 1);
       }
       if (requestDays > 0) {
-        if (clippedFrom === request.fromDate && this.isPartialDay(request.fromDayPart) && this.isWeekday(clippedFrom)) requestDays -= 0.5;
-        if (clippedTo === request.toDate && clippedTo !== clippedFrom
-          && this.isPartialDay(request.toDayPart) && this.isWeekday(clippedTo)) requestDays -= 0.5;
+        if (clippedFrom === request.fromDate && request.fromDayPart === 'AFTERNOON' && this.isWeekday(clippedFrom)) requestDays -= 0.5;
+        if (clippedTo === request.toDate && request.toDayPart === 'MORNING' && this.isWeekday(clippedTo)) requestDays -= 0.5;
       }
       days += requestDays;
     }
     return days;
-  }
-
-  private isPartialDay(part: LeaveRequest['fromDayPart'] | undefined) {
-    return part === 'MORNING' || part === 'AFTERNOON';
   }
 
   private isWeekday(date: string) {
@@ -497,35 +460,26 @@ export class AttendanceComponent implements OnInit {
     return weekday !== 0 && weekday !== 6;
   }
 
-  workStatus(record: Attendance) {
-    return WORK_STATUS_LABEL[computeWorkStatus(record)];
-  }
-  dayName(date: string) {
-    return new Intl.DateTimeFormat('vi-VN', { weekday: 'short' }).format(
-      new Date(`${date}T00:00:00`),
-    );
-  }
   time(value?: string) {
     return value
       ? new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       : '—';
   }
-  duration(record: Attendance) {
-    return record.checkInTime && record.checkOutTime
-      ? `${((new Date(record.checkOutTime).getTime() - new Date(record.checkInTime).getTime()) / 3600000).toFixed(1)}h`
-      : '—';
-  }
-
   selfToday() {
     return this.selfAttendance().find((record) => record.date === this.localDate());
   }
   canCheckIn() {
+    if (this.auth.hasRole(['VIEWER'])) return false;
     const today = this.selfToday();
     return !today?.checkInTime || !!today.checkOutTime;
   }
   canCheckOut() {
+    if (this.auth.hasRole(['VIEWER'])) return false;
     const today = this.selfToday();
     return !!today?.checkInTime && !today.checkOutTime;
+  }
+  canCheckAttendance() {
+    return !this.auth.hasRole(['VIEWER']);
   }
   currentCheckInTime() {
     const sessions = this.selfToday()?.sessions ?? [];
@@ -547,7 +501,8 @@ export class AttendanceComponent implements OnInit {
     });
   }
   canAdjustAttendance(date: string) {
-    return !this.isAdmin() && isAttendanceAdjustmentDateAllowed(date, this.localDate());
+    return !this.isAdmin() && !this.auth.hasRole(['VIEWER'])
+      && isAttendanceAdjustmentDateAllowed(date, this.localDate());
   }
   selectAttendanceView(view: 'ACTUAL' | 'PAYROLL' | 'CLOSED') {
     if (view === 'CLOSED' && !this.payrollClosed()) return;
@@ -555,7 +510,7 @@ export class AttendanceComponent implements OnInit {
   }
   saveLeaveQuota() {
     const employeeId = this.selectedEmployeeId();
-    if (!employeeId || !this.isAdmin()) return;
+    if (!employeeId || !this.isPayrollAdmin()) return;
     this.api.setAnnualLeaveBalance(employeeId, this.year, this.leaveQuotaDraft).subscribe({
       next: (balance) => {
         this.selectedBalance.set(balance);
@@ -566,7 +521,7 @@ export class AttendanceComponent implements OnInit {
   }
   canClosePayroll() {
     const end = new Date(Date.UTC(this.year, this.month, 0, 12));
-    return this.isAdmin() && end < new Date(`${this.localDate()}T12:00:00Z`) && !this.payrollClosed();
+    return this.isPayrollAdmin() && end < new Date(`${this.localDate()}T12:00:00Z`) && !this.payrollClosed();
   }
   exportPayroll() {
     this.api.payrollExcel(this.year, this.month).subscribe({
@@ -594,7 +549,7 @@ export class AttendanceComponent implements OnInit {
     });
   }
   reopenPayroll() {
-    if (!this.isAdmin() || !this.payrollClosed() || !this.reopenReason.trim()) return;
+    if (!this.isPayrollAdmin() || !this.payrollClosed() || !this.reopenReason.trim()) return;
     this.api.reopenPayrollPeriod(this.year, this.month, this.reopenReason.trim()).subscribe({
       next: (report) => {
         this.payrollClosed.set(report.closed);

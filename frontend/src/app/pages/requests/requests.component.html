@@ -1,0 +1,77 @@
+<div class="shell">
+  <app-sidebar></app-sidebar>
+  <main class="content requests-page">
+    <header class="page-header">
+      <div><p class="eyebrow">Yêu cầu cá nhân</p><h1>Nghỉ phép & địa điểm làm việc</h1><p class="muted">Tạo đơn, xem dự tính và theo dõi quy trình phê duyệt.</p></div>
+    </header>
+
+    <div class="request-tabs" *ngIf="canCreate">
+      <button type="button" [class.active]="activeForm() === 'LEAVE'" (click)="selectForm('LEAVE')">Đơn xin nghỉ</button>
+      <button type="button" [class.active]="activeForm() === 'LOCATION'" (click)="selectForm('LOCATION')">Remote / Onsite</button>
+    </div>
+    <div class="alert alert-error" *ngIf="errorMessage()">{{ errorMessage() }}</div>
+    <div class="alert alert-success" *ngIf="successMessage()">{{ successMessage() }}</div>
+
+    <section class="request-composer" *ngIf="canCreate && activeForm() === 'LEAVE'">
+      <div class="composer-heading"><div><h2>Tạo đơn xin nghỉ</h2><p>Chọn chế độ nghỉ và thời gian. Hệ thống hiển thị cách ghi nhận dự kiến trước khi gửi đơn.</p></div><span class="calendar-icon">▦</span></div>
+      <div class="composer-grid">
+        <div class="request-form">
+          <label>Loại nghỉ <em>*</em><select [(ngModel)]="leaveDraft.type"><option value="ANNUAL">Nghỉ phép năm</option><option value="UNPAID">Nghỉ không lương (bao gồm nghỉ ốm)</option><option value="MATERNITY">Nghỉ thai sản</option></select></label>
+          <p class="field-help">{{ leaveDraft.type === 'ANNUAL' ? 'Ngày nghỉ được phê duyệt sẽ trừ vào quỹ phép năm.' : leaveDraft.type === 'UNPAID' ? 'Nghỉ ốm được ghi nhận trong nhóm nghỉ không lương.' : 'Không trừ quỹ phép năm; quyền lợi theo chế độ thai sản.' }}</p>
+          <div class="two-fields"><label>Từ ngày<input type="date" [min]="today" [(ngModel)]="leaveDraft.fromDate" (ngModelChange)="leaveSessionChanged()" /></label><label>Đến ngày<input type="date" [min]="leaveDraft.fromDate" [(ngModel)]="leaveDraft.toDate" (ngModelChange)="leaveSessionChanged()" /></label></div>
+          <div class="two-fields session-fields"><fieldset><legend>Bắt đầu từ</legend><div class="segment-control"><button *ngFor="let part of ['MORNING','AFTERNOON']" type="button" [class.active]="leaveDraft.fromDayPart === part" (click)="leaveDraft.fromDayPart = $any(part); leaveSessionChanged()">{{ dayPartLabel($any(part)) }}</button></div></fieldset><fieldset><legend>Kết thúc hết</legend><div class="segment-control"><button *ngFor="let part of ['MORNING','AFTERNOON']" type="button" [class.active]="leaveDraft.toDayPart === part" (click)="leaveDraft.toDayPart = $any(part); leaveSessionChanged()">{{ dayPartLabel($any(part)) }}</button></div></fieldset></div>
+          <label>Lý do nghỉ<textarea [(ngModel)]="leaveDraft.reason" maxlength="500" rows="4" placeholder="Nhập lý do hoặc thông tin cần bổ sung..."></textarea><small class="counter">{{ leaveDraft.reason.length }}/500 ký tự</small></label>
+          <button class="submit-button" type="button" [disabled]="loading()" (click)="submitLeave()">{{ loading() ? 'Đang gửi...' : 'Gửi đơn xin nghỉ' }} <span>→</span></button>
+        </div>
+        <aside class="estimate-card">
+          <h3><span>▣</span>Dự tính ngày nghỉ và tính công</h3>
+          <p>Số ngày làm việc dự kiến nghỉ</p><div class="big-number">{{ requestedDays() | number:'1.0-1' }} <small>ngày công</small></div>
+          <p>Minh họa theo lịch làm việc thứ Hai–thứ Sáu, chưa áp dụng lịch ca và ngày lễ.</p>
+          <hr />
+          <dl><div><dt>Chế độ hưởng</dt><dd>{{ leavePaidLabel() }}</dd></div><div><dt>Quỹ phép năm</dt><dd>{{ leaveQuotaLabel() }}</dd></div><div><dt>Phép năm hiện còn</dt><dd>{{ availableAnnualLeave() | number:'1.0-1' }} ngày</dd></div><div><dt>Dự kiến trừ phép</dt><dd>{{ leaveDraft.type === 'ANNUAL' ? (requestedDays() | number:'1.0-1') : 0 }} ngày</dd></div></dl>
+          <hr /><div class="remaining"><span>Phép còn lại sau duyệt</span><strong>{{ projectedRemaining() | number:'1.0-1' }} ngày</strong></div>
+          <p class="estimate-note">ⓘ Số ngày và phép còn lại chỉ được ghi nhận chính thức sau khi đơn được duyệt.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="request-composer" *ngIf="canCreate && activeForm() === 'LOCATION'">
+      <div class="composer-heading"><div><h2>Tạo đơn Remote / Onsite</h2><p>Đăng ký địa điểm làm việc ngoài công ty và thời gian áp dụng.</p></div><span class="calendar-icon">⌂</span></div>
+      <div class="composer-grid">
+        <div class="request-form">
+          <label>Hình thức làm việc <em>*</em></label>
+          <div class="location-options"><button type="button" [class.active]="locationDraft.type === 'WORK_FROM_HOME'" (click)="locationDraft.type = 'WORK_FROM_HOME'"><strong>Làm việc tại nhà</strong><span>Remote từ địa điểm cá nhân</span></button><button type="button" [class.active]="locationDraft.type === 'CLIENT_SITE'" (click)="locationDraft.type = 'CLIENT_SITE'"><strong>Onsite khách hàng</strong><span>Làm việc tại công ty khách hàng</span></button></div>
+          <div class="two-fields"><label>Từ ngày<input type="date" [min]="today" [(ngModel)]="locationDraft.fromDate" (ngModelChange)="locationSessionChanged()" /></label><label>Đến ngày<input type="date" [min]="locationDraft.fromDate" [(ngModel)]="locationDraft.toDate" (ngModelChange)="locationSessionChanged()" /></label></div>
+          <div class="two-fields session-fields"><fieldset><legend>Bắt đầu từ</legend><div class="segment-control"><button *ngFor="let part of ['MORNING','AFTERNOON']" type="button" [class.active]="locationDraft.fromDayPart === part" (click)="locationDraft.fromDayPart = $any(part); locationSessionChanged()">{{ dayPartLabel($any(part)) }}</button></div></fieldset><fieldset><legend>Kết thúc hết</legend><div class="segment-control"><button *ngFor="let part of ['MORNING','AFTERNOON']" type="button" [class.active]="locationDraft.toDayPart === part" (click)="locationDraft.toDayPart = $any(part); locationSessionChanged()">{{ dayPartLabel($any(part)) }}</button></div></fieldset></div>
+          <div class="two-fields" *ngIf="locationDraft.type === 'CLIENT_SITE'"><label>Tên công ty khách hàng<input [(ngModel)]="locationDraft.clientName" maxlength="150" placeholder="Ví dụ: Công ty ABC" /></label><label>Địa chỉ onsite<input [(ngModel)]="locationDraft.clientAddress" maxlength="300" placeholder="Địa chỉ làm việc" /></label></div>
+          <label>Mục đích và nội dung công việc<textarea [(ngModel)]="locationDraft.reason" maxlength="500" rows="4" placeholder="Nêu công việc dự kiến và cách liên hệ..."></textarea><small class="counter">{{ locationDraft.reason.length }}/500 ký tự</small></label>
+          <button class="submit-button" type="button" [disabled]="loading()" (click)="submitLocation()">{{ loading() ? 'Đang gửi...' : 'Gửi đơn Remote / Onsite' }} <span>→</span></button>
+        </div>
+        <aside class="estimate-card location-estimate">
+          <h3><span>⌂</span>Dự tính địa điểm làm việc</h3><p>Số ngày làm việc dự kiến</p><div class="big-number">{{ requestedDays() | number:'1.0-0' }} <small>ngày công</small></div><p>Nhân viên vẫn thực hiện chấm công trong những ngày được duyệt.</p><hr />
+          <dl><div><dt>Hình thức</dt><dd>{{ locationTypeLabel(locationDraft.type) }}</dd></div><div><dt>Tính công</dt><dd>Ngày làm việc bình thường</dd></div><div><dt>Quỹ phép năm</dt><dd>Không trừ quỹ phép</dd></div><div *ngIf="locationDraft.type === 'CLIENT_SITE'"><dt>Khách hàng</dt><dd>{{ locationDraft.clientName || 'Chưa nhập' }}</dd></div></dl>
+          <hr /><div class="approval-flow"><span>Quy trình duyệt</span><strong>Quản lý → Admin</strong></div><p class="estimate-note">ⓘ Địa điểm làm việc được áp dụng sau khi hoàn tất phê duyệt.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="records-grid">
+      <article class="card records-card" *ngIf="!auth.hasRole(['ADMIN'])">
+        <div class="section-top"><div><p class="eyebrow subtle">Lịch sử cá nhân</p><h2>Các đơn đã gửi</h2></div><span class="chip chip-soft">{{ leaveRequests().length + locationRequests().length }}</span></div>
+        <div class="record-list">
+          <div class="record" *ngFor="let item of leaveRequests()"><div><strong>{{ leaveTypeLabel(item.type) }}</strong><p>{{ item.fromDate }} ({{ dayPartLabel(item.fromDayPart) }}) → {{ item.toDate }} ({{ dayPartLabel(item.toDayPart) }}) · {{ item.requestedWorkdays | number:'1.0-1' }} ngày</p><small>{{ item.reason }}</small></div><div class="record-side"><span class="status {{ item.status.toLowerCase() }}">{{ statusLabel(item.status) }}</span><button *ngIf="canCancel(item)" class="text-danger" (click)="cancelLeave(item)">Hủy đơn</button></div></div>
+          <div class="record" *ngFor="let item of locationRequests()"><div><strong>{{ locationTypeLabel(item.type) }}</strong><p>{{ item.fromDate }} ({{ dayPartLabel(item.fromDayPart) }}) → {{ item.toDate }} ({{ dayPartLabel(item.toDayPart) }}) · {{ item.requestedWorkdays | number:'1.0-1' }} ngày</p><small>{{ item.clientName ? item.clientName + ' · ' : '' }}{{ item.reason }}</small></div><div class="record-side"><span class="status {{ item.status.toLowerCase() }}">{{ statusLabel(item.status) }}</span><button *ngIf="canCancel(item)" class="text-danger" (click)="cancelLocation(item)">Hủy đơn</button></div></div>
+          <p class="empty-state" *ngIf="!leaveRequests().length && !locationRequests().length">Bạn chưa gửi yêu cầu nào.</p>
+        </div>
+      </article>
+      <article class="card records-card" *ngIf="canApprove">
+        <div class="section-top"><div><p class="eyebrow subtle">Hàng chờ của bạn</p><h2>Đơn cần phê duyệt</h2></div><span class="chip chip-soft">{{ pendingLeaves().length + pendingLocations().length }}</span></div>
+        <div class="record-list">
+          <div class="record" *ngFor="let item of pendingLeaves()"><div><strong>{{ item.userName }} · {{ leaveTypeLabel(item.type) }}</strong><p>{{ item.fromDate }} ({{ dayPartLabel(item.fromDayPart) }}) → {{ item.toDate }} ({{ dayPartLabel(item.toDayPart) }}) · {{ item.requestedWorkdays | number:'1.0-1' }} ngày</p><small>{{ item.reason }}</small></div><div class="decision-buttons"><button class="approve" (click)="decideLeave(item, true)">Duyệt</button><button class="reject" (click)="decideLeave(item, false)">Từ chối</button></div></div>
+          <div class="record" *ngFor="let item of pendingLocations()"><div><strong>{{ item.userName }} · {{ locationTypeLabel(item.type) }}</strong><p>{{ item.fromDate }} ({{ dayPartLabel(item.fromDayPart) }}) → {{ item.toDate }} ({{ dayPartLabel(item.toDayPart) }}) · {{ item.requestedWorkdays | number:'1.0-1' }} ngày</p><small>{{ item.clientName ? item.clientName + ' · ' : '' }}{{ item.reason }}</small></div><div class="decision-buttons"><button class="approve" (click)="decideLocation(item, true)">Duyệt</button><button class="reject" (click)="decideLocation(item, false)">Từ chối</button></div></div>
+          <p class="empty-state" *ngIf="!pendingLeaves().length && !pendingLocations().length">Không có đơn đang chờ duyệt.</p>
+        </div>
+      </article>
+    </section>
+  </main>
+</div>

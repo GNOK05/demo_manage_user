@@ -8,12 +8,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 @Service @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
  private final AuthenticationManager authenticationManager;
  private final JwtService jwt;
  private final UserService users;
 
+ @Transactional(readOnly = true)
  public AuthDto.LoginResponse login(AuthDto.LoginRequest r) {
   authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(r.username(), r.password()));
   User u = users.findEntityByUsername(r.username());

@@ -2,7 +2,6 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.ApiResponse;
 import com.example.demo.dto.LeaveRequestDto;
-import com.example.demo.entity.LeaveRequestStatus;
 import com.example.demo.service.LeaveRequestService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import org.springframework.web.bind.annotation.RequestParam;
-import com.example.demo.entity.Role;
 
 @RestController
 @RequestMapping("/api/v1/leave-requests")
@@ -31,7 +29,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/pending")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','PROJECT_MANAGER','TEAM_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN','PROJECT_MANAGER','TEAM_LEAD')")
     public ApiResponse<List<LeaveRequestDto.Response>> pending() {
         return ApiResponse.ok(service.pendingForApproval());
     }
@@ -42,7 +40,7 @@ public class LeaveRequestController {
     }
 
     @PatchMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','PROJECT_MANAGER','TEAM_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN','PROJECT_MANAGER','TEAM_LEAD')")
     public ApiResponse<LeaveRequestDto.Response> approve(
             @PathVariable Long id,
             @Valid @RequestBody LeaveRequestDto.DecisionRequest request) {

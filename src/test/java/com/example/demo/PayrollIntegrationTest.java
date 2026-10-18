@@ -63,6 +63,30 @@ class PayrollIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+        @Test
+        void hrCanViewAndExportCompanyPayrollWithoutAdminCloseControls() throws Exception {
+            YearMonth period = YearMonth.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+            String hr = login("hr", "hr123");
+            mockMvc.perform(get("/api/v1/payroll/monthly")
+                            .param("year", String.valueOf(period.getYear()))
+                            .param("month", String.valueOf(period.getMonthValue()))
+                            .header("Authorization", "Bearer " + hr))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.employees.length()").isNumber())
+                    .andExpect(jsonPath("$.data.employees.length()").value(org.hamcrest.Matchers.greaterThan(1)));
+
+            mockMvc.perform(get("/api/v1/payroll/monthly.xlsx")
+                            .param("year", String.valueOf(period.getYear()))
+                            .param("month", String.valueOf(period.getMonthValue()))
+                            .header("Authorization", "Bearer " + hr))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+
+            mockMvc.perform(post("/api/v1/payroll/{year}/{month}/close", period.getYear(), period.getMonthValue())
+                            .header("Authorization", "Bearer " + hr))
+                    .andExpect(status().isForbidden());
+        }
+
     @Test
     void payrollInputsCanBeReportedExportedAndClosedByAdmin() throws Exception {
         YearMonth period = YearMonth.now().minusMonths(1);

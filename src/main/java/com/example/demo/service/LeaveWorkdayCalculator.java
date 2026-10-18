@@ -12,15 +12,14 @@ public final class LeaveWorkdayCalculator {
         if (from.isAfter(to)) return 0;
         fromPart = fromPart == null ? LeaveDayPart.FULL_DAY : fromPart;
         toPart = toPart == null ? LeaveDayPart.FULL_DAY : toPart;
-        long weekdays = from.datesUntil(to.plusDays(1))
-                .filter(LeaveWorkdayCalculator::isWorkday)
-                .count();
-        if (weekdays == 0) return 0;
-
-        double days = weekdays;
-        if (isWorkday(from) && fromPart != LeaveDayPart.FULL_DAY) days -= 0.5;
-        if (!from.equals(to) && isWorkday(to) && toPart != LeaveDayPart.FULL_DAY) days -= 0.5;
-        return days;
+        int sessions = 0;
+        for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
+            if (!isWorkday(date)) continue;
+            int firstSession = date.equals(from) && fromPart == LeaveDayPart.AFTERNOON ? 1 : 0;
+            int lastSession = date.equals(to) && toPart == LeaveDayPart.MORNING ? 0 : 1;
+            if (firstSession <= lastSession) sessions += lastSession - firstSession + 1;
+        }
+        return sessions / 2.0;
     }
 
     public static boolean isWorkday(LocalDate date) {

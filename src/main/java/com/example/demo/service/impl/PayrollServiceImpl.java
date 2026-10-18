@@ -41,7 +41,7 @@ public class PayrollServiceImpl implements PayrollService {
         YearMonth period = validatePeriod(year, month);
         User current = userService.currentUser();
         List<User> employees;
-        if (current.getRole() == Role.ADMIN) employees = users.findAll().stream()
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR) employees = users.findAll().stream()
             .filter(user -> user.getRole() != Role.ADMIN).toList();
         else if (current.getRole().canReviewPeopleInDepartment() && current.getDepartment() != null) {
             employees = users.findByDepartmentId(current.getDepartment().getId());

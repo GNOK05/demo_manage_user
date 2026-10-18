@@ -24,8 +24,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import lombok.RequiredArgsConstructor;
 @RestController @RequestMapping("/api/v1/tasks") @RequiredArgsConstructor
 public class TaskController {private final TaskService service;
- @GetMapping public ApiResponse<List<TaskDto.Response>> accessible(@RequestParam(defaultValue="") String keyword, @RequestParam(required=false) Role role, @RequestParam(required=false) TaskStatus status, @RequestParam(required=false) TaskPriority priority, @RequestParam(defaultValue="false") boolean overdue, @RequestParam(defaultValue="DEFAULT") String sort){return ApiResponse.ok(service.accessibleTasks(keyword, role, status, priority, overdue, sort));}
+ @GetMapping public ApiResponse<List<TaskDto.Response>> accessible(@RequestParam(defaultValue="") String keyword, @RequestParam(required=false) Role role, @RequestParam(required=false) TaskStatus status, @RequestParam(required=false) TaskPriority priority, @RequestParam(defaultValue="false") boolean overdue, @RequestParam(defaultValue="DEFAULT") String sort, @RequestParam(required=false) Long workRequestId){return ApiResponse.ok(service.accessibleTasks(keyword, role, status, priority, overdue, sort, workRequestId));}
  @GetMapping("/project/{projectId}") public ApiResponse<List<TaskDto.Response>> project(@PathVariable Long projectId){return ApiResponse.ok(service.byProject(projectId));}
+ @GetMapping("/work-request/{requestId}") public ApiResponse<List<TaskDto.Response>> workRequest(@PathVariable Long requestId){return ApiResponse.ok(service.byWorkRequest(requestId));}
  @GetMapping("/my") public ApiResponse<List<TaskDto.Response>> mine(){return ApiResponse.ok(service.myTasks());}
  @PostMapping @PreAuthorize("hasAnyRole('ADMIN','PROJECT_MANAGER','TEAM_LEAD','MEMBER','QA')") public ApiResponse<TaskDto.Response> create(@Valid @RequestBody TaskDto.SaveRequest r){return ApiResponse.ok(service.save(r));}
  @PutMapping("/{id}") @PreAuthorize("hasAnyRole('ADMIN','PROJECT_MANAGER','TEAM_LEAD','MEMBER','QA')") public ApiResponse<TaskDto.Response> update(@PathVariable Long id,@Valid @RequestBody TaskDto.SaveRequest r){return ApiResponse.ok(service.update(id,r));}

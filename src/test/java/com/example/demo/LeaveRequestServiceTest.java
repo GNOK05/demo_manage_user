@@ -81,7 +81,7 @@ class LeaveRequestServiceTest {
         leaveRequest.setUser(new User());
         leaveRequest.getUser().setId(10L);
         leaveRequest.getUser().setDepartment(department);
-        leaveRequest.setType(LeaveRequestType.PERSONAL);
+        leaveRequest.setType(LeaveRequestType.UNPAID);
         leaveRequest.setFromDate(LocalDate.now().plusDays(1));
         leaveRequest.setToDate(LocalDate.now().plusDays(2));
         leaveRequest.setReason("Việc gia đình");
@@ -156,7 +156,7 @@ class LeaveRequestServiceTest {
         owner.setId(userId);
         owner.setFullName("Employee");
         request.setUser(owner);
-        request.setType(LeaveRequestType.PERSONAL);
+        request.setType(LeaveRequestType.UNPAID);
         request.setFromDate(LocalDate.now().plusDays(1));
         request.setToDate(LocalDate.now().plusDays(2));
         request.setReason("Việc gia đình");

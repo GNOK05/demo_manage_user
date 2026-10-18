@@ -34,7 +34,7 @@ public class AnnualLeaveBalance {
     private int year;
 
     @Column(name = "entitled_days", nullable = false)
-    private int entitledDays = 12;
+    private int entitledDays = 15;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

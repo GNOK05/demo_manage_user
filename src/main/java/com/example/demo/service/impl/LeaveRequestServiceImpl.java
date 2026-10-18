@@ -30,9 +30,12 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     @Override
     public LeaveRequestDto.Response create(LeaveRequestDto.SaveRequest request) {
         User current = userService.currentUser();
+        if (current.getRole() == Role.ADMIN || current.getRole().isReadOnly()) {
+            throw new BussinessException("Your role cannot submit leave requests");
+        }
         validateRequest(request, current);
-        LeaveDayPart fromPart = dayPart(request.fromDayPart());
-        LeaveDayPart toPart = dayPart(request.toDayPart());
+        LeaveDayPart fromPart = request.fromDayPart() == null ? LeaveDayPart.MORNING : request.fromDayPart();
+        LeaveDayPart toPart = request.toDayPart() == null ? LeaveDayPart.AFTERNOON : request.toDayPart();
         validateDayParts(request.fromDate(), request.toDate(), fromPart, toPart);
 
         LeaveRequest entity = new LeaveRequest();
@@ -77,9 +80,11 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     public List<LeaveRequestDto.Response> requestsForUser(Long userId) {
         User current = userService.currentUser();
         User selected = userService.findEntity(userId);
-        if (current.getRole().canReviewPeopleInDepartment()) verifyManagerDepartment(current, selected);
-        else if (current.getRole() != Role.ADMIN && !current.getId().equals(selected.getId())) {
-            throw new BussinessException("You can only view your own leave requests");
+        if (current.getRole() != Role.HR && current.getRole() != Role.ADMIN) {
+            if (current.getRole().canReviewPeopleInDepartment()) verifyManagerDepartment(current, selected);
+            else if (!current.getId().equals(selected.getId())) {
+                throw new BussinessException("You can only view your own leave requests");
+            }
         }
         return leaveRequests.findByUserOrderByCreatedAtDesc(selected).stream().map(this::toResponse).toList();
     }
@@ -157,6 +162,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     @Override
     public LeaveRequestDto.Response cancel(Long id) {
         User current = userService.currentUser();
+        if (current.getRole().isReadOnly()) throw new BussinessException("Read-only users cannot cancel leave requests");
         LeaveRequest request = leaveRequests.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new BussinessException("Leave request not found: " + id));
         if (!request.getUser().getId().equals(current.getId())) {
@@ -184,9 +190,11 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     public LeaveRequestDto.BalanceResponse userBalance(Long userId, int year) {
         User current = userService.currentUser();
         User selected = userService.findEntity(userId);
-        if (current.getRole().canReviewPeopleInDepartment()) verifyManagerDepartment(current, selected);
-        else if (current.getRole() != Role.ADMIN && !current.getId().equals(selected.getId())) {
-            throw new BussinessException("You can only view your own annual leave balance");
+        if (current.getRole() != Role.HR && current.getRole() != Role.ADMIN) {
+            if (current.getRole().canReviewPeopleInDepartment()) verifyManagerDepartment(current, selected);
+            else if (!current.getId().equals(selected.getId())) {
+                throw new BussinessException("You can only view your own annual leave balance");
+            }
         }
         return balance(selected, year);
     }
@@ -215,7 +223,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
             AnnualLeaveBalance created = new AnnualLeaveBalance();
             created.setUser(user);
             created.setYear(year);
-            created.setEntitledDays(12);
+            created.setEntitledDays(15);
             return balances.save(created);
         });
         LocalDate first = LocalDate.of(year, 1, 1);
@@ -248,19 +256,12 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     }
 
     private void validateDayParts(LocalDate from, LocalDate to, LeaveDayPart fromPart, LeaveDayPart toPart) {
-        if (from.equals(to) && fromPart != toPart) {
-            throw new BussinessException("A single-day request must use the same leave part for both boundaries");
-        }
-        if (!LeaveWorkdayCalculator.isWorkday(from) && fromPart != LeaveDayPart.FULL_DAY) {
-            throw new BussinessException("A half-day part can only be selected on a working day");
-        }
-        if (!LeaveWorkdayCalculator.isWorkday(to) && toPart != LeaveDayPart.FULL_DAY) {
-            throw new BussinessException("A half-day part can only be selected on a working day");
-        }
+        if (from.equals(to) && fromPart == LeaveDayPart.AFTERNOON && toPart == LeaveDayPart.MORNING)
+            throw new BussinessException("The ending session cannot be before the starting session");
     }
 
     private LeaveDayPart dayPart(LeaveDayPart part) {
-        return part == null ? LeaveDayPart.FULL_DAY : part;
+        return part == null ? LeaveDayPart.MORNING : part;
     }
 
     private double requestedWorkdays(LocalDate from, LocalDate to, LeaveDayPart fromPart, LeaveDayPart toPart) {

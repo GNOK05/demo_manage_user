@@ -1,15 +1,14 @@
 spring:
   datasource:
-    # Default to in-memory H2 to avoid stale file locks during local restarts.
-    # If you want file persistence, set DB_URL=jdbc:h2:file:./data/company_management;MODE=MySQL;DB_CLOSE_ON_EXIT=FALSE
-    url: ${DB_URL:jdbc:h2:mem:company_management;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    url: ${DB_URL:jdbc:mysql://localhost:3306/company_management?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Ho_Chi_Minh}
+    username: ${DB_USERNAME:company_app}
+    password: ${DB_PASSWORD:CompanyHub_Local_2026!}
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
-    show-sql: true
+    show-sql: false
+    open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
@@ -18,11 +17,6 @@ spring:
 
   jackson:
     time-zone: Asia/Ho_Chi_Minh
-
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
 
 app:
   time-zone: ${APP_TIME_ZONE:Asia/Ho_Chi_Minh}

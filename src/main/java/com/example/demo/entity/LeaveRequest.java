@@ -32,11 +32,11 @@ public class LeaveRequest {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "from_day_part", nullable = false, length = 20)
-    private LeaveDayPart fromDayPart = LeaveDayPart.FULL_DAY;
+    private LeaveDayPart fromDayPart = LeaveDayPart.MORNING;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "to_day_part", nullable = false, length = 20)
-    private LeaveDayPart toDayPart = LeaveDayPart.FULL_DAY;
+    private LeaveDayPart toDayPart = LeaveDayPart.AFTERNOON;
 
     @Column(nullable = false, length = 500)
     private String reason;

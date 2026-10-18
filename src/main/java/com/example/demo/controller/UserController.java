@@ -21,8 +21,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 @RestController @RequestMapping("/api/v1/users") @RequiredArgsConstructor
 public class UserController {private final UserService service;
- @GetMapping @PreAuthorize("hasAnyRole('ADMIN','HR')") public ApiResponse<List<UserResponse>> all(@RequestParam(defaultValue="") String query,@RequestParam(required=false) Long departmentId){return ApiResponse.ok(service.findAll(query,departmentId));}
- @GetMapping("/department") @PreAuthorize("hasAnyRole('HR','PROJECT_MANAGER','TEAM_LEAD')") public ApiResponse<List<UserResponse>> department(@RequestParam(defaultValue="") String query){return ApiResponse.ok(service.departmentMembers(query));}
+ @GetMapping @PreAuthorize("hasAnyRole('ADMIN','HR','PROJECT_MANAGER')") public ApiResponse<List<UserResponse>> all(@RequestParam(defaultValue="") String query,@RequestParam(required=false) Long departmentId){return ApiResponse.ok(service.findAll(query,departmentId));}
+ @GetMapping("/department") @PreAuthorize("hasAnyRole('PROJECT_MANAGER','TEAM_LEAD')") public ApiResponse<List<UserResponse>> department(@RequestParam(defaultValue="") String query){return ApiResponse.ok(service.departmentMembers(query));}
  @GetMapping("/{id}") @PreAuthorize("hasAnyRole('ADMIN','HR')") public ApiResponse<UserResponse> get(@PathVariable Long id){return ApiResponse.ok(service.get(id));}
  @PostMapping @PreAuthorize("hasAnyRole('ADMIN','HR')") public ApiResponse<UserResponse> create(@Valid @RequestBody UserDto.SaveRequest r){return ApiResponse.ok(service.create(r));}
  @PutMapping("/{id}") @PreAuthorize("hasAnyRole('ADMIN','HR')") public ApiResponse<UserResponse> update(@PathVariable Long id,@Valid @RequestBody UserDto.UpdateRequest r){return ApiResponse.ok(service.update(id,r));}

@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { CompanyApiService } from '../../core/company-api.service';
 import { SidebarComponent } from '../../core/layout/sidebar.component';
@@ -13,13 +14,14 @@ import {
   TaskSort,
   TaskStatus,
   User,
+  WorkRequest,
 } from '../../core/models';
-import { finalize } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 import { localDateIso } from '../../core/work-status';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, RouterLink, SidebarComponent],
   templateUrl: './task-board.component.html',
   styleUrl: './task-board.component.scss',
 })
@@ -29,6 +31,10 @@ export class TaskBoardComponent implements OnInit {
   tasks = signal<Task[]>([]);
   employees = signal<User[]>([]);
   projects = signal<Project[]>([]);
+  workRequests = signal<WorkRequest[]>([]);
+  currentRequest = signal<WorkRequest | null>(null);
+  expandedProjectId = signal<number | null>(null);
+  expandedRequestId = signal<number | null>(null);
   search = signal('');
   selectedRole = signal<Role | ''>('');
   selectedStatus = signal<TaskStatus | ''>('');
@@ -46,6 +52,7 @@ export class TaskBoardComponent implements OnInit {
     taskName: '',
     description: '',
     projectId: null,
+    workRequestId: null,
     assignedToId: null,
     testerId: null,
     status: 'BACKLOG',
@@ -57,47 +64,116 @@ export class TaskBoardComponent implements OnInit {
   constructor(
     public auth: AuthService,
     private api: CompanyApiService,
+    private route: ActivatedRoute,
+    private router: Router,
   ) {}
 
   ngOnInit() {
-    this.load();
+    const requestId = Number(this.route.snapshot.paramMap.get('requestId'));
+    if (!requestId) return;
+    this.expandedRequestId.set(requestId);
+    this.loading.set(true);
+    forkJoin({ request: this.api.workRequest(requestId), tasks: this.api.tasksByWorkRequest(requestId) })
+      .pipe(finalize(() => this.loading.set(false))).subscribe({
+        next: ({ request, tasks }) => {
+          this.currentRequest.set(request);
+          this.workRequests.set([request]);
+          this.expandedProjectId.set(request.projectId);
+          this.tasks.set(tasks);
+          this.api.project(request.projectId).subscribe((project) => this.projects.set([project]));
+          if (!this.route.snapshot.paramMap.get('projectId')) {
+            this.router.navigate(['/work/projects', request.projectId, 'requests', request.id], { replaceUrl: true });
+          }
+        },
+        error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tải task của phiếu yêu cầu'),
+      });
     if (this.canCreateTask()) {
       if (this.auth.hasRole(['MEMBER', 'QA'])) {
         const current = this.auth.user();
         this.employees.set(current ? [current] : []);
       } else {
-        const usersRequest = this.auth.hasRole(['ADMIN']) ? this.api.users() : this.api.departmentMembers();
+        const usersRequest = this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER']) ? this.api.users() : this.api.departmentMembers();
         usersRequest.subscribe({
           next: (x) => this.employees.set(x),
           error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tải nhân sự'),
         });
       }
-      this.api.projects().subscribe({
-        next: (projects) => {
-          this.projects.set(projects);
-        },
-        error: (error) =>
-          this.errorMessage.set(error?.error?.message || 'Không thể tải danh sách dự án'),
-      });
     }
   }
 
   load() {
+    const requestId = this.expandedRequestId();
+    if (requestId) {
+      this.loadTasks(requestId);
+      return;
+    }
+    this.loadProjects();
+  }
+
+  loadProjects() {
     this.loading.set(true);
-    this.api
-      .tasks(
-        this.search(),
-        this.selectedRole() || null,
-        this.selectedStatus() || null,
-        this.selectedSort(),
-        this.selectedPriority() || null,
-        this.selectedOverdue(),
-      )
+    this.api.projects()
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: (tasks) => this.tasks.set(tasks),
-        error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tải công việc'),
+        next: (projects) => this.projects.set(projects),
+        error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tải dự án'),
       });
+  }
+
+  toggleProject(project: Project) {
+    if (this.expandedProjectId() === project.id) {
+      this.expandedProjectId.set(null);
+      this.expandedRequestId.set(null);
+      this.workRequests.set([]);
+      this.tasks.set([]);
+      return;
+    }
+    this.expandedProjectId.set(project.id);
+    this.expandedRequestId.set(null);
+    this.tasks.set([]);
+    this.loading.set(true);
+    this.api.workRequestsByProject(project.id).pipe(finalize(() => this.loading.set(false))).subscribe({
+      next: (requests) => this.workRequests.set(requests),
+      error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tải phiếu yêu cầu'),
+    });
+  }
+
+  toggleRequest(request: WorkRequest) {
+    if (this.expandedRequestId() === request.id) {
+      this.expandedRequestId.set(null);
+      this.tasks.set([]);
+      return;
+    }
+    this.expandedRequestId.set(request.id);
+    this.loadTasks(request.id);
+  }
+
+  loadTasks(requestId: number) {
+    this.loading.set(true);
+    this.errorMessage.set('');
+    this.api.tasks(
+      this.search(),
+      this.selectedRole() || null,
+      this.selectedStatus() || null,
+      this.selectedSort(),
+      this.selectedPriority() || null,
+      this.selectedOverdue(),
+      requestId,
+    ).pipe(finalize(() => this.loading.set(false))).subscribe({
+      next: (tasks) => this.tasks.set(tasks),
+      error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tìm kiếm task'),
+    });
+  }
+
+  visibleProjects() {
+    const query = this.search().trim().toLowerCase();
+    return !query ? this.projects() : this.projects().filter((project) =>
+      project.projectName.toLowerCase().includes(query)
+      || project.departmentName.toLowerCase().includes(query));
+  }
+
+  visibleTasks() {
+    return this.tasks();
   }
 
   items(s: TaskStatus) {
@@ -105,7 +181,8 @@ export class TaskBoardComponent implements OnInit {
   }
 
   searchTasks() {
-    this.load();
+    const requestId = this.expandedRequestId();
+    if (requestId) this.loadTasks(requestId);
   }
 
   move(t: Task, status: TaskStatus) {
@@ -143,6 +220,7 @@ export class TaskBoardComponent implements OnInit {
       taskName: task.taskName,
       description: task.description,
       projectId: task.projectId,
+      workRequestId: task.workRequestId,
       assignedToId: task.assignedToId ?? null,
       testerId: task.testerId ?? null,
       status: task.status,
@@ -158,6 +236,13 @@ export class TaskBoardComponent implements OnInit {
 
   openCreate() {
     this.resetForm();
+    this.draft.projectId = this.expandedProjectId();
+    this.draft.workRequestId = this.expandedRequestId();
+    const request = this.workRequests().find((item) => item.id === this.draft.workRequestId);
+    if (request) {
+      this.draft.startDate = request.startDate;
+      this.draft.deadline = request.deadline;
+    }
     this.taskModalOpen.set(true);
   }
 
@@ -176,11 +261,16 @@ export class TaskBoardComponent implements OnInit {
       this.errorMessage.set('Vui lòng chọn một dự án hợp lệ');
       return;
     }
+    if (!this.draft.workRequestId || !this.filteredWorkRequests().some((request) => request.id === this.draft.workRequestId)) {
+      this.errorMessage.set('Vui lòng chọn phiếu yêu cầu thuộc dự án');
+      return;
+    }
 
     const payload: TaskSaveRequest = {
       taskName: this.draft.taskName,
       description: this.draft.description,
       projectId: this.draft.projectId,
+      workRequestId: this.draft.workRequestId,
       assignedToId: this.draft.assignedToId || null,
       testerId: this.draft.testerId || null,
       status: this.draft.status,
@@ -278,6 +368,7 @@ export class TaskBoardComponent implements OnInit {
       taskName: '',
       description: '',
       projectId: null,
+      workRequestId: null,
       assignedToId: null,
       testerId: null,
       status: 'BACKLOG',
@@ -288,10 +379,6 @@ export class TaskBoardComponent implements OnInit {
   }
 
   isPo() {
-    return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER', 'TEAM_LEAD']);
-  }
-
-  isAdmin() {
     return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER', 'TEAM_LEAD']);
   }
 
@@ -306,7 +393,23 @@ export class TaskBoardComponent implements OnInit {
       DONE: [],
       CANCELLED: [],
     };
-    return [task.status, ...transitions[task.status]];
+    const role = this.auth.user()?.role;
+    if (role === 'VIEWER') return [task.status];
+    const manager = role === 'ADMIN' || role === 'PROJECT_MANAGER' || role === 'TEAM_LEAD';
+    const assignee = this.auth.user()?.id === task.assignedToId;
+    const tester = this.auth.user()?.id === task.testerId;
+    const allowed = transitions[task.status] ?? [];
+    return [
+      task.status,
+      ...allowed.filter((next) => {
+        if (['CANCELLED', 'BACKLOG'].includes(next) || task.status === 'BACKLOG') return manager;
+        if (task.status === 'REVIEW') return manager;
+        if (task.status === 'TESTING' && ['DONE', 'IN_PROGRESS'].includes(next)) {
+          return manager || tester || role === 'QA';
+        }
+        return manager || assignee;
+      }),
+    ];
   }
 
   canCreateTask() {
@@ -314,12 +417,24 @@ export class TaskBoardComponent implements OnInit {
   }
 
   canEditTask(task: Task) {
+    if (this.auth.hasRole(['HR', 'VIEWER'])) return false;
     const userId = this.auth.user()?.id;
     return this.isPo() || !!userId && [task.assignedToId, task.testerId, task.createdById].includes(userId);
   }
 
+  canDeleteTask(task: Task) {
+    const role = this.auth.user()?.role;
+    if (role === 'ADMIN') return true;
+    if (!this.auth.hasRole(['PROJECT_MANAGER', 'TEAM_LEAD'])) return false;
+    return role !== 'TEAM_LEAD' || task.status !== 'DONE';
+  }
+
   canMoveTask(task: Task) {
-    return this.canEditTask(task) && !['DONE', 'CANCELLED'].includes(task.status);
+    return this.allowedStatuses(task).length > 1;
+  }
+
+  canFilterByAssigneeRole() {
+    return this.auth.hasRole(['ADMIN', 'HR', 'PROJECT_MANAGER', 'TEAM_LEAD']);
   }
 
   onEmployeeSelected() {
@@ -330,6 +445,13 @@ export class TaskBoardComponent implements OnInit {
     const project = this.projects().find((item) => item.id === Number(this.draft.projectId));
     if (project) {
       this.draft.projectId = project.id;
+      if (!this.filteredWorkRequests().some((request) => request.id === this.draft.workRequestId)) {
+        this.draft.workRequestId = null;
+      }
+      this.api.workRequestsByProject(project.id).subscribe({
+        next: (requests) => this.workRequests.set(requests),
+        error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tải phiếu yêu cầu'),
+      });
       const startDate = this.draft.startDate || project.startDate;
       if (startDate < project.startDate || startDate > project.endDate) {
         this.draft.startDate = project.startDate;
@@ -337,6 +459,34 @@ export class TaskBoardComponent implements OnInit {
       if (this.draft.deadline < project.startDate || this.draft.deadline > project.endDate) {
         this.draft.deadline = project.endDate;
       }
+    }
+  }
+
+  filteredWorkRequests() {
+    return this.workRequests().filter((request) => request.projectId === Number(this.draft.projectId));
+  }
+
+  eligibleAssignees() {
+    const departmentId = this.currentRequest()?.executingDepartmentId;
+    return this.employees().filter((user) => user.departmentId === departmentId);
+  }
+
+  eligibleTesters() {
+    const departmentIds = this.projects()[0]?.participatingDepartments.map((department) => department.id) || [];
+    return this.employees().filter((user) =>
+      user.role === 'QA' && !!user.departmentId && departmentIds.includes(user.departmentId));
+  }
+
+  onWorkRequestSelected() {
+    const request = this.filteredWorkRequests().find((item) => item.id === Number(this.draft.workRequestId));
+    if (!request) return;
+    this.draft.workRequestId = request.id;
+    this.draft.projectId = request.projectId;
+    if (!this.draft.startDate || this.draft.startDate < request.startDate || this.draft.startDate > request.deadline) {
+      this.draft.startDate = request.startDate;
+    }
+    if (!this.draft.deadline || this.draft.deadline < request.startDate || this.draft.deadline > request.deadline) {
+      this.draft.deadline = request.deadline;
     }
   }
 
@@ -356,6 +506,19 @@ export class TaskBoardComponent implements OnInit {
   priorityLabel(priority: TaskPriority) {
     return { LOW: 'Thấp', NORMAL: 'Bình thường', HIGH: 'Cao', URGENT: 'Khẩn cấp' }[priority];
   }
+
+  requestStatusLabel(status: WorkRequest['status']) {
+    return { DRAFT: 'Bản nháp', READY: 'Sẵn sàng', IN_PROGRESS: 'Đang thực hiện', PENDING_ACCEPTANCE: 'Chờ nghiệm thu', COMPLETED: 'Hoàn thành', CANCELLED: 'Đã hủy' }[status];
+  }
+
+  roleScopeLabel() {
+    const role = this.auth.user()?.role;
+    if (role === 'ADMIN' || role === 'HR' || role === 'PROJECT_MANAGER') return 'Phạm vi toàn công ty';
+    if (role === 'TEAM_LEAD' || role === 'VIEWER') return `Phạm vi ${this.auth.user()?.departmentName || 'phòng ban'}`;
+    return 'Công việc của tôi';
+  }
+
+  canManageRequests() { return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER', 'TEAM_LEAD']); }
 
   isOverdue(task: Task) {
     return task.status !== 'DONE' && task.deadline < localDateIso();

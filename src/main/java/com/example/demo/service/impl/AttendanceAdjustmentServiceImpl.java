@@ -43,6 +43,7 @@ public class AttendanceAdjustmentServiceImpl implements AttendanceAdjustmentServ
     @Override
     public AttendanceAdjustmentDto.Response create(AttendanceAdjustmentDto.SaveRequest input) {
         User current = users.currentUser();
+        if (current.getRole().isReadOnly()) throw new BussinessException("Read-only users cannot request attendance corrections");
         if (current.getRole() == Role.ADMIN) throw new BussinessException("Admins cannot submit attendance corrections");
         AttendanceSession session = sessions.findById(Objects.requireNonNull(input.sessionId()))
                 .orElseThrow(() -> new BussinessException("Attendance session not found"));

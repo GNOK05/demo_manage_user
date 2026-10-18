@@ -5,13 +5,17 @@ import com.example.demo.repository.AttendanceRepository;
 import com.example.demo.repository.DepartmentRepository;
 import com.example.demo.repository.LeaveRequestRepository;
 import com.example.demo.repository.ProjectRepository;
+import com.example.demo.repository.ProjectDepartmentRepository;
 import com.example.demo.repository.TaskRepository;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.repository.WorkRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,14 +34,19 @@ import java.util.List;
  */
 @Configuration
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.test-data.enabled", havingValue = "true")
 public class DataInitializer {
     private final UserRepository users;
     private final DepartmentRepository departments;
     private final LeaveRequestRepository leaveRequests;
     private final ProjectRepository projects;
     private final TaskRepository tasks;
+    private final ProjectDepartmentRepository projectDepartments;
+    private final WorkRequestRepository workRequests;
     private final AttendanceRepository attendance;
     private final PasswordEncoder encoder;
+    @Value("${app.seed-demo-data:false}")
+    private boolean seedDemoDataEnabled;
 
     private static final String[] DEPARTMENT_NAMES = {
         "Engineering", "Human Resources", "Finance", "Marketing", "Sales",
@@ -49,6 +58,7 @@ public class DataInitializer {
     @Bean
     CommandLineRunner seedAdministrator() {
         return args -> {
+            if (!seedDemoDataEnabled) return;
             createOrUpdateDemoUser("admin", null, "admin123", "System Administrator", "admin@company.local", Role.ADMIN, null, "Administrator");
             createOrUpdateDemoUser("hr", null, "hr123", "Human Resources", "hr@company.local", Role.HR, null, "HR Manager");
             removeLegacyDemoAccounts();
@@ -110,6 +120,10 @@ public class DataInitializer {
                 "Completed quarterly priorities, stakeholder review, and operational handover for " + deptName + ".",
                 today.minusDays(90), today.minusDays(10), ProjectStatus.COMPLETED);
 
+            ensureProjectStructure(notStarted, department, projectManager);
+            ensureProjectStructure(inProgress, department, projectManager);
+            ensureProjectStructure(completed, department, projectManager);
+
             // NOT_STARTED project: tasks not begun yet, no tester needed
             findOrCreateTask(notStarted, "Project kickoff and scope alignment", member1, null, projectManager, TaskStatus.BACKLOG, today.plusDays(15));
             findOrCreateTask(notStarted, "Stakeholder requirements workshop", member2, null, projectManager, TaskStatus.BACKLOG, today.plusDays(20));
@@ -148,7 +162,7 @@ public class DataInitializer {
         }
         findOrCreateLeaveRequest(employees.get(1), manager, admin, LeaveRequestType.ANNUAL,
             pastAnnualDay, pastAnnualDay, "Previously approved annual leave (demo)", LeaveRequestStatus.APPROVED);
-        findOrCreateLeaveRequest(employees.get(2), manager, LeaveRequestType.SICK,
+        findOrCreateLeaveRequest(employees.get(2), manager, LeaveRequestType.UNPAID,
             today.minusDays(32), today.minusDays(31), "Recovery from seasonal illness", LeaveRequestStatus.REJECTED);
     }
 
@@ -228,6 +242,7 @@ public class DataInitializer {
 
     private Task findOrCreateTask(Project project, String name, User assignee, User tester, User creator,
                                    TaskStatus status, LocalDate deadline) {
+        WorkRequest workRequest = workRequests.findFirstByProjectIdOrderByIdAsc(project.getId()).orElseThrow();
         String legacyName = switch (name) {
             case "Project kickoff and scope alignment" -> "Kickoff planning";
             case "Stakeholder requirements workshop" -> "Requirements gathering";
@@ -243,6 +258,10 @@ public class DataInitializer {
             .filter(task -> name.equals(task.getTaskName()) || legacyName.equals(task.getTaskName()))
             .findFirst().orElse(null);
         if (existing != null) {
+            if (existing.getWorkRequest() == null) {
+                existing.setWorkRequest(workRequest);
+                tasks.save(existing);
+            }
             if (existing.getStartDate() == null) {
                 existing.setStartDate(project.getStartDate());
                 tasks.save(existing);
@@ -260,9 +279,37 @@ public class DataInitializer {
         }
         Task task = new Task();
         task.setTaskName(name); task.setDescription(name + " for the " + project.getProjectName() + " project.");
-        task.setProject(project); task.setAssignedTo(assignee); task.setTester(tester); task.setCreatedBy(creator);
+        task.setProject(project); task.setWorkRequest(workRequest); task.setAssignedTo(assignee); task.setTester(tester); task.setCreatedBy(creator);
         task.setStatus(status); task.setStartDate(project.getStartDate()); task.setDeadline(deadline);
         return tasks.save(task);
+    }
+
+    private void ensureProjectStructure(Project project, Department department, User creator) {
+        if (!projectDepartments.existsByProjectIdAndDepartmentId(project.getId(), department.getId())) {
+            ProjectDepartment membership = new ProjectDepartment();
+            membership.setProject(project);
+            membership.setDepartment(department);
+            membership.setParticipationRole(ProjectParticipationRole.OWNER);
+            projectDepartments.save(membership);
+        }
+        if (workRequests.findFirstByProjectIdOrderByIdAsc(project.getId()).isEmpty()) {
+            WorkRequest request = new WorkRequest();
+            request.setRequestCode("REQ-" + project.getId() + "-DEFAULT");
+            request.setProject(project);
+            request.setExecutingDepartment(department);
+            request.setCoordinator(department.getManager());
+            request.setCreatedBy(creator);
+            request.setTitle("Công việc hiện có");
+            request.setDescription("Phiếu mặc định chứa các công việc ban đầu của dự án.");
+            request.setAcceptanceCriteria("Tất cả công việc hoàn thành và được kiểm thử.");
+            request.setPriority(TaskPriority.NORMAL);
+            request.setStartDate(project.getStartDate());
+            request.setDeadline(project.getEndDate());
+            request.setStatus(project.getStatus() == ProjectStatus.COMPLETED
+                ? WorkRequestStatus.COMPLETED : project.getStatus() == ProjectStatus.IN_PROGRESS
+                    ? WorkRequestStatus.IN_PROGRESS : WorkRequestStatus.READY);
+            workRequests.save(request);
+        }
     }
 
     /**

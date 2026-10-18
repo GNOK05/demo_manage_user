@@ -1,43 +1,73 @@
 <div class="shell">
   <app-sidebar></app-sidebar>
-  <main class="content">
-    <header class="page-header">
+  <main class="content dashboard-content">
+    <header class="page-header dashboard-header">
       <div>
         <p class="eyebrow">Tổng quan</p>
-        <h1>👋 Xin chào, {{ auth.user()?.fullName || 'Administrator' }}!</h1>
-        <p class="muted">Dưới đây là tổng quan hoạt động của công ty hôm nay</p>
+        <h1>Xin chào, {{ auth.user()?.fullName || 'Administrator' }}</h1>
+        <p class="muted">Theo dõi nhân sự và công việc trong một màn hình.</p>
       </div>
-      <span class="profile-pill">🔔 {{ auth.user()?.jobTitle || auth.user()?.role }}</span>
+      <span class="profile-pill">{{ auth.user()?.jobTitle || auth.user()?.role }}</span>
     </header>
 
-    <section class="stats overview-stats">
-      <article class="stat-card accent-blue"><span class="stat-label">Nhân sự</span><strong class="stat-value">{{ summary()?.totalEmployees ?? employees().length }}</strong><small>Đang được theo dõi</small></article>
-      <article class="stat-card accent-purple"><span class="stat-label">Phòng ban</span><strong class="stat-value">{{ summary()?.totalDepartments ?? departments().length }}</strong><small>Đơn vị trong hệ thống</small></article>
-      <article class="stat-card accent-blue"><span class="stat-label">Dự án</span><strong class="stat-value">{{ summary()?.totalProjects ?? projects().length }}</strong><small>{{ summary()?.activeProjects ?? projectStatusCount('IN_PROGRESS') }} đang thực hiện</small></article>
-      <article class="stat-card accent-green"><span class="stat-label">Công việc</span><strong class="stat-value">{{ summary()?.pendingTasks ?? pendingTasks() }}</strong><small>{{ summary()?.completedTasks ?? done() }} việc đã hoàn thành</small></article>
+    <section class="workforce-card">
+      <div class="workforce-header">
+        <div><h2>Tình hình nhân sự</h2><p>{{ selectedDateLongLabel() }}</p></div>
+        <div class="date-controls">
+          <button class="date-step" type="button" (click)="previousAttendanceDay()" title="Ngày trước">‹</button>
+          <input type="date" aria-label="Chọn ngày thống kê" [ngModel]="selectedDate()" (ngModelChange)="changeAttendanceDate($event)" [max]="maxAttendanceDate" />
+          <button class="today-button" type="button" (click)="showTodayAttendance()" [disabled]="isToday()">Hôm nay</button>
+        </div>
+      </div>
+
+      <div class="people-kpis">
+        <article class="people-kpi total"><div><span>Tổng nhân sự</span><strong>{{ attendanceTotal() }}</strong></div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span></article>
+        <article class="people-kpi present"><div><span>Có mặt</span><strong>{{ todayAttendance('PRESENT') }}</strong></div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="m17 11 2 2 4-5"/></svg></span></article>
+        <article class="people-kpi late"><div><span>Đi muộn</span><strong>{{ todayAttendance('LATE') }}</strong></div><span class="kpi-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span></article>
+        <article class="people-kpi absent"><div><span>Vắng mặt</span><strong>{{ todayAttendance('ABSENT') }}</strong></div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M15 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8" cy="7" r="4"/><path d="m18 8 5 5m0-5-5 5"/></svg></span></article>
+      </div>
+
+      <div class="people-detail-grid">
+        <article class="attendance-overview">
+          <div class="block-heading"><div><h3>{{ attendanceTitle() }}</h3><p>Tỷ lệ trạng thái trong ngày</p></div><a routerLink="/attendance">Xem chi tiết →</a></div>
+          <div class="attendance-ring" [style.background]="attendanceRingBackground()"><strong>{{ attendanceRate() }}%</strong><small>Có mặt</small></div>
+          <div class="attendance-legend">
+            <span><i class="present"></i>Có mặt <b>{{ todayAttendance('PRESENT') }}</b></span><span><i class="late"></i>Đi muộn <b>{{ todayAttendance('LATE') }}</b></span>
+            <span><i class="leave"></i>Nghỉ phép <b>{{ todayAttendance('LEAVE') }}</b></span><span><i class="absent"></i>Vắng mặt <b>{{ todayAttendance('ABSENT') }}</b></span>
+          </div>
+        </article>
+
+        <article class="department-overview" *ngIf="canViewPeople()">
+          <div class="block-heading department-heading"><div><h3>Chi tiết theo phòng ban</h3><p>{{ visibleDepartments().length }} phòng ban</p></div><span class="view-mode">Số lượng nhân sự</span></div>
+          <div class="distribution-list">
+            <div class="distribution-row" *ngFor="let department of displayedDepartments()">
+              <div class="department-name"><strong>{{ department.name }}</strong><span>{{ departmentEmployeeCount(department) }} người</span></div>
+              <div class="distribution-track">
+                <span class="present" [style.width.%]="departmentAttendancePercent(department, 'PRESENT')" [title]="'Có mặt: ' + departmentAttendanceCount(department, 'PRESENT')"><b *ngIf="departmentAttendanceCount(department, 'PRESENT')">{{ departmentAttendanceCount(department, 'PRESENT') }}</b></span>
+                <span class="late" [style.width.%]="departmentAttendancePercent(department, 'LATE')" [title]="'Đi muộn: ' + departmentAttendanceCount(department, 'LATE')"><b *ngIf="departmentAttendanceCount(department, 'LATE')">{{ departmentAttendanceCount(department, 'LATE') }}</b></span>
+                <span class="leave" [style.width.%]="departmentAttendancePercent(department, 'LEAVE')" [title]="'Nghỉ phép: ' + departmentAttendanceCount(department, 'LEAVE')"><b *ngIf="departmentAttendanceCount(department, 'LEAVE')">{{ departmentAttendanceCount(department, 'LEAVE') }}</b></span>
+                <span class="absent" [style.width.%]="departmentAttendancePercent(department, 'ABSENT')" [title]="'Vắng mặt: ' + departmentAttendanceCount(department, 'ABSENT')"><b *ngIf="departmentAttendanceCount(department, 'ABSENT')">{{ departmentAttendanceCount(department, 'ABSENT') }}</b></span>
+              </div>
+            </div>
+          </div>
+          <div class="distribution-legend"><span><i class="present"></i>Có mặt</span><span><i class="late"></i>Đi muộn</span><span><i class="leave"></i>Nghỉ phép</span><span><i class="absent"></i>Vắng mặt</span></div>
+          <button *ngIf="visibleDepartments().length > 5" class="show-departments" type="button" (click)="toggleDepartments()">{{ showAllDepartments() ? 'Thu gọn' : 'Xem tất cả ' + visibleDepartments().length + ' phòng ban' }} <span>{{ showAllDepartments() ? '↑' : '→' }}</span></button>
+        </article>
+      </div>
     </section>
 
-    <section class="dashboard-grid">
-      <article class="card attendance-card">
-        <div class="section-top"><h2>Chấm công hôm nay</h2><a routerLink="/attendance" class="text-link">Xem chi tiết →</a></div>
-        <div class="attendance-ring"><strong>{{ attendanceRate() }}%</strong><small>{{ todayAttendance('PRESENT') }}/{{ attendanceTotal() }}</small></div>
-        <div class="attendance-legend"><span><i class="present"></i>Có mặt <b>{{ todayAttendance('PRESENT') }}</b></span><span><i class="late"></i>Đi muộn <b>{{ todayAttendance('LATE') }}</b></span><span><i class="absent"></i>Vắng mặt <b>{{ todayAttendance('ABSENT') }}</b></span><span><i class="leave"></i>Nghỉ phép <b>{{ todayAttendance('LEAVE') }}</b></span></div>
-      </article>
+    <section class="work-grid">
       <article class="card">
-        <div class="section-top"><h2>Tiến độ dự án</h2><a routerLink="/projects" class="text-link">{{ projects().length }} dự án</a></div>
+        <div class="section-top"><h2>Tiến độ dự án</h2><a routerLink="/work" class="text-link">Xem tất cả →</a></div>
         <div class="project-list" *ngIf="projects().length; else noProjects"><div class="project-item" *ngFor="let project of topProjects()"><div class="project-head"><div><strong>{{ project.projectName }}</strong><small>{{ project.departmentName }}</small></div><b>{{ project.progress }}%</b></div><div class="progress-meter"><span [style.width.%]="project.progress"></span></div><div class="project-meta"><span>{{ project.completedTasks }}/{{ project.totalTasks }} task</span><span>{{ project.status }}</span></div></div></div>
         <ng-template #noProjects><p class="empty-state">Chưa có dự án để hiển thị.</p></ng-template>
       </article>
       <article class="card">
-        <div class="section-top"><h2>Việc cần làm</h2><a routerLink="/tasks" class="text-link">Xem tất cả →</a></div>
+        <div class="section-top"><h2>Việc cần làm</h2><a routerLink="/work" class="text-link">Xem tất cả →</a></div>
         <div class="task-list" *ngIf="tasks().length; else noTasks"><div class="task-item" *ngFor="let task of tasks().slice(0, 4)"><div><strong>{{ task.taskName }}</strong><small>{{ task.projectName }}</small></div><div class="task-meta"><span class="task-badge">{{ task.status }}</span><small>{{ task.deadline || 'Chưa có hạn' }}</small></div></div></div>
         <ng-template #noTasks><p class="empty-state">Không có công việc cần làm.</p></ng-template>
       </article>
-    </section>
-
-    <section class="grid-two dashboard-section">
-      <article class="card"><div class="section-top"><h2>Nhân sự theo phòng ban</h2><a routerLink="/people" class="text-link">Quản lý nhân sự →</a></div><div class="distribution-list"><div class="distribution-row" *ngFor="let department of departments()"><span>{{ department.name }}</span><div class="distribution-track"><i [style.width.%]="employees().length ? departmentEmployeeCount(department) / employees().length * 100 : 0"></i></div><strong>{{ departmentEmployeeCount(department) }}</strong></div></div></article>
-      <article class="card"><div class="section-top"><h2>Thao tác nhanh</h2><span class="chip chip-soft">Hôm nay</span></div><ng-container *ngIf="auth.hasRole(['MEMBER', 'QA', 'VIEWER']); else managerPanel"><div class="quick-actions"><button (click)="checkIn()">Check-in</button><button class="secondary" (click)="checkOut()">Check-out</button></div><p class="notice" *ngIf="notice()">{{ notice() }}</p></ng-container><ng-template #managerPanel><div class="mini-list"><div class="mini-row"><span>Đơn nghỉ chờ duyệt</span><strong>{{ pendingLeaveCount() }}</strong></div><div class="mini-row"><span>Công việc hoàn thành</span><strong>{{ done() }}</strong></div><div class="mini-row"><span>Dự án hoàn thành</span><strong>{{ projectStatusCount('COMPLETED') }}</strong></div></div></ng-template></article>
+      <article class="card quick-card"><div class="section-top"><h2>Thao tác nhanh</h2><span class="chip chip-soft">Hôm nay</span></div><ng-container *ngIf="canCheckInOut(); else managerPanel"><div class="quick-actions"><button (click)="checkIn()">Check-in</button><button class="secondary" (click)="checkOut()">Check-out</button></div><p class="notice" *ngIf="notice()">{{ notice() }}</p></ng-container><ng-template #managerPanel><div class="mini-list"><div class="mini-row"><span>Đơn nghỉ chờ duyệt</span><strong>{{ pendingLeaveCount() }}</strong></div><div class="mini-row"><span>Công việc hoàn thành</span><strong>{{ done() }}</strong></div><div class="mini-row"><span>Dự án hoàn thành</span><strong>{{ projectStatusCount('COMPLETED') }}</strong></div></div></ng-template></article>
     </section>
   </main>
 </div>

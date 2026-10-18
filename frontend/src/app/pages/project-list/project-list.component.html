@@ -1,76 +1,31 @@
 <div class="shell">
   <app-sidebar></app-sidebar>
-
   <main class="content">
     <header class="page-header">
-      <div>
-        <p class="eyebrow">Quản lý</p>
-        <h1>Dự án phòng ban</h1>
-      </div>
-      <span class="chip chip-primary">{{ projects().length }} dự án</span>
+      <div><p class="eyebrow">Quản lý công việc</p><h1>Dự án</h1><p class="muted">Chọn một dự án để quản lý các phiếu yêu cầu.</p></div>
+      <div class="header-actions"><button *ngIf="canManageProjects()" (click)="openCreateProject()">Thêm dự án</button></div>
     </header>
 
     <section class="card project-filters">
-      <label>
-        Phòng ban
-        <select [(ngModel)]="selectedDepartmentId">
-          <option [ngValue]="null">Tất cả phòng ban</option>
-          <option *ngFor="let department of departments()" [ngValue]="department.id">
-            {{ department.name }}
-          </option>
-        </select>
-      </label>
-      <label>
-        Trạng thái
-        <select [(ngModel)]="selectedStatus">
-          <option value="">Tất cả trạng thái</option>
-          <option value="NOT_STARTED">Chưa bắt đầu</option>
-          <option value="IN_PROGRESS">Đang thực hiện</option>
-          <option value="COMPLETED">Hoàn thành</option>
-        </select>
-      </label>
-      <button type="button" (click)="search()" [disabled]="loading()">
-        {{ loading() ? 'Đang tải...' : 'Tìm kiếm' }}
-      </button>
+      <label class="search-field">Tìm kiếm<input [(ngModel)]="keyword" placeholder="Tên dự án, phòng chủ trì hoặc phòng tham gia" /></label>
+      <label *ngIf="canFilterDepartments()">Phòng tham gia<select [(ngModel)]="selectedDepartmentId"><option [ngValue]="null">Tất cả phòng ban</option><option *ngFor="let department of departments()" [ngValue]="department.id">{{ department.name }}</option></select></label>
+      <label>Trạng thái<select [(ngModel)]="selectedStatus"><option value="">Tất cả trạng thái</option><option value="NOT_STARTED">Chưa bắt đầu</option><option value="IN_PROGRESS">Đang thực hiện</option><option value="COMPLETED">Hoàn thành</option><option value="ON_HOLD">Tạm dừng</option></select></label>
+      <button (click)="search()" [disabled]="loading()">{{ loading() ? 'Đang tải...' : 'Lọc dự án' }}</button>
     </section>
-    <div *ngIf="errorMessage()" class="alert alert-error">{{ errorMessage() }}</div>
+
+    <div *ngIf="errorMessage()" class="alert-error">{{ errorMessage() }}</div>
     <p *ngIf="loading()" class="loading-state">Đang tải dự án...</p>
 
-    <section class="project-grid" *ngIf="!loading()">
-      <article class="card project-card" *ngFor="let p of projects()">
-        <div class="project-header">
-          <div>
-            <h2>{{ p.projectName }}</h2>
-            <p class="muted">{{ p.departmentName }} · {{ p.startDate }} → {{ p.endDate }}</p>
-          </div>
-          <span class="project-percent">{{ p.progress }}%</span>
-        </div>
-
-        <div class="progress-meter">
-          <span [style.width.%]="p.progress"></span>
-        </div>
-
-        <div class="project-meta">
-          <span>{{ p.completedTasks }}/{{ p.totalTasks }} task hoàn thành</span>
-          <span>{{ p.status }}</span>
-        </div>
-
-        <button class="secondary" (click)="select(p)">Xem công việc</button>
-
-        <div class="task-panel" *ngIf="selected()?.id === p.id">
-          <div class="task-row" *ngFor="let t of tasks()">
-            <div>
-              <strong>{{ t.taskName }}</strong>
-              <small>{{ t.assignedToName || 'Chưa giao' }}</small>
-            </div>
-            <div class="task-right">
-              <span class="badge">{{ t.status }}</span>
-              <span class="badge" *ngIf="t.testerName">QA: {{ t.testerName }}</span>
-            </div>
-          </div>
-        </div>
+    <section class="project-list" *ngIf="!loading()">
+      <article class="card project-row" *ngFor="let project of visibleProjects()" (click)="select(project)">
+        <span class="project-icon"><svg viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M3 7V5a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v2"/></svg></span>
+        <span class="project-copy"><strong>{{ project.projectName }}</strong><small>{{ project.participatingDepartments.length }} phòng ban · {{ project.totalRequests }} phiếu yêu cầu</small><span class="department-chips"><i *ngFor="let department of project.participatingDepartments">{{ department.name }}</i></span></span>
+        <span class="progress-block"><b>{{ project.progress }}%</b><span class="progress-track"><i [style.width.%]="project.progress"></i></span><small>{{ project.completedTasks }}/{{ project.totalTasks }} task hoàn thành</small></span>
+        <span class="project-actions" *ngIf="canManageProjects()"><button class="secondary" (click)="editProject(project, $event)">Sửa</button><button class="danger" (click)="deleteProject(project, $event)">Xóa</button></span>
+        <span class="chevron">›</span>
       </article>
     </section>
-    <p *ngIf="!loading() && !projects().length" class="empty-state">Không tìm thấy dự án.</p>
+    <p class="empty-state" *ngIf="!loading() && !visibleProjects().length">Không tìm thấy dự án phù hợp.</p>
+    <div class="modal-backdrop" *ngIf="projectModalOpen()"><section class="card modal-card"><div class="section-top"><div><p class="eyebrow">{{ selectedProject ? 'Cập nhật' : 'Tạo mới' }}</p><h2>Dự án</h2></div><button class="icon-button" (click)="closeProjectModal()">×</button></div><div class="form-grid"><label class="full-width">Tên dự án<input [(ngModel)]="projectDraft.projectName" /></label><label>Phòng chủ trì<select [(ngModel)]="projectDraft.departmentId"><option [ngValue]="null">-- Chọn phòng ban --</option><option *ngFor="let department of departments()" [ngValue]="department.id">{{ department.name }}</option></select></label><label>Trạng thái<select [(ngModel)]="projectDraft.status"><option value="NOT_STARTED">Chưa bắt đầu</option><option value="IN_PROGRESS">Đang thực hiện</option><option value="ON_HOLD">Tạm dừng</option><option value="COMPLETED">Hoàn thành</option></select></label><label>Ngày bắt đầu<input type="date" [(ngModel)]="projectDraft.startDate" /></label><label>Ngày kết thúc<input type="date" [(ngModel)]="projectDraft.endDate" /></label><div class="full-width participant-picker"><span>Phòng ban tham gia</span><small>Chọn các phòng có chuyên môn phù hợp với dự án. Phòng chủ trì luôn được tham gia.</small><div class="participant-options"><label *ngFor="let department of departments()"><input type="checkbox" [checked]="isSelectedParticipant(department.id)" [disabled]="department.id === projectDraft.departmentId" (change)="toggleParticipant(department.id, $any($event.target).checked)" />{{ department.name }}<em *ngIf="department.id === projectDraft.departmentId">Chủ trì</em></label></div></div><label class="full-width">Mô tả<textarea rows="4" [(ngModel)]="projectDraft.description"></textarea></label></div><div class="form-actions"><button (click)="saveProject()" [disabled]="saving()">{{ saving() ? 'Đang lưu...' : 'Lưu dự án' }}</button><button class="secondary" (click)="closeProjectModal()">Hủy</button></div></section></div>
   </main>
 </div>

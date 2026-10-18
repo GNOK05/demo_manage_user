@@ -7,8 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface AttendanceAdjustmentRequestRepository extends JpaRepository<AttendanceAdjustmentRequest, Long> {
-    List<AttendanceAdjustmentRequest> findByUserIdOrderByCreatedAtDesc(Long userId);
-
     List<AttendanceAdjustmentRequest> findByUserIdOrRequestedByIdOrderByCreatedAtDesc(Long userId, Long requestedById);
 
     List<AttendanceAdjustmentRequest> findByStatusOrderByCreatedAtAsc(AttendanceAdjustmentStatus status);
