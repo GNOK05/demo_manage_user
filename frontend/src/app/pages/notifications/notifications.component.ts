@@ -23,7 +23,7 @@ export class NotificationsComponent implements OnInit {
 
   constructor(public auth: AuthService, private api: CompanyApiService, private route: ActivatedRoute, private router: Router) {}
 
-  get canApprove() { return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER', 'TEAM_LEAD']); }
+  get canApprove() { return this.auth.hasRole(['ADMIN', 'HR', 'PROJECT_MANAGER', 'TEAM_LEAD']); }
 
   ngOnInit() {
     this.route.queryParamMap.subscribe((params) => {
@@ -63,7 +63,7 @@ export class NotificationsComponent implements OnInit {
   }
 
   decideAdjustment(item: AttendanceAdjustment, approved: boolean) {
-    const status = approved ? 'APPROVED' : this.auth.user()?.role === 'ADMIN' ? 'REJECTED_ADMIN' : 'REJECTED_MANAGER';
+    const status = approved ? 'APPROVED' : ['ADMIN', 'HR'].includes(this.auth.user()?.role || '') ? 'REJECTED_ADMIN' : 'REJECTED_MANAGER';
     this.api.decideAttendanceAdjustment(item.id, status).subscribe({
       next: () => { this.successMessage.set(approved ? 'Yêu cầu đã chuyển sang bước duyệt tiếp theo.' : 'Yêu cầu đã bị từ chối.'); this.load(); },
       error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể xử lý yêu cầu điều chỉnh.'),

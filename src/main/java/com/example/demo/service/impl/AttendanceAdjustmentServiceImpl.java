@@ -112,10 +112,10 @@ public class AttendanceAdjustmentServiceImpl implements AttendanceAdjustmentServ
         if (current.getRole() != Role.ADMIN && !current.getRole().canReviewPeopleInDepartment()) {
             throw new BussinessException("Only managers and admins can review attendance corrections");
         }
-        AttendanceAdjustmentStatus stage = current.getRole() == Role.ADMIN
+        AttendanceAdjustmentStatus stage = current.getRole() == Role.ADMIN || current.getRole() == Role.HR
                 ? AttendanceAdjustmentStatus.PENDING_ADMIN : AttendanceAdjustmentStatus.PENDING_MANAGER;
         return requests.findByStatusOrderByCreatedAtAsc(stage).stream()
-                .filter(request -> current.getRole() == Role.ADMIN
+                .filter(request -> current.getRole() == Role.ADMIN || current.getRole() == Role.HR
                         || request.getUser().getDepartment() != null && current.getDepartment() != null
                         && request.getUser().getDepartment().getId().equals(current.getDepartment().getId()))
                 .map(this::response).toList();
@@ -142,7 +142,7 @@ public class AttendanceAdjustmentServiceImpl implements AttendanceAdjustmentServ
             request.setManagerApprovedAt(LocalDateTime.now());
             request.setStatus(decision == AttendanceAdjustmentStatus.APPROVED
                     ? AttendanceAdjustmentStatus.PENDING_ADMIN : AttendanceAdjustmentStatus.REJECTED_MANAGER);
-        } else if (current.getRole() == Role.ADMIN) {
+        } else if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR) {
             if (request.getStatus() != AttendanceAdjustmentStatus.PENDING_ADMIN) {
                 throw new BussinessException("This correction is not waiting for admin approval");
             }

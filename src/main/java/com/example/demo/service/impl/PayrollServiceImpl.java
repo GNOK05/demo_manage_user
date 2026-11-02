@@ -131,7 +131,6 @@ public class PayrollServiceImpl implements PayrollService {
     public PayrollDto.MonthlyReport close(int year, int month) {
         if (userService.currentUser().getRole() != Role.ADMIN) throw new BussinessException("Only admins can close payroll periods");
         YearMonth period = validatePeriod(year, month);
-        if (!LocalDate.now().isAfter(period.atEndOfMonth())) throw new BussinessException("A payroll period can only be closed after the month ends");
         PayrollPeriod closed = periods.findByYearAndMonth(year, month).orElse(null);
         if (closed == null) {
             PayrollPeriod periodRecord = new PayrollPeriod();

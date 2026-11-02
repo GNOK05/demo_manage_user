@@ -47,7 +47,7 @@ export class RequestsComponent implements OnInit {
 
   constructor(public auth: AuthService, private api: CompanyApiService) {}
 
-  get canApprove() { return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER', 'TEAM_LEAD']); }
+  get canApprove() { return this.auth.hasRole(['ADMIN', 'HR', 'PROJECT_MANAGER', 'TEAM_LEAD']); }
   get canCreate() { return !this.auth.hasRole(['ADMIN', 'VIEWER']); }
 
   ngOnInit() { this.load(); }

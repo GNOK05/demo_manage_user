@@ -94,7 +94,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     public List<LeaveRequestDto.Response> pendingForApproval() {
         User current = userService.currentUser();
 
-        if (current.getRole() == Role.ADMIN) {
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR) {
             return leaveRequests.findByStatusOrderByCreatedAtDesc(LeaveRequestStatus.PENDING_ADMIN).stream().map(this::toResponse).toList();
         }
 
@@ -135,7 +135,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
             request.setManagerApprovedAt(now);
             request.setStatus(status == LeaveRequestStatus.APPROVED
                     ? LeaveRequestStatus.PENDING_ADMIN : LeaveRequestStatus.REJECTED_MANAGER);
-        } else if (current.getRole() == Role.ADMIN) {
+        } else if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR) {
             if (request.getStatus() != LeaveRequestStatus.PENDING_ADMIN) {
                 throw new BussinessException("This request is not waiting for admin approval");
             }

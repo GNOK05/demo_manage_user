@@ -140,7 +140,7 @@
           </div>
           <div class="payroll-actions">
             <button type="button" class="secondary small" (click)="exportPayroll()">Xuất Excel kỳ công</button>
-            <button type="button" class="small" *ngIf="isPayrollAdmin()" [disabled]="!canClosePayroll()" (click)="closePayroll()">
+            <button type="button" class="small" *ngIf="isPayrollAdmin()" [disabled]="payrollClosed()" (click)="closePayroll()">
               {{ payrollClosed() ? 'Đã chốt kỳ' : 'Chốt kỳ công' }}
             </button>
             <small *ngIf="payrollClosed()">Chốt bởi {{ payrollClosedBy() }}</small>
@@ -425,4 +425,18 @@
       </ng-container>
     </ng-template>
   </main>
+</div>
+
+<div class="modal-backdrop" *ngIf="earlyCloseConfirmOpen()" role="presentation">
+  <section class="card modal-card payroll-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="early-close-title">
+    <p class="eyebrow subtle">Xác nhận chốt kỳ công</p>
+    <h2 id="early-close-title">Tháng này chưa kết thúc</h2>
+    <p class="muted">
+      Bạn đang chốt kỳ công {{ monthLabel() }} trước ngày cuối tháng. Sau khi chốt, các yêu cầu chỉnh sửa chấm công trong kỳ sẽ bị khóa.
+    </p>
+    <div class="form-actions">
+      <button type="button" (click)="confirmEarlyClose()">Vẫn chốt kỳ công</button>
+      <button type="button" class="secondary" (click)="cancelEarlyClose()">Hủy</button>
+    </div>
+  </section>
 </div>

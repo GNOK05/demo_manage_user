@@ -115,6 +115,17 @@ export class ProjectListComponent implements OnInit {
     return this.projects();
   }
   canManageProjects() { return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER']); }
+  canManageProject(project: Project) {
+    if (this.auth.hasRole(['ADMIN'])) return true;
+    const user = this.auth.user();
+    return user?.role === 'PROJECT_MANAGER'
+      && Number(user.departmentId) === Number(project.departmentId);
+  }
+  manageableDepartments() {
+    if (this.auth.hasRole(['ADMIN'])) return this.departments();
+    const departmentId = this.auth.user()?.departmentId;
+    return this.departments().filter((department) => department.id === departmentId);
+  }
   openCreateProject() { this.selectedProject = null; this.projectDraft = this.emptyProject(); this.participantDepartmentIds = []; this.projectModalOpen.set(true); }
   editProject(project: Project, event: Event) {
     event.stopPropagation(); this.selectedProject = project;

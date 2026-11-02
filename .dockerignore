@@ -1,0 +1,9 @@
+.git
+.gradle
+build
+frontend/node_modules
+frontend/dist
+database/mysql-data
+*.iml
+.idea
+.vscode

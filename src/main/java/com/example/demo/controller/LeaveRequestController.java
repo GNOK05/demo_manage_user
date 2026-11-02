@@ -29,7 +29,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/pending")
-    @PreAuthorize("hasAnyRole('ADMIN','PROJECT_MANAGER','TEAM_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','PROJECT_MANAGER','TEAM_LEAD')")
     public ApiResponse<List<LeaveRequestDto.Response>> pending() {
         return ApiResponse.ok(service.pendingForApproval());
     }
@@ -40,7 +40,7 @@ public class LeaveRequestController {
     }
 
     @PatchMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','PROJECT_MANAGER','TEAM_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','PROJECT_MANAGER','TEAM_LEAD')")
     public ApiResponse<LeaveRequestDto.Response> approve(
             @PathVariable Long id,
             @Valid @RequestBody LeaveRequestDto.DecisionRequest request) {

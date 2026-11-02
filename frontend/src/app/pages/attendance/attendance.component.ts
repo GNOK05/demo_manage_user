@@ -43,6 +43,7 @@ export class AttendanceComponent implements OnInit {
   reopenReason = '';
   payrollClosed = signal(false);
   payrollClosedBy = signal('');
+  earlyCloseConfirmOpen = signal(false);
   private employeeRequestId = 0;
   private attendanceRequestId = 0;
 
@@ -520,8 +521,11 @@ export class AttendanceComponent implements OnInit {
     });
   }
   canClosePayroll() {
+    return this.isPayrollAdmin() && !this.payrollClosed();
+  }
+  payrollPeriodEnded() {
     const end = new Date(Date.UTC(this.year, this.month, 0, 12));
-    return this.isPayrollAdmin() && end < new Date(`${this.localDate()}T12:00:00Z`) && !this.payrollClosed();
+    return end < new Date(`${this.localDate()}T12:00:00Z`);
   }
   exportPayroll() {
     this.api.payrollExcel(this.year, this.month).subscribe({
@@ -538,6 +542,20 @@ export class AttendanceComponent implements OnInit {
   }
   closePayroll() {
     if (!this.canClosePayroll()) return;
+    if (!this.payrollPeriodEnded()) {
+      this.earlyCloseConfirmOpen.set(true);
+      return;
+    }
+    this.submitClosePayroll();
+  }
+  cancelEarlyClose() {
+    this.earlyCloseConfirmOpen.set(false);
+  }
+  confirmEarlyClose() {
+    this.earlyCloseConfirmOpen.set(false);
+    this.submitClosePayroll();
+  }
+  private submitClosePayroll() {
     this.api.closePayrollPeriod(this.year, this.month).subscribe({
       next: (report) => {
         this.payrollClosed.set(report.closed);

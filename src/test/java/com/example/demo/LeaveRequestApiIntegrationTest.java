@@ -50,7 +50,7 @@ class LeaveRequestApiIntegrationTest {
     }
 
     @Test
-    void hrCanViewCompanyLeaveHistoryAndBalancesButCannotApproveRequests() throws Exception {
+    void hrCanViewCompanyLeaveHistoryBalancesAndFinalApprovalQueue() throws Exception {
         long employeeId = users.findByUsername("member_1_1").orElseThrow().getId();
         String hr = login("hr", "hr123");
         mockMvc.perform(get("/api/v1/leave-requests/user/{userId}", employeeId)
@@ -62,7 +62,7 @@ class LeaveRequestApiIntegrationTest {
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/leave-requests/pending")
                         .header("Authorization", "Bearer " + hr))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 
     @Test
