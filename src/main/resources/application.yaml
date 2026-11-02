@@ -22,5 +22,5 @@ app:
   time-zone: ${APP_TIME_ZONE:Asia/Ho_Chi_Minh}
   jwt:
     # Change this to a long random value in production (at least 32 characters).
-    secret: company-management-local-development-secret-key-2026
+    secret: ${JWT_SECRET:company-management-local-development-secret-key-2026}
     expiration-ms: 1800000
