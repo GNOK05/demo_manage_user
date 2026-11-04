@@ -1,0 +1,281 @@
+% Slide thuyet trinh de tai Company Management
+% Tai slide-thuyet-trinh.tex va logo-truong.png len cung thu muc Overleaf.
+% Co the bien dich bang XeLaTeX hoac pdfLaTeX.
+\documentclass[aspectratio=169,11pt]{beamer}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[utf8]{inputenc}
+  \usepackage[T5]{fontenc}
+  \usepackage[vietnamese]{babel}
+\else
+  \usepackage{fontspec}
+  \usepackage{polyglossia}
+  \setdefaultlanguage{vietnamese}
+  \setmainfont{TeX Gyre Heros}
+  \setsansfont{TeX Gyre Heros}
+  \setmonofont{Latin Modern Mono}
+\fi
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+
+\definecolor{navy}{RGB}{20,53,85}
+\definecolor{blueaccent}{RGB}{18,127,177}
+\definecolor{softgray}{RGB}{242,246,249}
+\setbeamercolor{normal text}{fg=navy,bg=white}
+\setbeamercolor{frametitle}{fg=white,bg=navy}
+\setbeamercolor{title}{fg=navy}
+\setbeamercolor{structure}{fg=blueaccent}
+\setbeamercolor{block title}{fg=white,bg=navy}
+\setbeamercolor{block body}{fg=navy,bg=softgray}
+\setbeamerfont{frametitle}{size=\Large,series=\bfseries}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{%
+  \hfill\raisebox{3pt}{\scriptsize\insertframenumber\,/\,\inserttotalframenumber\hspace{8pt}}}
+\setbeamertemplate{itemize item}[circle]
+\setbeamertemplate{itemize subitem}[circle]
+\setbeamersize{text margin left=10mm,text margin right=10mm}
+\setlength{\parskip}{4pt}
+
+\title{Xây dựng hệ thống quản lý doanh nghiệp}
+\subtitle{Báo cáo thực tập hè -- Company Management}
+\author{Vũ Thành Công -- MSSV 23001839 -- Lớp K68A3}
+\institute{Trường Đại học Khoa học Tự nhiên\\Đại học Quốc gia Hà Nội\\Khoa Toán -- Cơ -- Tin học}
+\date{Hà Nội, tháng 11 năm 2026}
+
+\begin{document}
+
+\begingroup
+\setbeamercolor{background canvas}{bg=navy}
+\begin{frame}[plain]
+\color{white}
+\vspace*{2mm}
+\begin{minipage}[t]{.76\textwidth}
+{\small\bfseries TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN}\par
+{\small ĐẠI HỌC QUỐC GIA HÀ NỘI}
+\end{minipage}\hfill
+\begin{minipage}[t]{.16\textwidth}
+\raggedleft\colorbox{white}{\includegraphics[height=1.22cm]{logo-truong.png}}
+\end{minipage}
+\par\vspace{8mm}
+
+{\fontsize{29}{35}\selectfont\bfseries Xây dựng hệ thống\\[2mm] quản lý doanh nghiệp}\par
+\vspace{4mm}
+{\large Company Management}\par
+\vfill
+{\normalsize\bfseries Vũ Thành Công}\quad {\normalsize MSSV 23001839 -- K68A3}\par
+{\small Người hướng dẫn: Hà Quang Vũ}\par
+{\small Hà Nội, tháng 11 năm 2026}\par
+\vspace*{3mm}
+\end{frame}
+\endgroup
+
+\begin{frame}{Nội dung trình bày}
+\begin{enumerate}
+\setlength{\itemsep}{7pt}
+\item Bài toán và mục tiêu
+\item Công nghệ, kiến trúc và dữ liệu
+\item Các quy trình nghiệp vụ chính
+\item Kiểm thử, kết quả và giới hạn
+\item Kết luận và demo local
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Bối cảnh bài toán}
+\begin{itemize}
+\setlength{\itemsep}{9pt}
+\item Dữ liệu nhân sự, dự án, công việc và chấm công dễ phân tán ở nhiều nơi.
+\item Khi tổng hợp theo tháng, dữ liệu từ nhiều bộ phận phải được đối chiếu thủ công.
+\item Các yêu cầu nghỉ phép, đổi địa điểm làm việc và sửa chấm công cần người có quyền phê duyệt.
+\end{itemize}
+\vspace{6mm}
+\begin{block}{Mục tiêu}
+Tập trung dữ liệu và chuẩn hóa các luồng xử lý trong một ứng dụng web chạy tại máy local.
+\end{block}
+\end{frame}
+
+\begin{frame}{Phạm vi hệ thống}
+\begin{columns}[T,onlytextwidth]
+\column{.48\textwidth}
+\textbf{Quản lý tổ chức và công việc}
+\begin{itemize}
+\item Tài khoản, vai trò, phòng ban
+\item Dự án và phòng ban tham gia
+\item Work request và task
+\item Dashboard và thông báo
+\end{itemize}
+\column{.48\textwidth}
+\textbf{Quản lý thời gian làm việc}
+\begin{itemize}
+\item Check-in, check-out nhiều phiên
+\item Nghỉ phép và địa điểm làm việc
+\item Yêu cầu điều chỉnh chấm công
+\item Bảng công tháng và xuất Excel
+\end{itemize}
+\end{columns}
+\vspace{6mm}
+\small Bản trình diễn dùng Angular, Spring Boot và MySQL trên máy local.
+\end{frame}
+
+\begin{frame}{Framework và công nghệ}
+\begin{tabularx}{\textwidth}{p{2.8cm}X}
+\toprule
+\textbf{Tầng} & \textbf{Thành phần sử dụng}\\
+\midrule
+Frontend & Angular 22, TypeScript, RxJS; giao diện, routing và gọi API.\\
+Backend & Java 21, Spring Boot 3.4.5; REST controller và service nghiệp vụ.\\
+Bảo mật & Spring Security, JWT, BCrypt; xác thực và phân quyền.\\
+Dữ liệu & Spring Data JPA/Hibernate và MySQL 8.4.\\
+Kiểm thử & Spring Boot Test, MockMvc và H2.\\
+\bottomrule
+\end{tabularx}
+\end{frame}
+
+\begin{frame}{Kiến trúc xử lý}
+\centering
+\begin{tikzpicture}[
+  box/.style={draw=blueaccent,rounded corners=2pt,fill=softgray,
+    minimum width=7.4cm,minimum height=8mm,align=center,font=\normalsize},
+  node distance=5mm,
+  arr/.style={-Latex,thick,draw=blueaccent}]
+\node[box] (fe) {Trình duyệt và Angular};
+\node[box,below=of fe] (sec) {Spring Security kiểm tra JWT};
+\node[box,below=of sec] (api) {REST Controller tiếp nhận yêu cầu};
+\node[box,below=of api] (svc) {Service xử lý nghiệp vụ và quyền dữ liệu};
+\node[box,below=of svc] (repo) {Spring Data JPA và MySQL};
+\draw[arr] (fe)--(sec);
+\draw[arr] (sec)--(api);
+\draw[arr] (api)--(svc);
+\draw[arr] (svc)--(repo);
+\end{tikzpicture}
+\end{frame}
+
+\begin{frame}{Mô hình dữ liệu chính}
+\begin{itemize}
+\setlength{\itemsep}{8pt}
+\item \textbf{Tổ chức:} User thuộc Department; Project có phòng ban sở hữu và tham gia.
+\item \textbf{Công việc:} Project chứa WorkRequest; mỗi WorkRequest có nhiều Task.
+\item \textbf{Thời gian:} Attendance ghi nhận theo ngày, AttendanceSession lưu từng phiên vào/ra.
+\item \textbf{Phê duyệt:} LeaveRequest, WorkLocationRequest và AttendanceAdjustmentRequest lưu trạng thái xử lý.
+\item \textbf{Chốt số liệu:} PayrollPeriod biểu diễn kỳ công theo năm và tháng.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Quy trình dự án và task}
+\begin{enumerate}
+\setlength{\itemsep}{10pt}
+\item Tạo dự án và xác định các phòng ban tham gia.
+\item Tạo work request với mục tiêu, người điều phối và hạn xử lý.
+\item Chia yêu cầu thành task, gán người thực hiện và người kiểm thử.
+\item Cập nhật trạng thái theo luồng hợp lệ: Backlog $\rightarrow$ Todo $\rightarrow$ In progress $\rightarrow$ Review $\rightarrow$ Testing $\rightarrow$ Done.
+\end{enumerate}
+\vspace{5mm}
+\small Task chuyển sang Blocked phải có lý do; work request không được hoàn tất khi còn task mở.
+\end{frame}
+
+\begin{frame}{Chấm công và điều chỉnh công}
+\begin{columns}[T,onlytextwidth]
+\column{.48\textwidth}
+\textbf{Ghi nhận công}
+\begin{itemize}
+\item Nhân viên check-in và check-out.
+\item Một ngày có thể chứa nhiều phiên làm việc.
+\item Dữ liệu được tổng hợp theo ngày và tháng.
+\end{itemize}
+\column{.48\textwidth}
+\textbf{Sửa sai có kiểm soát}
+\begin{itemize}
+\item Nhân viên gửi giờ đề nghị và lý do.
+\item Yêu cầu đi qua các cấp phê duyệt.
+\item Kỳ công đã khóa giới hạn cập nhật.
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Nghỉ phép và địa điểm làm việc}
+\begin{itemize}
+\setlength{\itemsep}{10pt}
+\item Đơn nghỉ lưu loại nghỉ, khoảng ngày, phần ngày và lý do.
+\item Bộ tính ngày làm việc xử lý cả trường hợp nghỉ nửa ngày.
+\item Đơn nghỉ năm liên quan đến hạn mức và số dư phép.
+\item Yêu cầu làm việc tại nhà hoặc tại khách hàng được quản lý riêng với nghỉ phép.
+\item Người gửi không tự phê duyệt yêu cầu của mình.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Bảng công tháng}
+\begin{itemize}
+\setlength{\itemsep}{10pt}
+\item Tổng hợp dữ liệu chấm công và các đơn nghỉ đã được duyệt theo kỳ.
+\item Trình bày ngày làm việc, thời gian làm, đi muộn và các loại nghỉ.
+\item Xuất tệp XLSX để đối soát.
+\item Khóa kỳ công sau khi chốt; mở lại kỳ cần có lý do.
+\end{itemize}
+\vspace{5mm}
+\small Đây là báo cáo ngày công, chưa phải bảng tính lương thực nhận.
+\end{frame}
+
+\begin{frame}{Xác thực và phân quyền}
+\begin{itemize}
+\setlength{\itemsep}{10pt}
+\item Người dùng đăng nhập và nhận JWT; API nghiệp vụ yêu cầu token hợp lệ.
+\item Mật khẩu được kiểm tra qua BCrypt.
+\item Quyền được xét theo vai trò và phạm vi bản ghi: cá nhân, phòng ban hoặc dự án.
+\item Service kiểm tra thêm trạng thái nghiệp vụ trước khi cập nhật.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Kiểm thử và kết quả}
+\begin{columns}[T,onlytextwidth]
+\column{.52\textwidth}
+\textbf{Phạm vi kiểm thử backend}
+\begin{itemize}
+\item Xác thực và dashboard
+\item Task và phân công
+\item Chấm công, nghỉ phép, điều chỉnh công
+\item Địa điểm làm việc và bảng công
+\end{itemize}
+\column{.44\textwidth}
+\begin{block}{Lần chạy ngày 02/11/2026}
+48 ca kiểm thử\\[2mm]
+47 đạt, 1 thất bại
+\end{block}
+\end{columns}
+\vspace{4mm}
+\small Ca thất bại liên quan đến chỉ tiêu ngày công khi duyệt nửa ngày nghỉ năm: mong đợi 5,5 nhưng nhận 1,5.
+\end{frame}
+
+\begin{frame}{Demo trên máy local}
+\begin{enumerate}
+\setlength{\itemsep}{10pt}
+\item Đăng nhập và xem dashboard.
+\item Xem dự án, work request và cập nhật trạng thái task.
+\item Check-in, check-out và xem lịch sử chấm công.
+\item Tạo đơn nghỉ hoặc yêu cầu điều chỉnh, sau đó xem luồng phê duyệt.
+\item Mở bảng công tháng và xuất Excel.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Kết luận}
+\begin{itemize}
+\setlength{\itemsep}{10pt}
+\item Bản demo kết nối dữ liệu tổ chức, công việc và thời gian làm việc trong một ứng dụng web.
+\item Các thao tác quan trọng được giới hạn bằng vai trò, phạm vi dữ liệu và trạng thái nghiệp vụ.
+\item Bộ kiểm thử backend đã phát hiện một sai khác ở phép tính ngày công nửa ngày nghỉ năm.
+\end{itemize}
+\vspace{6mm}
+\begin{block}{Hướng hoàn thiện}
+Rà soát công thức bảng công, kiểm thử trên MySQL local và bổ sung kiểm thử giao diện.
+\end{block}
+\end{frame}
+
+\begin{frame}[plain]
+\centering\vfill
+{\LARGE\bfseries Xin cảm ơn!}\par\vspace{5mm}
+{\large Vũ Thành Công -- K68A3}
+\vfill
+\end{frame}
+
+\end{document}

@@ -1,0 +1,605 @@
+% Bao cao thuc tap - Company Management
+% Overleaf: co the dung pdfLaTeX hoac XeLaTeX; bien dich 2 lan de cap nhat muc luc.
+\documentclass[12pt,a4paper,oneside]{report}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[utf8]{inputenc}
+  \usepackage[T5]{fontenc}
+  \usepackage[vietnamese]{babel}
+\else
+  \usepackage{fontspec}
+  \usepackage{polyglossia}
+  \setdefaultlanguage{vietnamese}
+  \setmainfont{TeX Gyre Termes}
+  \setsansfont{TeX Gyre Heros}
+  \setmonofont{Latin Modern Mono}
+\fi
+\usepackage[a4paper,left=3.5cm,right=2cm,top=2.5cm,bottom=2.5cm]{geometry}
+\usepackage{setspace}\onehalfspacing
+\usepackage{graphicx,booktabs,longtable,array,tabularx,enumitem,xcolor,listings,float,amsmath,caption}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\definecolor{codebg}{RGB}{247,248,250}
+\definecolor{codegray}{RGB}{90,90,90}
+\definecolor{codeblue}{RGB}{30,70,150}
+\lstset{backgroundcolor=\color{codebg},basicstyle=\ttfamily\small,keywordstyle=\color{codeblue}\bfseries,commentstyle=\color{codegray}\itshape,stringstyle=\color{teal},numbers=left,numberstyle=\tiny\color{codegray},frame=single,breaklines=true,showstringspaces=false,tabsize=2,captionpos=b}
+\pagestyle{fancy}\fancyhf{}\lhead{Báo cáo thực tập hè}\rhead{Hệ thống quản lý doanh nghiệp}\cfoot{\thepage}\setlength{\headheight}{15pt}
+\newcommand{\projectname}{Company Management}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\begin{document}
+\begin{titlepage}\centering
+\vspace*{.5cm}
+{\large\textbf{TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN}\\[.2cm]
+\textbf{ĐẠI HỌC QUỐC GIA HÀ NỘI}\\[.2cm]
+\textbf{KHOA TOÁN -- CƠ -- TIN HỌC}\par}
+\vspace{.6cm}
+\includegraphics[height=3cm,keepaspectratio]{logo-truong.png}\par
+\vspace{1.1cm}{\Large\textbf{BÁO CÁO THỰC TẬP HÈ}\par}\vspace{.8cm}
+{\Huge\textbf{XÂY DỰNG HỆ THỐNG QUẢN LÝ DOANH NGHIỆP}\par}
+\vspace{.4cm}{\Large\textbf{Company Management}\par}\vspace{2cm}
+\begin{tabularx}{.95\textwidth}{@{}p{4cm}X@{}}
+Sinh viên thực hiện: & Vũ Thành Công\\
+Mã sinh viên: & 23001839\\
+Lớp: & K68A3\\
+Người hướng dẫn: & Hà Quang Vũ\\
+Đơn vị thực tập: & Công ty Cổ phần Giải pháp Phần mềm Biplus Việt Nam
+\end{tabularx}
+\vfill{\large Hà Nội, tháng 11 năm 2026\par}
+\end{titlepage}
+
+\pagenumbering{roman}
+\clearpage\tableofcontents\clearpage\listoffigures\listoftables
+
+\chapter*{TÓM TẮT (ABSTRACT)}
+Báo cáo trình bày quá trình phân tích và phát triển \projectname{}, ứng dụng web hỗ trợ quản lý hoạt động nội bộ doanh nghiệp. Hệ thống tập trung vào quản lý người dùng và phòng ban, dự án, phiếu yêu cầu công việc, nhiệm vụ, chấm công, nghỉ phép, đăng ký địa điểm làm việc, điều chỉnh chấm công, báo cáo công và thông báo.
+
+Backend sử dụng Java 21, Spring Boot 3.4.5, Spring Data JPA, MySQL và Spring Security kết hợp JSON Web Token. Frontend sử dụng Angular 22, TypeScript và RxJS. Hệ thống có phân quyền theo vai trò, quy trình trạng thái, khóa kỳ công, xuất Excel và bộ test dùng Spring Boot Test cùng H2.
+
+Phương pháp thực hiện gồm phân tích yêu cầu, thiết kế mô hình dữ liệu và API, triển khai phân lớp, sau đó kiểm tra bằng các ca kiểm thử tích hợp. Trong lần chạy ngày 02/11/2026, bộ test backend hoàn tất 48 ca, gồm 47 ca đạt và 1 ca lỗi ở kiểm tra tổng hợp ngày công khi duyệt nửa ngày nghỉ năm. Kết quả này chỉ ra một điểm cần điều tra trước khi xem chức năng bảng công là hoàn thiện.
+
+\noindent\textbf{Từ khóa:} quản lý doanh nghiệp, Spring Boot, Angular, MySQL, JWT, chấm công, quản lý dự án.
+
+\chapter*{LỜI CAM ĐOAN}
+Tôi cam đoan báo cáo này trình bày quá trình tìm hiểu, phân tích và triển khai hệ thống quản lý doanh nghiệp \projectname{} trong thời gian thực tập hè. Các mô tả kỹ thuật và kết quả kiểm thử được tổng hợp từ mã nguồn, cấu hình và bộ kiểm thử của project tại thời điểm lập báo cáo. Nội dung tham khảo được ghi rõ trong tài liệu tham khảo.
+
+\chapter*{LỜI CẢM ƠN}
+Trong quá trình thực tập và thực hiện báo cáo, tôi đã nhận được sự hướng dẫn của giảng viên, cán bộ hướng dẫn tại đơn vị thực tập và sự hỗ trợ của các thành viên trong nhóm. Tôi xin chân thành cảm ơn các thầy cô và anh chị đã giúp tôi củng cố kiến thức về phát triển ứng dụng web, thiết kế API, cơ sở dữ liệu, bảo mật và kiểm thử phần mềm.
+
+
+
+
+
+\clearpage\pagenumbering{arabic}
+
+\chapter{GIỚI THIỆU}
+\section{Bối cảnh và lý do chọn đề tài}
+Trong doanh nghiệp, dữ liệu nhân sự, dự án, công việc, chấm công và nghỉ phép thường bị phân tán ở nhiều công cụ. Điều này gây khó khăn khi theo dõi tiến độ liên phòng ban, tổng hợp ngày công và kiểm soát phê duyệt. \projectname{} được xây dựng nhằm tạo một hệ thống tập trung, chuẩn hóa nghiệp vụ và giới hạn truy cập theo vai trò.
+
+\section{Mục tiêu}
+\begin{itemize}
+\item Xây dựng hệ thống web quản lý hoạt động nội bộ doanh nghiệp.
+\item Quản lý nhân viên, phòng ban, dự án, work request và task.
+\item Hỗ trợ chấm công nhiều phiên trong ngày, nghỉ phép theo ngày/nửa ngày và làm việc ngoài văn phòng.
+\item Bảo vệ API bằng JWT, BCrypt và phân quyền theo role/phòng ban.
+\item Lập báo cáo công theo tháng, xuất XLSX, khóa kỳ công và mở lại có lý do.
+\end{itemize}
+
+\section{Phạm vi}
+Phạm vi đề tài gồm backend REST API, giao diện Angular, cơ sở dữ liệu MySQL cục bộ và dữ liệu H2 phục vụ kiểm thử. Sản phẩm được trình diễn trên máy cá nhân. Chức năng tính tiền lương thực nhận và thông báo thời gian thực nằm ngoài phạm vi phiên bản này.
+
+\section{Nội dung và cách tiếp cận}
+Báo cáo phân tích các quy trình và ràng buộc dữ liệu của ứng dụng quản lý nội bộ, cách tổ chức mã nguồn và phân quyền, cùng phạm vi được kiểm chứng bởi bộ kiểm thử hiện có. Phương pháp thực hiện gồm khảo sát mã nguồn, đặc tả yêu cầu, mô tả kiến trúc, đối chiếu quy tắc nghiệp vụ với phần triển khai và tổng hợp kết quả kiểm thử. Những chỉ số chưa được đo thực tế không được dùng làm kết luận định lượng.
+
+\section{Đóng góp và bố cục báo cáo}
+Sản phẩm được khảo sát là ứng dụng web gồm giao diện Angular, REST API Spring Boot và cơ sở dữ liệu MySQL. Báo cáo hệ thống hóa các chức năng, mô hình hóa quy trình trạng thái, trình bày phương pháp kiểm thử và đánh giá giới hạn của phiên bản hiện tại. Nội dung được sắp xếp từ cơ sở lý thuyết, phát biểu bài toán và phương pháp đến kết quả thực nghiệm, thảo luận và kết luận.
+
+\chapter{CƠ SỞ LÝ THUYẾT}
+\section{Hệ thống thông tin quản lý nội bộ}
+Hệ thống thông tin quản lý nội bộ thu nhận dữ liệu từ các hoạt động thường ngày, biến đổi thành thông tin hỗ trợ điều hành và lưu lại lịch sử phục vụ tra cứu. Trong phạm vi đề tài, các đối tượng cốt lõi là nhân viên, phòng ban, dự án, yêu cầu công việc, nhiệm vụ, bản ghi chấm công và các đơn đề nghị. Các đối tượng liên quan với nhau: nhân viên thuộc phòng ban; nhiệm vụ gắn với yêu cầu công việc; yêu cầu công việc nằm trong dự án; chấm công và nghỉ phép gắn với nhân viên theo thời gian. Một thay đổi ở một phân hệ có thể tác động phân hệ khác, chẳng hạn đơn nghỉ được duyệt ảnh hưởng cách tổng hợp công.
+
+\section{Ứng dụng web theo mô hình client--server}
+Trong mô hình client--server, trình duyệt chịu trách nhiệm hiển thị và thu nhận thao tác, máy chủ xử lý nghiệp vụ và cơ sở dữ liệu lưu trạng thái lâu dài. Việc chia lớp giúp giao diện thay đổi mà không phải viết lại toàn bộ quy tắc nghiệp vụ. Mỗi yêu cầu HTTP gửi tới tài nguyên REST mang phương thức, đường dẫn, header và dữ liệu JSON; máy chủ trả mã trạng thái cùng dữ liệu hoặc lỗi. API cần dùng nhất quán các phương thức GET cho truy vấn, POST cho tạo hoặc thao tác, PUT/PATCH cho cập nhật và DELETE cho xóa theo ngữ nghĩa cụ thể của từng tài nguyên.
+
+\section{Cơ sở dữ liệu quan hệ và tính toàn vẹn}
+Mô hình quan hệ biểu diễn mỗi loại đối tượng thành bảng, mỗi bản ghi thành hàng và mối liên hệ bằng khóa ngoại. Khóa chính định danh bản ghi; ràng buộc duy nhất ngăn trùng lặp; ràng buộc không rỗng bảo vệ dữ liệu bắt buộc. Với dữ liệu chấm công, chỉ kiểm tra ở giao diện là chưa đủ vì hai yêu cầu đồng thời vẫn có thể tạo bản ghi trùng. Do đó quy tắc quan trọng cần được kiểm tra tại service và, khi có thể, tại cơ sở dữ liệu. Giao dịch bảo đảm một chuỗi cập nhật cùng thành công hoặc cùng thất bại; optimistic locking phát hiện việc hai người sửa cùng một bản ghi cũ.
+
+\section{Ánh xạ đối tượng--quan hệ và thiết kế phân lớp}
+Jakarta Persistence cho phép ánh xạ lớp Java sang bảng và quan hệ đối tượng sang khóa ngoại. Repository cung cấp giao diện truy vấn; service tập trung các quy tắc và giao dịch; controller nhận request, trả response. DTO tách dữ liệu công khai của API khỏi entity, giúp tránh để lộ trường nội bộ và giảm phụ thuộc giữa cấu trúc lưu trữ với giao diện. Tuy nhiên, ORM không thay thế thiết kế truy vấn: tải quan hệ không phù hợp có thể gây nhiều truy vấn nhỏ hoặc tải thừa dữ liệu, nên cần quan sát SQL ở các màn hình tổng hợp khi tối ưu hiệu năng.
+
+\section{Xác thực, phân quyền và JWT}
+Xác thực trả lời câu hỏi người gọi là ai; phân quyền trả lời người đó được làm gì với tài nguyên nào. JWT là token có chữ ký, thường gồm header, payload và signature; máy chủ kiểm tra chữ ký và hạn dùng trước khi chấp nhận thông tin trong token \cite{jwt}. Mật khẩu phải được lưu bằng hàm băm chuyên dụng, không lưu bản rõ. Phân quyền theo vai trò (RBAC) chỉ là tầng đầu: cùng một vai trò, người dùng vẫn có thể bị giới hạn theo phòng ban, dự án, bản ghi sở hữu hoặc trạng thái của yêu cầu. Vì thế kiểm tra quyền ở service cần dựa cả vào dữ liệu đang truy cập.
+
+\section{Máy trạng thái và quy trình phê duyệt}
+Một quy trình nghiệp vụ có thể biểu diễn thành tập trạng thái $S$ và quan hệ chuyển hợp lệ $T\subseteq S\times S$. Nếu trạng thái hiện tại là $s$ và yêu cầu chuyển sang $s'$, hệ thống chỉ chấp nhận khi $(s,s')\in T$ và các điều kiện phụ được thỏa mãn. Ví dụ, nhiệm vụ bị chặn cần lý do; yêu cầu điều chỉnh chấm công phải qua các cấp duyệt; kỳ công đã khóa ngăn sửa dữ liệu thuộc kỳ. Mô hình này làm quy tắc dễ kiểm tra và giúp thiết kế ca kiểm thử cho cả chuyển hợp lệ lẫn chuyển bị từ chối.
+
+\section{Kiểm thử phần mềm và tiêu chí đánh giá}
+Kiểm thử đơn vị xác minh một hàm hoặc lớp nhỏ; kiểm thử tích hợp kiểm tra sự phối hợp giữa controller, service, repository, bộ lọc bảo mật và cơ sở dữ liệu. Với REST API, một ca kiểm thử nên nêu trạng thái ban đầu, request, mã phản hồi, dữ liệu trả về và thay đổi lưu trữ dự kiến. Đánh giá hệ thống gồm ít nhất tính đúng chức năng, tính nhất quán, bảo mật, khả năng sử dụng và hiệu năng. Bộ kiểm thử tự động hiện tại chủ yếu cung cấp bằng chứng về hành vi backend trong môi trường H2; chưa đủ để kết luận trải nghiệm người dùng hoặc khả năng chịu tải.
+
+\section{Các tài liệu và công nghệ liên quan}
+Tài liệu Spring Boot mô tả cơ chế cấu hình và phát triển ứng dụng \cite{springboot}; Spring Security cung cấp khung xác thực và phân quyền \cite{security}. Tài liệu Angular trình bày tổ chức ứng dụng giao diện, thành phần và routing \cite{angular}. Đặc tả Jakarta Persistence làm cơ sở cho thiết kế entity và repository \cite{jpa}. Các tài liệu này được dùng để giải thích lựa chọn kỹ thuật; kết quả và tính năng cụ thể của đề tài vẫn được đối chiếu với mã nguồn dự án.
+
+\section{Chuẩn hóa dữ liệu và phụ thuộc hàm}
+Trong một hệ thống quản lý, dữ liệu nhân viên, phòng ban và dự án không nên được lặp lại dưới dạng văn bản tự do ở mọi bản ghi. Nếu tên phòng ban được sao chép vào từng nhiệm vụ, một lần đổi tên có thể khiến các nhiệm vụ cũ và mới mang hai giá trị khác nhau. Chuẩn hóa dữ liệu giải quyết vấn đề này bằng cách lưu phòng ban trong bảng riêng và tham chiếu bằng khóa ngoại. Khi đó phụ thuộc hàm cơ bản là mã phòng ban xác định tên và thông tin của phòng ban; mã người dùng xác định hồ sơ người dùng; mã nhiệm vụ xác định trạng thái, người phụ trách và hạn của nhiệm vụ.
+
+Việc chuẩn hóa cũng có chi phí: màn hình tổng hợp cần kết hợp nhiều bảng và truy vấn có thể phức tạp. Vì vậy thiết kế cần cân bằng giữa tính nhất quán của dữ liệu gốc và chi phí đọc. Báo cáo tháng là một ví dụ: dữ liệu đầu vào nằm ở chấm công, phiên chấm công và nghỉ phép, còn kết quả được tính theo kỳ. Nếu lưu sẵn kết quả tổng hợp, hệ thống phải định nghĩa rõ thời điểm tính lại sau mỗi thay đổi; nếu tính động, cần đánh giá thời gian phản hồi và chỉ mục truy vấn.
+
+\section{Tính thời gian làm việc và phép năm}
+Với một phiên làm việc có thời điểm vào $t_{in}$ và ra $t_{out}$, thời lượng thô có thể viết $h=(t_{out}-t_{in})/3600$ giờ với điều kiện $t_{out}\ge t_{in}$. Nếu một ngày có nhiều phiên, tổng giờ là $H_d=\sum_{i=1}^{n_d}h_i$. Công thức này chỉ mô tả phép cộng thời lượng; quy tắc nghỉ giữa ca, làm thêm giờ, làm qua ngày và làm tròn phải được doanh nghiệp xác nhận trước khi dùng để tính lương. Kiểm tra chồng lấn giữa hai phiên $[a,b)$ và $[c,d)$ dựa trên điều kiện $a<d$ và $c<b$. Khi sửa một phiên, cần kiểm tra lại tất cả phiên khác của cùng người trong ngày.
+
+Đối với phép năm, một ngày làm việc trọn vẹn thường có trọng số $1$, nửa ngày có trọng số $0.5$. Gọi $E_y$ là số ngày được cấp trong năm, $U_y$ là tổng ngày đã duyệt và $P_y$ là tổng ngày đang chờ duyệt, số dư khả dụng có thể biểu diễn $B_y=E_y-U_y-P_y$ nếu chính sách muốn giữ chỗ cho đơn đang chờ. Một số doanh nghiệp chỉ trừ đơn đã duyệt, khi đó số dư hiển thị là $E_y-U_y$ và cần trình bày riêng $P_y$. Sự khác nhau giữa hai cách tính phải được nêu rõ trên giao diện để tránh hiểu nhầm. Với khoảng nghỉ kéo dài nhiều ngày, phép tính còn cần loại trừ ngày không làm việc và xử lý nửa ngày ở hai đầu khoảng.
+
+\section{Tính đúng đắn của quy trình cập nhật}
+Một thao tác nghiệp vụ chỉ đúng khi đồng thời thỏa điều kiện trước, thay đổi trạng thái hợp lệ và giữ các bất biến sau khi lưu. Có thể ký hiệu một thao tác là $\{P\}\;A\;\{Q\}$, trong đó $P$ là điều kiện trước, $A$ là thao tác và $Q$ là điều kiện sau. Ví dụ, với thao tác khóa kỳ công: $P$ gồm kỳ tồn tại, người gọi có quyền quản trị và kỳ chưa khóa; $Q$ gồm trạng thái kỳ đã khóa và các cập nhật công thông thường bị từ chối. Với thao tác duyệt điều chỉnh công: $P$ gồm yêu cầu đang ở đúng bước, người duyệt có quyền và dữ liệu đề nghị không trùng phiên; $Q$ gồm yêu cầu chuyển trạng thái, phiên được cập nhật và bản ghi tổng hợp được tính lại.
+
+Suy nghĩ theo điều kiện trước--sau giúp phát hiện các trường hợp thường bị bỏ sót. Một API có thể trả thành công nhưng chỉ cập nhật trạng thái yêu cầu mà chưa cập nhật dữ liệu gốc; hoặc có thể cập nhật dữ liệu gốc trước khi kiểm tra đầy đủ quyền. Giao dịch và kiểm thử trạng thái cơ sở dữ liệu sau request là hai công cụ để phát hiện những lỗi như vậy.
+
+\chapter{PHÁT BIỂU BÀI TOÁN}
+\section{Đầu vào, đầu ra và mục tiêu}
+Đầu vào của hệ thống gồm hồ sơ nhân viên và phòng ban, thông tin dự án, yêu cầu công việc và nhiệm vụ, dấu thời gian vào/ra, đơn nghỉ phép, đăng ký địa điểm làm việc, yêu cầu điều chỉnh công và các quyết định phê duyệt. Đầu ra gồm danh sách và chi tiết từng đối tượng, trạng thái tiến độ, tổng quan dashboard, lịch sử thao tác nghiệp vụ, bảng công theo tháng và tệp XLSX. Mục tiêu là thống nhất nguồn dữ liệu, giảm thao tác tổng hợp thủ công và áp dụng một quy tắc xử lý nhất quán cho các vai trò.
+
+\section{Các giả định nghiệp vụ}
+Hệ thống phục vụ một tổ chức có các phòng ban và tài khoản được cấp sẵn. Mỗi thao tác được thực hiện dưới danh tính người dùng đã xác thực, trừ endpoint đăng nhập và health check. Thời gian chấm công được hiểu theo múi giờ nghiệp vụ cấu hình cho ứng dụng. Việc phê duyệt phản ánh phân cấp quản lý đang được mã hóa trong service, không mặc nhiên thay thế quy chế nhân sự của mọi doanh nghiệp. Bảng công là dữ liệu tổng hợp thời gian và loại vắng mặt, chưa phải bảng tính lương thực nhận.
+
+\section{Ràng buộc và tình huống biên}
+\begin{enumerate}
+\item Người dùng không được tác động bản ghi ngoài phạm vi vai trò, phòng ban hoặc dự án được phép.
+\item Một nhiệm vụ phải thuộc yêu cầu công việc hợp lệ; các ngày hạn phải phù hợp với khoảng thời gian của đối tượng cha.
+\item Các chuyển trạng thái trái quy trình bị từ chối, kể cả khi request gửi trực tiếp qua API.
+\item Khoảng thời gian nghỉ và phiên chấm công phải được kiểm tra tránh trùng hoặc tạo kết quả tổng hợp sai.
+\item Quyết định phê duyệt cần gắn với người có thẩm quyền; người gửi không tự phê duyệt yêu cầu của mình.
+\item Dữ liệu của kỳ công đã khóa không được sửa theo luồng thông thường.
+\end{enumerate}
+
+\section{Tiêu chí chấp nhận}
+Một chức năng được xem là đạt yêu cầu khi request hợp lệ trả dữ liệu đúng và lưu thay đổi đúng; request thiếu quyền hoặc vi phạm ràng buộc trả lỗi phù hợp và không làm thay đổi dữ liệu; giao diện phản ánh được trạng thái mới sau thao tác. Các tiêu chí này phải được kiểm tra bằng trường hợp thành công và thất bại. Đối với chất lượng ngoài chức năng, báo cáo chỉ mô tả thiết kế và phép đo cần thực hiện, không gán một chỉ số hiệu năng chưa được thu thập.
+
+\section{Mô tả các ca sử dụng chính}
+\subsection{Quản lý hồ sơ nhân viên và phòng ban}
+Người quản trị tạo tài khoản, nhập thông tin nhận dạng và liên hệ, gán vai trò và phòng ban. Sau đó nhân viên có thể đăng nhập, xem thông tin cá nhân và đổi mật khẩu. Khi nhân sự chuyển bộ phận hoặc ngừng làm việc, dữ liệu tài khoản được cập nhật theo quy tắc phân quyền. Điều kiện quan trọng là tên đăng nhập và email không trùng; tài khoản bị vô hiệu hóa không được tiếp tục sử dụng như tài khoản đang hoạt động. Bên cạnh chức năng nhập liệu, màn hình danh sách cần tìm kiếm và lọc để người quản lý tiếp cận đúng người cần xử lý.
+
+\subsection{Điều phối dự án và nhiệm vụ}
+Người có quyền tạo dự án với phòng ban sở hữu, thời gian và trạng thái. Khi phát sinh công việc liên phòng ban, một yêu cầu công việc mô tả mục tiêu, tiêu chí nghiệm thu, người điều phối, bộ phận thực hiện và hạn. Yêu cầu được chia thành các nhiệm vụ nhỏ, mỗi nhiệm vụ có người thực hiện, mức ưu tiên, hạn và có thể có người kiểm thử. Người thực hiện cập nhật tiến độ; người điều phối xem các nhiệm vụ trễ hạn hoặc bị chặn; bước nghiệm thu chỉ diễn ra khi các ràng buộc của yêu cầu được đáp ứng. Tình huống biên gồm người được giao không thuộc phạm vi phù hợp, hạn nhiệm vụ nằm ngoài hạn yêu cầu và thao tác chuyển trạng thái không đúng vai trò.
+
+\subsection{Chấm công và sửa sai}
+Nhân viên bắt đầu một phiên khi vào làm và kết thúc phiên khi ra. Một ngày có thể có nhiều phiên; hệ thống cần giữ bản ghi ngày để tra cứu và tổng hợp. Nếu quên thao tác hoặc ghi sai giờ, nhân viên không trực tiếp sửa dữ liệu đã chốt mà gửi yêu cầu điều chỉnh kèm lý do. Người quản lý và quản trị viên duyệt theo quy trình. Khi được duyệt cuối, phiên và dữ liệu tổng hợp mới đổi. Nếu kỳ công đã khóa, hệ thống phải từ chối luồng cập nhật thông thường và yêu cầu mở lại kỳ theo quyền phù hợp.
+
+\subsection{Nghỉ phép và địa điểm làm việc}
+Nhân viên chọn loại nghỉ, khoảng ngày, phần ngày đầu/cuối và lý do. Hệ thống tính số ngày làm việc tương ứng, kiểm tra số dư với nghỉ năm và chuyển đơn đến người có thẩm quyền. Người quản lý xem các yêu cầu chờ trong phạm vi mình phụ trách; quản trị viên xử lý bước cuối theo quy trình. Với làm việc từ xa hoặc tại địa điểm khách hàng, một yêu cầu riêng ghi rõ loại địa điểm và thời gian áp dụng. Các ca này cần phân biệt với vắng mặt: làm việc ngoài văn phòng không đồng nghĩa nghỉ phép.
+
+\subsection{Xem báo cáo và chốt kỳ}
+Người có quyền chọn tháng và năm để xem tổng hợp ngày làm việc, ngày nghỉ và các chỉ tiêu liên quan. Tệp Excel cho phép lưu hoặc xử lý tiếp theo quy trình văn phòng. Sau khi đối soát, quản trị viên khóa kỳ để ổn định dữ liệu. Nếu phát hiện sai sót, việc mở lại phải có lý do và lưu người thực hiện. Quy trình này tạo mốc trách nhiệm cho số liệu, đồng thời tránh tình huống bảng công thay đổi âm thầm sau khi đã được sử dụng.
+
+\section{Đối tượng sử dụng}
+\begin{table}[H]\centering\caption{Các vai trò trong hệ thống}
+\begin{tabularx}{\textwidth}{p{3.3cm}X}\toprule
+\textbf{Vai trò}&\textbf{Trách nhiệm chính}\\\midrule
+ADMIN&Quản trị hệ thống, dữ liệu, phê duyệt cấp cuối, khóa/mở kỳ công.\\
+HR&Quản lý nhân sự, xem dữ liệu phòng ban, hỗ trợ phê duyệt và báo cáo.\\
+PROJECT\
+MANAGER&Quản lý dự án, work request và task trong phạm vi được tham gia.\\
+TEAM\_LEAD&Điều phối công việc/phê duyệt của phòng ban.\\
+MEMBER&Thực hiện task được giao, chấm công và gửi yêu cầu cá nhân.\\
+QA&Kiểm thử nhiệm vụ và cập nhật trạng thái testing.\\
+VIEWER&Chỉ xem dữ liệu được phép, không thay đổi dữ liệu.\\\bottomrule
+\end{tabularx}\end{table}
+
+\section{Yêu cầu chức năng}
+\begin{longtable}{p{1.2cm}p{3.5cm}p{9cm}}\caption{Danh sách yêu cầu chức năng}\label{tab:functions}\\\toprule
+\textbf{Mã}&\textbf{Nhóm}&\textbf{Mô tả}\\\midrule
+F01&Xác thực&Đăng nhập, xem profile, đổi mật khẩu và duy trì phiên bằng JWT.\\
+F02&Nhân sự&Tìm kiếm, thêm, sửa, vô hiệu hóa user; gán phòng ban và role.\\
+F03&Phòng ban&Xem, tạo, cập nhật và xóa phòng ban theo quyền.\\
+F04&Dashboard&Tổng hợp nhân viên, phòng ban, dự án, task, quá hạn và đơn chờ duyệt.\\
+F05&Dự án&Quản lý tên, mô tả, phòng ban, thời gian và trạng thái dự án.\\
+F06&Work request&Theo dõi yêu cầu liên phòng ban, điều phối viên, ưu tiên, deadline và nghiệm thu.\\
+F07&Task&Phân công người thực hiện/tester, cập nhật trạng thái, ưu tiên, hạn và lý do blocked.\\
+F08&Chấm công&Check-in, check-out, xem lịch sử cá nhân/phòng ban/nhân viên.\\
+F09&Nghỉ phép&Tạo, duyệt, từ chối, hủy đơn; tính số ngày và số dư phép năm.\\
+F10&Địa điểm làm việc&Đăng ký WFH/client site và phê duyệt nhiều cấp.\\
+F11&Điều chỉnh công&Gửi yêu cầu sửa phiên chấm công và phê duyệt quản lý--ADMIN.\\
+F12&Bảng công&Xem tháng, xuất XLSX, khóa và mở lại kỳ công.\\
+F13&Thông báo&Thông báo task gần hạn, work request và đơn nghỉ có thay đổi.\\\bottomrule
+\end{longtable}
+
+\section{Yêu cầu phi chức năng}
+\begin{itemize}
+\item \textbf{Bảo mật:} endpoint nghiệp vụ yêu cầu đăng nhập; thao tác nhạy cảm giới hạn theo role và phòng ban.
+\item \textbf{Nhất quán:} JPA, unique constraint, optimistic locking qua \code{@Version} và transaction.
+\item \textbf{Bảo trì:} tách controller--service--repository, dùng DTO và xử lý lỗi tập trung.
+\item \textbf{Chạy thử cục bộ:} sử dụng Gradle Wrapper, cấu hình kết nối và MySQL trên máy cá nhân.
+\item \textbf{Kiểm thử:} test backend với database H2 cô lập.
+\end{itemize}
+
+\chapter{PHƯƠNG PHÁP VÀ TRIỂN KHAI}
+\section{Quy trình thực hiện}
+Quy trình gồm sáu bước lặp: khảo sát hiện trạng và yêu cầu; xác định đối tượng dữ liệu và quyền; thiết kế REST API cùng trạng thái; hiện thực từng lát chức năng từ entity đến giao diện; viết kiểm thử cho quy tắc quan trọng; rà soát lỗi và điều chỉnh. Mỗi lát chức năng có thể được kiểm tra độc lập trước khi kết nối vào dashboard hoặc bảng công. Cách làm này giảm rủi ro khi nhiều phân hệ cùng phụ thuộc người dùng, phòng ban và thời gian.
+
+\section{Nguyên tắc thiết kế API và dữ liệu}
+Đường dẫn API được nhóm theo tài nguyên dưới tiền tố \code{/api/v1}. Request/response dùng DTO để kiểm soát trường được nhận và trả. Validation chặn dữ liệu thiếu hoặc sai định dạng ở biên hệ thống, còn service kiểm tra các quy tắc cần truy vấn cơ sở dữ liệu. Lỗi nghiệp vụ được xử lý tập trung để client có thể hiển thị thông báo nhất quán. Các thao tác sửa nhiều bảng cần chạy trong giao dịch; tra cứu cần giới hạn theo phạm vi truy cập trước khi trả kết quả.
+
+\section{Cách xác minh quy tắc}
+Mỗi quy tắc được chuyển thành ít nhất một ca hợp lệ và một ca không hợp lệ. Chẳng hạn, quy tắc nhiệm vụ BLOCKED cần lý do được kiểm bằng một request có lý do và một request bỏ trống; quy tắc khóa kỳ công được kiểm bằng cập nhật trước và sau khi khóa. Kiểm thử tích hợp cho phép quan sát đồng thời mã HTTP, dữ liệu JSON và trạng thái cơ sở dữ liệu sau request.
+\section{Kiến trúc tổng thể}
+Hệ thống dùng mô hình client--server: Angular gọi REST API; Spring Boot xử lý bảo mật, nghiệp vụ và truy cập dữ liệu; MySQL lưu dữ liệu chính.
+
+\begin{figure}[H]\centering
+\begin{tikzpicture}[
+  node distance=6mm,
+  step/.style={draw=blue!55!black,rounded corners=2pt,fill=blue!6,
+    text width=8.2cm,minimum height=9mm,align=center,inner sep=3pt,font=\small},
+  guard/.style={step,draw=orange!70!black,fill=orange!8},
+  store/.style={step,draw=green!50!black,fill=green!8},
+  flow/.style={-Latex,thick,draw=black!70}]
+\node[step] (web) {\textbf{Giao diện:} trình duyệt, Angular 22 và TypeScript};
+\node[guard,below=of web] (sec) {\textbf{Xác thực:} Spring Security, JWT và BCrypt};
+\node[step,below=of sec] (api) {\textbf{REST Controller:} nhận và trả dữ liệu HTTP/JSON};
+\node[step,below=of api] (svc) {\textbf{Service:} kiểm tra quyền, xử lý nghiệp vụ và DTO};
+\node[step,below=of svc] (repo) {\textbf{Repository:} Spring Data JPA truy cập dữ liệu};
+\node[store,below=of repo] (db) {\textbf{Cơ sở dữ liệu:} MySQL 8.4};
+\draw[flow] (web) -- (sec);
+\draw[flow] (sec) -- (api);
+\draw[flow] (api) -- (svc);
+\draw[flow] (svc) -- (repo);
+\draw[flow] (repo) -- (db);
+\end{tikzpicture}
+\caption{Luồng xử lý từ giao diện đến cơ sở dữ liệu}\label{fig:architecture}
+\end{figure}
+
+\section{Thiết kế lớp backend}
+\begin{description}
+\item[Controller] Khai báo REST route, nhận request, validation cơ bản và gọi service.
+\item[Service] Chứa quy tắc nghiệp vụ, kiểm tra quyền, chuyển đổi entity--DTO và transaction.
+\item[Repository] Truy vấn dữ liệu qua Spring Data JPA.
+\item[Entity] Ánh xạ User, Department, Project, WorkRequest, Task, Attendance và các bảng yêu cầu.
+\item[DTO] Tách mô hình API khỏi mô hình lưu trữ, hạn chế dữ liệu trả về.
+\item[Exception] \code{GlobalExceptionHandler} chuẩn hóa lỗi; \code{BussinessException} biểu diễn lỗi nghiệp vụ.
+\end{description}
+
+\subsection{Trách nhiệm và ranh giới giữa các lớp}
+Controller nên nhận các trường cần thiết cho một thao tác, gọi validation và chuyển kết quả từ service thành phản hồi HTTP. Controller không nên tự truy vấn nhiều repository để quyết định quyền, vì khi đó cùng một quy tắc có thể được lặp lại ở nhiều endpoint. Service chịu trách nhiệm lấy người dùng hiện tại, kiểm tra bản ghi có tồn tại, xác minh phạm vi truy cập, kiểm tra trạng thái, thay đổi entity và lưu trong giao dịch. Repository chỉ cung cấp thao tác dữ liệu; không thể tự hiểu đầy đủ một chính sách nghiệp vụ như ``người duyệt không được là người tạo đơn''.
+
+Khi trả dữ liệu, service chuyển entity thành DTO. Đây là bước cần thiết vì entity có thể chứa quan hệ lazy, trường bảo mật hoặc cấu trúc nội bộ không phù hợp với client. Nếu trả trực tiếp entity, serializer có thể truy cập chuỗi quan hệ lớn, gây lỗi tải dữ liệu hoặc làm lộ trường không mong muốn. DTO cũng giúp API giữ hợp đồng ổn định khi thiết kế bảng thay đổi. Với thao tác nhập, DTO nên chứa các ràng buộc về độ dài, bắt buộc và kiểu dữ liệu, còn các quy tắc cần truy vấn như kiểm tra trùng email phải được service và cơ sở dữ liệu cùng bảo vệ.
+
+\subsection{Xử lý lỗi và hợp đồng phản hồi}
+Có ba nhóm lỗi cần phân biệt. Lỗi đầu vào gồm thiếu trường hoặc ngày không hợp lệ; lỗi quyền gồm chưa đăng nhập hoặc không được phép xem/sửa tài nguyên; lỗi nghiệp vụ gồm chuyển trạng thái sai hoặc thao tác trên kỳ đã khóa. Mỗi nhóm cần mã HTTP phù hợp và thông báo đủ rõ để giao diện giải thích cho người dùng. Bộ xử lý lỗi tập trung làm giảm sự khác nhau giữa các controller và tránh trả stack trace nội bộ ra ngoài. Khi một thao tác thất bại, giao diện nên giữ dữ liệu người dùng đã nhập để có thể sửa và gửi lại.
+
+\section{Mô hình dữ liệu}
+\begin{table}[H]\centering\caption{Các nhóm thực thể dữ liệu}
+\begin{tabularx}{\textwidth}{p{4cm}X}\toprule\textbf{Nhóm}&\textbf{Thực thể và quan hệ}\\\midrule
+Tổ chức&Department liên kết User, Project, WorkRequest; ProjectDepartment biểu diễn phòng ban tham gia.\\
+Công việc&Project--WorkRequest--Task; task có người thực hiện, người tạo và QA/tester.\\
+Chấm công&Attendance là bản ghi theo ngày; AttendanceSession lưu các phiên vào/ra.\\
+Nghỉ phép&LeaveRequest liên kết người gửi/người duyệt; AnnualLeaveBalance lưu hạn mức năm.\\
+Điều chỉnh&AttendanceAdjustmentRequest lưu giá trị gốc, giá trị đề nghị, lý do và trạng thái.\\
+Kỳ công&PayrollPeriod lưu tháng, người khóa, thời gian mở lại và lý do.\\\bottomrule
+\end{tabularx}\end{table}
+
+\subsection{Nhóm tổ chức và tài khoản}
+Bảng \code{users} lưu tên đăng nhập, mật khẩu đã băm, họ tên, email, vai trò, trạng thái tài khoản, chức danh và khóa ngoại phòng ban. Tên đăng nhập và email có ràng buộc duy nhất; quan hệ nhiều người dùng thuộc một phòng ban giúp lọc dữ liệu theo đơn vị. Bảng \code{departments} lưu mã và tên phòng ban duy nhất, cùng mô tả và thông tin thời gian tạo/cập nhật. Trong thiết kế này, vai trò là thuộc tính của tài khoản; nếu sau này một người cần nhiều vai trò đồng thời, mô hình nên tách bảng gán vai trò thay vì ghép nhiều giá trị vào một cột.
+
+\subsection{Nhóm dự án và công việc}
+Bảng \code{projects} lưu phòng ban sở hữu, tên, mô tả, thời gian và trạng thái. Bảng liên kết \code{project\_departments} biểu diễn các phòng ban tham gia, với cặp dự án--phòng ban duy nhất. \code{work\_requests} là lớp điều phối giữa mục tiêu dự án và nhiệm vụ cụ thể. Bảng \code{tasks} tham chiếu dự án và work request, người được giao, người kiểm thử và người tạo. Cấu trúc hai cấp giúp một yêu cầu công việc chứa nhiều task; khi xem tiến độ yêu cầu, service có thể đối chiếu trạng thái toàn bộ task con. Các trường \code{acceptance\_criteria} và \code{blocked\_reason} ghi rõ điều kiện hoàn thành và nguyên nhân trì hoãn, tránh dùng trạng thái đơn lẻ mà không có ngữ cảnh.
+
+\subsection{Nhóm thời gian và phê duyệt}
+\code{attendance} có ràng buộc duy nhất theo người dùng và ngày, đồng thời lưu trạng thái ngày và phiên bản bản ghi. \code{attendance\_sessions} lưu các cặp giờ vào/ra. \code{leave\_requests} lưu loại, ngày bắt đầu/kết thúc, phần ngày, trạng thái và các dấu mốc phê duyệt. \code{annual\_leave\_balances} lưu hạn mức theo người dùng và năm, tránh trộn số dư của các năm. \code{attendance\_adjustment\_requests} giữ cả giờ gốc và giờ được đề nghị, cho phép người duyệt nhìn thấy nội dung thay đổi. \code{payroll\_periods} dùng cặp năm--tháng duy nhất, lưu trạng thái đóng kỳ cùng người và lý do mở lại.
+
+\subsection{Khóa, chỉ mục và phiên bản}
+Các entity quan trọng có trường \code{@Version}. Khi hai giao dịch đọc cùng phiên bản rồi cùng cập nhật, giao dịch lưu sau sẽ phát hiện dữ liệu đã thay đổi thay vì ghi đè âm thầm. Cơ chế này đặc biệt có ích với đơn phê duyệt và kỳ công. Khóa duy nhất theo người--ngày của attendance và theo năm--tháng của payroll period bảo vệ bất biến ngay tại cơ sở dữ liệu. Khi dữ liệu tăng, cần xem xét chỉ mục trên các khóa ngoại và cột thường dùng để lọc như ngày, trạng thái, phòng ban; việc thêm chỉ mục nên dựa trên truy vấn thực tế và kế hoạch thực thi, vì quá nhiều chỉ mục làm chậm ghi.
+
+\begin{table}[H]\centering\caption{Bất biến dữ liệu tiêu biểu}
+\begin{tabularx}{\textwidth}{p{4.3cm}X}\toprule
+\textbf{Đối tượng}&\textbf{Bất biến cần duy trì}\\\midrule
+Attendance&Một người có tối đa một bản ghi ngày; các phiên trong ngày không chồng lấn.\\
+ProjectDepartment&Một phòng ban chỉ được gắn một lần vào cùng dự án.\\
+Task&Task thuộc work request hợp lệ; hạn và vai trò người tham gia phù hợp.\\
+LeaveRequest&Ngày bắt đầu không sau ngày kết thúc; số ngày nghỉ được tính theo phần ngày và lịch làm việc.\\
+PayrollPeriod&Mỗi cặp năm--tháng có tối đa một kỳ; kỳ đóng giới hạn thao tác sửa công.\\\bottomrule
+\end{tabularx}\end{table}
+
+\section{Quy trình trạng thái}
+Work request đi qua \code{DRAFT}, \code{READY}, \code{IN\_PROGRESS}, \code{PENDING\_ACCEPTANCE}, \code{COMPLETED} hoặc \code{CANCELLED}. Không thể chuyển sang nghiệm thu khi còn task mở.
+
+Task dùng \code{BACKLOG}, \code{TODO}, \code{IN\_PROGRESS}, \code{REVIEW}, \code{TESTING}, \code{BLOCKED}, \code{DONE}, \code{CANCELLED}. Khi chuyển sang BLOCKED bắt buộc có lý do. Manager/team lead điều phối, assignee thực thi, QA/tester xử lý kiểm thử.
+
+\begin{figure}[H]\centering
+\begin{tikzpicture}[
+  main/.style={draw=green!45!black,rounded corners=2pt,fill=green!8,
+    minimum width=2.45cm,minimum height=9mm,align=center,font=\small},
+  branch/.style={main,draw=gray!70,fill=gray!10},
+  flow/.style={-Latex,thick,draw=black!70},
+  optional/.style={-Latex,semithick,dashed,draw=gray!75}]
+\node[main]   (backlog) at (0,0) {BACKLOG};
+\node[main]   (todo) at (3.1,0) {TODO};
+\node[main]   (doing) at (6.2,0) {IN\_PROGRESS};
+\node[main]   (review) at (9.3,0) {REVIEW};
+\node[main]   (testing) at (9.3,-1.7) {TESTING};
+\node[main]   (done) at (12.4,-1.7) {DONE};
+\node[branch] (blocked) at (6.2,-1.7) {BLOCKED};
+\node[branch] (cancelled) at (0,-1.7) {CANCELLED};
+\draw[flow] (backlog) -- (todo);
+\draw[flow] (todo) -- (doing);
+\draw[flow] (doing) -- (review);
+\draw[flow] (review) -- (testing);
+\draw[flow] (testing) -- (done);
+\draw[optional] (doing) -- (blocked);
+\draw[optional] (backlog) -- (cancelled);
+\end{tikzpicture}
+\caption{Luồng chính của task và hai nhánh trạng thái phụ}\label{fig:taskflow}
+\end{figure}
+Đường liền thể hiện luồng thực hiện thông thường; đường nét đứt minh họa hai hướng chuyển sang trạng thái phụ. Các chuyển trạng thái quay lại bước trước được mô tả bằng quy tắc nghiệp vụ trong mã nguồn và không đưa vào hình để tránh các mũi tên giao nhau.
+
+\subsection{Tính nhất quán giữa task và work request}
+Trạng thái của một yêu cầu công việc không thể được hiểu hoàn toàn tách khỏi các task thuộc yêu cầu đó. Nếu yêu cầu đã hoàn tất trong khi một task còn đang làm, người dùng sẽ thấy hai nguồn thông tin mâu thuẫn. Do đó mỗi lần task thay đổi, service cần xem xét việc đồng bộ hoặc chặn chuyển trạng thái ở mức yêu cầu. Quy tắc cụ thể cần chỉ rõ tập trạng thái nào được coi là ``đã đóng''; trạng thái \code{DONE} và \code{CANCELLED} có ý nghĩa khác nhau đối với nghiệm thu. Một báo cáo tiến độ nên nêu số task theo từng trạng thái, thay vì chỉ đưa một tỷ lệ phần trăm không giải thích cách tính.
+
+\subsection{Trạng thái đơn và quyền phê duyệt}
+Đơn nghỉ phép, yêu cầu địa điểm làm việc và yêu cầu điều chỉnh công đều có người gửi, người duyệt, trạng thái và thời điểm xử lý. Tuy vậy, mỗi loại có tác động khác nhau: nghỉ phép ảnh hưởng số dư và bảng công; làm việc ngoài văn phòng thay đổi bối cảnh làm việc nhưng không phải vắng mặt; điều chỉnh công sửa dữ liệu thời gian đã ghi. Quy trình duyệt cần kiểm tra đúng bước hiện tại, vai trò người duyệt và quan hệ phòng ban với người gửi. Một quyết định bị từ chối nên lưu lý do để người gửi hiểu và để việc đối soát có căn cứ.
+
+\section{Xác thực và phân quyền}
+API login xác thực qua DatabaseUserDetailsService và BCrypt. JwtService tạo token chứa username, user ID, role, thời điểm phát hành và hết hạn. Frontend gửi token ở header \code{Authorization: Bearer ...}; JwtAuthenticationFilter xác thực token trước controller.
+
+Phân quyền được kiểm tra ở endpoint bằng \code{@PreAuthorize} và ở service bằng phạm vi user/phòng ban/dự án. Cách kết hợp này hạn chế cả việc gọi sai endpoint lẫn truy cập sai bản ghi.
+
+\subsection{Các bước của một request cần xác thực}
+Trình duyệt gửi token trong header Authorization. Bộ lọc JWT đọc token, kiểm tra chữ ký và thời hạn, sau đó thiết lập danh tính trong ngữ cảnh bảo mật. Tầng bảo mật quyết định endpoint có yêu cầu đăng nhập và vai trò nào; controller nhận dữ liệu; service kiểm tra thêm người gọi có quyền với bản ghi cụ thể hay không. Nếu token không hợp lệ, yêu cầu dừng trước nghiệp vụ. Nếu token hợp lệ nhưng người dùng không có quyền với một dự án, service phải từ chối ngay cả khi vai trò chung của họ cho phép xem dự án khác.
+
+\subsection{Nguyên tắc quyền tối thiểu}
+Mỗi vai trò chỉ nên được cấp thao tác cần thiết. Nhân viên có thể xem dữ liệu của mình, nhưng không vì thế được xem hồ sơ và bảng công của toàn công ty. Team lead có thể xử lý dữ liệu thuộc phòng ban được giao, trong khi một project manager có thể cần phạm vi theo dự án chứ không nhất thiết theo phòng ban. Các trường hợp này cho thấy role là điều kiện cần nhưng chưa đủ. Khi viết truy vấn danh sách, phạm vi quyền cần được áp dụng trước bước phân trang và đếm tổng; nếu chỉ lọc sau khi lấy dữ liệu, tổng số hoặc thời gian phản hồi có thể tiết lộ thông tin ngoài phạm vi.
+
+\section{Công nghệ và môi trường}
+\begin{table}[H]\centering\caption{Công nghệ sử dụng}
+\begin{tabularx}{\textwidth}{p{4cm}X}\toprule\textbf{Công nghệ}&\textbf{Vai trò}\\\midrule
+Java 21&Ngôn ngữ backend.\\
+Spring Boot 3.4.5&REST, dependency injection và cấu hình.\\
+Spring Data JPA/Hibernate&Mapping entity và repository.\\
+Spring Security/JJWT&Stateless authentication, JWT, method security.\\
+MySQL 8.4&Cơ sở dữ liệu thật cục bộ.\\
+Angular 22/TypeScript/RxJS&Giao diện, routing và HTTP service.\\
+Apache POI 5.4.1&Sinh báo cáo XLSX.\\
+Gradle Wrapper&Biên dịch, kiểm thử và chạy backend cục bộ.\\
+JUnit/Spring Boot Test/H2&Kiểm thử backend cô lập.\\\bottomrule
+\end{tabularx}\end{table}
+
+\subsection{Cấu trúc thư mục}
+\begin{lstlisting}[language={},caption={Cấu trúc rút gọn}]
+src/main/java/com/example/demo/
+  controller/     REST API
+  service/        nghiep vu
+  repository/     JPA repositories
+  entity/         entity va enum
+  dto/            request/response
+  security/       JWT va UserDetailsService
+  config/         cau hinh
+  exception/      xu ly loi
+frontend/src/app/
+  core/           auth, interceptor, models, API service
+  pages/          dashboard, project, task, attendance...
+\end{lstlisting}
+
+\subsection{Cấu hình chạy cục bộ}
+Ứng dụng đọc \code{DB\_URL}, \code{DB\_USERNAME}, \code{DB\_PASSWORD}, \code{APP\_TIME\_ZONE} và \code{JWT\_SECRET} từ cấu hình trên máy chạy. Hibernate dùng \code{ddl-auto: validate} để kiểm tra schema MySQL đã có. Backend chạy bằng Gradle Wrapper; frontend chạy bằng Angular CLI và được truy cập qua \code{localhost:4200}.
+
+\section{Triển khai chức năng}
+\subsection{Dashboard và thông báo}
+Dashboard gọi \code{/api/v1/dashboard/summary} để hiển thị số nhân viên, phòng ban, dự án, task, task quá hạn và đơn nghỉ chờ duyệt. NotificationController tổng hợp thông báo từ task gần hạn/quá hạn, work request gần deadline, đơn nghỉ có quyết định và yêu cầu cần người dùng xử lý.
+
+\subsection{Dự án, work request và task}
+Dự án có phòng ban sở hữu và các phòng ban tham gia. Work request có mã tự sinh, tiêu đề, mô tả, acceptance criteria, ưu tiên, coordinator, ngày bắt đầu và deadline. Task bắt buộc thuộc work request; assignee phải thuộc phòng ban thực hiện, tester phải có role QA và thuộc phòng ban tham gia dự án. Deadline task phải nằm trong khoảng work request.
+
+\begin{lstlisting}[language=Java,caption={Kiểm tra transition và lý do blocked}]
+if (!TRANSITIONS.getOrDefault(from, EnumSet.noneOf(TaskStatus.class))
+        .contains(to)) {
+    throw new BussinessException("Invalid task transition");
+}
+if (to == TaskStatus.BLOCKED && (reason == null || reason.isBlank())) {
+    throw new BussinessException("A reason is required");
+}
+\end{lstlisting}
+
+\subsection{Chấm công}
+Người dùng check-in/check-out. Attendance bảo đảm tối đa một bản ghi/người/ngày; AttendanceSession lưu nhiều phiên trong ngày. Múi giờ nghiệp vụ là Asia/Ho\_Chi\_Minh; check-in sau 09:00 được đánh dấu LATE. Có các chế độ xem cá nhân, theo ngày, phòng ban và nhân viên theo tháng.
+
+\subsubsection{Luồng check-in}
+Khi nhận yêu cầu check-in, service xác định danh tính từ ngữ cảnh bảo mật và lấy thời điểm hiện tại theo múi giờ nghiệp vụ. Sau đó service kiểm tra kỳ công tương ứng có đang đóng không và người dùng có một phiên chưa check-out hay không. Nếu hợp lệ, một phiên mới được tạo; bản ghi attendance của ngày được tìm hoặc tạo, và thông tin giờ vào cùng trạng thái ngày được cập nhật. Quy trình cần nằm trong giao dịch để tránh tình huống phiên đã lưu nhưng bản ghi ngày chưa được cập nhật. Khi hai request check-in đến gần như đồng thời, ràng buộc dữ liệu và xử lý xung đột phiên bản phải bảo đảm chỉ một kết quả hợp lệ.
+
+\subsubsection{Luồng check-out}
+Service tìm phiên đang mở của người dùng và gắn thời điểm kết thúc. Nếu không có phiên đang mở, thao tác phải báo lỗi thay vì tự tạo một giờ vào giả định. Giờ ra phải sau giờ vào, và dữ liệu tổng hợp của ngày được tính lại từ các phiên. Với trường hợp check-out sau nửa đêm, sản phẩm cần chính sách xác định phiên thuộc ngày bắt đầu hay phân bổ qua hai ngày; chính sách đó phải thống nhất giữa giao diện chấm công và báo cáo tháng. Hiện báo cáo coi đây là một tình huống cần kiểm tra bổ sung khi áp dụng vào lịch làm việc thực tế.
+
+\subsubsection{Tra cứu và quyền xem}
+Nhân viên xem lịch sử cá nhân để tự kiểm tra. Người quản lý xem dữ liệu phòng ban nhằm phát hiện thiếu check-out hoặc đi muộn; người có quyền rộng hơn xem báo cáo toàn công ty. Cùng một API tra cứu cần lọc theo người dùng, khoảng thời gian và phạm vi quyền. Về khả năng sử dụng, danh sách nên hiển thị cả trạng thái và các phiên, vì chỉ một tổng số giờ không cho biết thời điểm bị ghi sai.
+
+\subsection{Nghỉ phép và địa điểm làm việc}
+LeaveRequest lưu loại nghỉ, khoảng thời gian, phần ngày và lý do. LeaveWorkdayCalculator hỗ trợ ngày làm việc và nửa ngày. Quy trình có thể qua quản lý phòng ban rồi ADMIN; đơn nghỉ năm ảnh hưởng số dư AnnualLeaveBalance. WorkLocationRequest hỗ trợ WORK\_FROM\_HOME và CLIENT\_SITE, có thể lưu tên/địa chỉ khách hàng. Người dùng không được tự phê duyệt yêu cầu của mình.
+
+\subsubsection{Tính số ngày nghỉ}
+Một đơn có thể bắt đầu vào buổi chiều và kết thúc vào buổi sáng, do đó không thể lấy số ngày lịch cộng một rồi coi là số ngày nghỉ. Thuật toán cần duyệt từng ngày trong khoảng, xác định ngày làm việc, sau đó gán trọng số phù hợp: $1$ cho ngày trọn, $0.5$ cho nửa ngày và $0$ cho ngày không tính nghỉ. Với đơn chỉ kéo dài một ngày, phần ngày bắt đầu và kết thúc phải được kiểm tra phối hợp để tránh khoảng rỗng hoặc đếm hai lần. Với đơn nhiều ngày, ngày ở giữa thường là ngày trọn; hai đầu được điều chỉnh theo phần ngày đã chọn. Kết quả cuối cùng được dùng nhất quán trong kiểm tra số dư, lịch sử đơn và báo cáo tháng.
+
+\subsubsection{Kiểm tra chồng lấn và trạng thái}
+Trước khi tạo đơn mới, cần kiểm tra các đơn còn hiệu lực của cùng người dùng có giao thời gian hay không. Hai đơn trong cùng ngày vẫn có thể hợp lệ nếu một đơn buổi sáng và một đơn buổi chiều, tùy chính sách; vì vậy kiểm tra theo ngày đơn thuần có thể từ chối quá mức. Khi đơn bị hủy hoặc từ chối, số ngày dự kiến không còn được giữ chỗ trong số dư khả dụng. Khi đơn được duyệt, thông tin người duyệt và thời điểm quyết định phải được lưu để đối soát. Việc sửa một đơn đã duyệt cần quy trình riêng, vì nó có thể thay đổi bảng công của kỳ đã chốt.
+
+\subsubsection{Phân biệt làm việc ngoài văn phòng}
+Yêu cầu làm việc tại nhà hoặc tại khách hàng trả lời câu hỏi người lao động làm việc ở đâu; đơn nghỉ trả lời câu hỏi người đó có làm việc hay không. Việc tách hai loại yêu cầu giúp dashboard và bảng công không gộp nhầm một ngày làm việc từ xa thành ngày nghỉ. Khi làm việc tại khách hàng, thông tin tên và địa chỉ giúp người quản lý xác nhận lịch trình. Nếu một khoảng đăng ký địa điểm trùng với đơn nghỉ, hệ thống cần quy tắc ưu tiên hoặc cảnh báo để người dùng điều chỉnh.
+
+\subsection{Điều chỉnh chấm công và bảng công}
+Yêu cầu sửa session đi qua PENDING\_MANAGER và PENDING\_ADMIN. Chỉ khi duyệt cuối hệ thống mới cập nhật session, tính lại bản ghi ngày và kiểm tra trùng thời gian. Khi PayrollPeriod đã đóng, attendance không thể sửa. ADMIN có thể mở lại nhưng bắt buộc cung cấp lý do.
+
+\subsubsection{Giá trị gốc và giá trị đề nghị}
+Yêu cầu điều chỉnh lưu cả cặp thời gian hiện tại và cặp thời gian mong muốn. Cách lưu này cho phép người duyệt nhìn thấy thay đổi cụ thể, thay vì chỉ đọc một lý do bằng văn bản. Nếu phiên gốc đã bị một thao tác khác sửa trong khi đơn đang chờ, service cần phát hiện dữ liệu không còn khớp và yêu cầu tạo lại hoặc xem xét lại đơn. Sau phê duyệt cuối, hệ thống kiểm tra khoảng giờ đề nghị có hợp lệ và không chồng phiên khác rồi mới ghi thay đổi. Việc cập nhật trạng thái đơn và phiên chấm công cần cùng giao dịch để tránh hai nguồn dữ liệu mâu thuẫn.
+
+\subsubsection{Tổng hợp báo cáo tháng}
+Báo cáo tháng kết hợp dữ liệu của người dùng, attendance, session, đơn nghỉ đã được duyệt và trạng thái kỳ. Với mỗi người và tháng, hệ thống tính các chỉ tiêu rồi đưa vào DTO báo cáo. Về mặt khái niệm, tổng giờ làm $H_m$ là tổng thời lượng phiên hợp lệ trong tháng; số ngày nghỉ năm $L_m$ là tổng trọng số ngày nghỉ năm đã duyệt giao với tháng; các loại nghỉ khác được tính riêng. Giá trị ``ngày công quy đổi'' cần một quy tắc minh bạch: những ngày có nửa ngày nghỉ và nửa ngày làm có thể tạo kết quả khác nếu cộng hai nguồn theo cách không nhất quán. Một ca kiểm thử hiện tại đã phát hiện sai khác ở chỉ tiêu này, vì vậy phần công thức nghiệp vụ cần được rà soát trước khi dùng cho chốt lương.
+
+\subsubsection{Khóa và mở lại kỳ}
+Khóa kỳ là một ranh giới nghiệp vụ: sau khi chốt, các thao tác sửa chấm công trong kỳ phải bị chặn. Khi cần hiệu chỉnh, người có quyền mở lại kỳ và ghi lý do; sau khi sửa xong phải kiểm tra lại báo cáo rồi khóa lại. Quy trình này nên được kết hợp với nhật ký thao tác để biết ai mở kỳ, khi nào và vì sao. Nếu nhiều quản trị viên thao tác đồng thời, phiên bản của \code{PayrollPeriod} giúp tránh ghi đè trạng thái một cách âm thầm.
+
+API bảng công tổng hợp ngày làm việc, ngày muộn, vắng, số giờ, phép năm, nghỉ không lương và loại nghỉ khác. Apache POI tạo workbook có header, filter, freeze dòng đầu và tự chỉnh cột.
+
+\begin{table}[H]\centering\caption{Một số REST endpoint chính}
+\begin{tabularx}{\textwidth}{p{2cm}p{6cm}X}\toprule\textbf{Method}&\textbf{Endpoint}&\textbf{Mục đích}\\\midrule
+POST&\code{/api/v1/auth/login}&Đăng nhập, nhận JWT.\\
+GET&\code{/api/v1/dashboard/summary}&Lấy số liệu dashboard.\\
+GET/POST&\code{/api/v1/projects}&Liệt kê/tạo dự án.\\
+GET/PATCH&\code{/api/v1/tasks}&Tra cứu/cập nhật task.\\
+POST&\code{/api/v1/attendance/check-in}&Bắt đầu phiên công.\\
+POST&\code{/api/v1/attendance/check-out}&Kết thúc phiên công.\\
+POST/PATCH&\code{/api/v1/leave-requests}&Tạo/duyệt đơn nghỉ.\\
+GET&\code{/api/v1/payroll/monthly}&Báo cáo công tháng.\\
+GET&\code{/api/v1/payroll/monthly.xlsx}&Xuất XLSX.\\\bottomrule
+\end{tabularx}\end{table}
+
+\chapter{THỰC NGHIỆM VÀ KẾT QUẢ}
+\section{Dữ liệu và môi trường thực nghiệm}
+Bộ kiểm thử backend sử dụng H2 trong bộ nhớ và dữ liệu khởi tạo riêng cho test. Điều này cho phép kiểm tra lặp lại mà không làm thay đổi MySQL cục bộ. Bản demo sử dụng MySQL 8.4 với schema có sẵn; Hibernate được cấu hình ở chế độ kiểm tra schema. Sự khác nhau về cú pháp SQL và ràng buộc giữa H2 và MySQL là giới hạn của kết quả kiểm thử tự động hiện có.
+
+\section{Chỉ số và cách thu thập}
+Chỉ số đánh giá chức năng là số ca thành công, số ca thất bại và danh sách quy tắc đã được bao phủ. Các chỉ số phi chức năng gồm thời gian phản hồi ở phân vị 50/95, số truy vấn trên mỗi màn hình, tỷ lệ lỗi khi có nhiều người dùng đồng thời và thời gian xuất XLSX theo số nhân viên. Những chỉ số phi chức năng này chưa được đo trong phạm vi bản demo, do đó không có số liệu định lượng tương ứng trong báo cáo.
+
+\subsection{Thiết kế bộ dữ liệu kiểm tra}
+Một bộ dữ liệu kiểm tra có ích cần chứa nhiều vai trò và nhiều phạm vi: nhân viên trong cùng và khác phòng ban, dự án một phòng ban và dự án liên phòng ban, task ở các trạng thái khác nhau, ngày có một và nhiều phiên chấm công, đơn nghỉ trọn ngày và nửa ngày, kỳ mở và kỳ đóng. Dữ liệu phải có những trường hợp cố ý sai như hạn task vượt hạn work request, đơn nghỉ chồng lấn hoặc người duyệt không đủ quyền. Nếu chỉ dùng dữ liệu ``đẹp'', một phần lớn nhánh xử lý lỗi sẽ không được thực thi.
+
+Để so sánh kết quả, mỗi ca nên độc lập: tạo trạng thái ban đầu, thực hiện đúng một chuỗi thao tác được mô tả, kiểm tra kết quả và dọn dữ liệu. Test dùng H2 cô lập cho phép lặp lại nhanh nhưng không phản ánh hoàn toàn môi trường MySQL. Khi phát hiện lỗi chỉ xuất hiện ở một hệ quản trị, cần giữ nguyên request và dữ liệu đầu vào để so sánh SQL và quy tắc ánh xạ.
+
+\subsection{Các mức quan sát}
+Kết quả một request không nên được đánh giá chỉ bằng mã HTTP. Với thao tác tạo hoặc cập nhật, cần xem cả DTO trả về và dữ liệu lưu. Với thao tác bị từ chối, cần kiểm tra không có thay đổi một phần. Với báo cáo tổng hợp, cần đối chiếu kết quả với phép tính độc lập trên một bộ dữ liệu nhỏ có thể kiểm bằng tay. Với xuất Excel, cần mở tệp hoặc kiểm tra cấu trúc workbook, tên cột, số dòng và giá trị số; việc API trả một mảng byte không đủ chứng minh báo cáo sử dụng được.
+\section{Chiến lược kiểm thử}
+Backend dùng Spring Boot Test, MockMvc và H2 để test độc lập với MySQL. Các lớp test hiện có gồm:
+\begin{itemize}
+\item AuthIntegrationTest, DashboardIntegrationTest, HealthControllerTest, DemoApplicationTests.
+\item AttendanceIntegrationTest, DepartmentAttendanceIntegrationTest, AttendanceAdjustmentIntegrationTest.
+\item LeaveRequestApiIntegrationTest, LeaveRequestServiceTest, LeaveWorkdayCalculatorTest.
+\item TaskIntegrationTest, WorkLocationRequestIntegrationTest, PayrollIntegrationTest.
+\end{itemize}
+
+\section{Kịch bản tiêu biểu}
+\begin{enumerate}
+\item Login đúng nhận token; thông tin sai bị từ chối.
+\item Check-in/check-out và truy vấn lịch sử cá nhân.
+\item Viewer không được check-in/check-out hoặc sửa task.
+\item Task không được chuyển sai luồng hoặc BLOCKED thiếu lý do.
+\item Deadline task phải nằm trong work request.
+\item Tính đúng ngày nghỉ/nửa ngày và chỉ role hợp lệ được duyệt.
+\item Điều chỉnh công đi đúng hai cấp và không được tự duyệt.
+\item Kỳ công đóng ngăn sửa attendance; mở lại phải có lý do.
+\item Health readiness phản ánh trạng thái database.
+\end{enumerate}
+
+\begin{longtable}{p{1.3cm}p{3.3cm}p{5.3cm}p{3.7cm}}\caption{Kịch bản kiểm thử theo điều kiện đầu vào và kỳ vọng}\label{tab:scenarios}\\\toprule
+\textbf{Mã}&\textbf{Điều kiện ban đầu}&\textbf{Thao tác}&\textbf{Kết quả kỳ vọng}\\\midrule
+T01&Tài khoản hoạt động&Đăng nhập đúng thông tin&Nhận token hợp lệ.\\
+T02&Tài khoản sai mật khẩu&Đăng nhập&Không tạo phiên truy cập.\\
+T03&Task ở IN\_PROGRESS&Chuyển sang BLOCKED, thiếu lý do&Bị từ chối, trạng thái giữ nguyên.\\
+T04&Task có hạn ngoài work request&Tạo hoặc sửa task&Bị từ chối trước khi lưu.\\
+T05&Nhân viên chưa có phiên mở&Check-in rồi check-out&Có phiên và bản ghi ngày nhất quán.\\
+T06&Nhân viên đã có phiên mở&Check-in lần nữa&Bị từ chối hoặc xử lý theo quy tắc chống trùng.\\
+T07&Đơn nghỉ năm nửa ngày&Duyệt theo đúng cấp&Số ngày nghỉ tính 0.5, bảng công phù hợp.\\
+T08&Đơn của chính người duyệt&Tự phê duyệt&Bị từ chối.\\
+T09&Kỳ công đã đóng&Đề nghị sửa chấm công&Bị từ chối, dữ liệu không đổi.\\
+T10&Kỳ công đã đóng&Mở lại không có lý do&Bị từ chối.\\\bottomrule
+\end{longtable}
+
+\section{Ma trận kiểm thử và bằng chứng}
+\begin{longtable}{p{2cm}p{5.5cm}p{6cm}}\caption{Liên hệ yêu cầu với lớp kiểm thử}\label{tab:testmatrix}\\\toprule
+\textbf{Nhóm}&\textbf{Quy tắc cần xác minh}&\textbf{Nguồn bằng chứng trong mã nguồn}\\\midrule
+Xác thực&Đăng nhập và truy cập có token&\code{AuthIntegrationTest}\\
+Dự án/task&Phân công, trạng thái và giới hạn dữ liệu&\code{TaskIntegrationTest}\\
+Chấm công&Vào/ra và truy vấn theo phạm vi&\code{AttendanceIntegrationTest}, \code{DepartmentAttendanceIntegrationTest}\\
+Nghỉ phép&Tính ngày, duyệt và quyền&\code{LeaveWorkdayCalculatorTest}, \code{LeaveRequestServiceTest}, \code{LeaveRequestApiIntegrationTest}\\
+Điều chỉnh&Quy trình đề nghị và phê duyệt&\code{AttendanceAdjustmentIntegrationTest}\\
+Địa điểm&Đăng ký và xử lý yêu cầu&\code{WorkLocationRequestIntegrationTest}\\
+Bảng công&Tổng hợp, xuất và khóa kỳ&\code{PayrollIntegrationTest}\\
+Tổng quan&Thống kê và readiness&\code{DashboardIntegrationTest}, \code{HealthControllerTest}\\\bottomrule
+\end{longtable}
+
+\section{Kết quả quan sát từ cấu trúc dự án}
+Mã nguồn có các lớp kiểm thử tương ứng với các nhóm chức năng nêu trong Bảng~\ref{tab:testmatrix}. Đây là bằng chứng về phạm vi kiểm thử đã được thiết kế, không tự nó chứng minh mọi ca đều thành công trên mọi máy. Trạng thái đạt/không đạt và số lượng test thực tế phải lấy từ một lần chạy \code{./gradlew test} kèm ngày, môi trường và log. Nếu có lỗi, cần phân biệt lỗi thiết lập môi trường với lỗi nghiệp vụ trước khi kết luận. Giao diện Angular có lệnh build trong \code{package.json}; build thành công kiểm tra khả năng biên dịch, chưa thay thế kiểm thử thao tác người dùng.
+
+\section{Kết quả chạy bộ test ngày 02/11/2026}
+Trên máy khảo sát, lệnh \code{.\textbackslash gradlew.bat test --console=plain} chạy với JDK 25.0.4.1. Gradle hoàn tất 48 ca: 47 ca đạt và 1 ca thất bại. Ca lỗi là \code{LeaveRequestApiIntegrationTest.approvedHalfDayAnnualLeaveDeductsHalfDayFromBalance}. Kiểm tra JSON path \code{\$.data.employees[0].payrollWorkDays} mong đợi 5.5 nhưng thực tế nhận 1.5. Điều này cho thấy quy tắc liên quan tới tổng hợp ngày công khi có nửa ngày nghỉ năm cần được điều tra thêm; chưa thể kết luận nguyên nhân chỉ từ một thông báo assertion. Báo cáo HTML do Gradle sinh nằm tại \code{build/reports/tests/test/index.html}. Lần chạy đầu bằng Java 8 dừng trước khi test vì Gradle cần JVM từ phiên bản 17 trở lên; đây là lỗi môi trường riêng với lỗi assertion nói trên.
+
+\section{Đánh giá sơ bộ}
+Ưu điểm của thiết kế là ranh giới nghiệp vụ rõ, phân quyền ở cả endpoint và service, trạng thái quan trọng được giới hạn bằng transition map, test không phụ thuộc database thật. Việc tách Attendance thành bản ghi ngày và session phù hợp với nhiều phiên làm việc.
+
+Repository chưa có migration SQL hoặc cơ chế tự tạo schema; Hibernate dùng chế độ validate. Vì vậy bản demo phụ thuộc vào schema MySQL đã được chuẩn bị trên máy chạy thử.
+
+\subsection{Diễn giải ca kiểm thử thất bại}
+Sai khác giữa 5.5 ngày công được mong đợi và 1.5 ngày công thực nhận là một tín hiệu về cách phối hợp dữ liệu nghỉ phép với dữ liệu chấm công trong báo cáo tháng. Chỉ từ assertion không thể khẳng định lỗi nằm ở bộ tính ngày nghỉ, bộ lọc khoảng tháng, dữ liệu khởi tạo test hay công thức ngày công. Trình tự phân tích hợp lý là: đọc dữ liệu đầu vào của test; tính bằng tay số ngày làm, ngày nghỉ và ngày công mong đợi; lần theo hàm tạo báo cáo; kiểm tra phạm vi ngày được tải từ repository; cuối cùng so sánh giá trị trung gian. Báo cáo giữ ca này như một hạn chế đã quan sát, thay vì đưa ra kết luận nguyên nhân khi chưa đủ bằng chứng.
+
+\subsection{Giới hạn suy luận từ bộ test}
+Một bộ test backend chạy thành công sẽ chứng minh các ca đã viết đạt trong môi trường đã chạy. Nó không chứng minh mọi trường hợp nghiệp vụ đều được bao phủ. Các luồng qua giao diện có thể phát sinh lỗi hiển thị hoặc điều hướng mà MockMvc không phát hiện. H2 có thể xử lý kiểu ngày, ràng buộc hoặc truy vấn khác MySQL. Những ngày lễ, thay đổi múi giờ, thời gian qua nửa đêm và dữ liệu quy mô lớn cũng cần bộ test riêng. Vì vậy đánh giá ở đây là đánh giá có giới hạn theo bằng chứng hiện có.
+
+\section{Hướng dẫn tái lập môi trường}
+\subsection{Điều kiện môi trường}
+Môi trường demo cục bộ gồm JDK 21, Node.js/npm và MySQL 8.4. Cơ sở dữ liệu sử dụng schema \code{company\_management} và tài khoản ứng dụng được cấu hình trên máy chạy.
+
+\subsection{Chạy backend/frontend}
+\begin{lstlisting}[language=bash]
+./gradlew bootRun
+npm install
+npm --prefix frontend install
+npm start
+\end{lstlisting}
+Frontend chạy Angular CLI ở cổng 4200 và proxy request API tới backend. Có thể kiểm thử và build bằng:
+\begin{lstlisting}[language=bash]
+./gradlew test
+npm run build
+\end{lstlisting}
+
+\chapter{PHÂN TÍCH VÀ THẢO LUẬN}
+\section{Diễn giải kết quả}
+Việc chia thành các phân hệ nhân sự, công việc và thời gian làm việc phản ánh đúng ba loại dữ liệu có quan hệ chặt trong vận hành nội bộ. Các quy trình trạng thái giúp ngăn cập nhật tùy ý; kiểm tra quyền theo vai trò và phạm vi dữ liệu giúp giảm nguy cơ một người xem hoặc sửa thông tin ngoài trách nhiệm. Tuy nhiên, chất lượng sản phẩm cuối cùng còn phụ thuộc dữ liệu thật, độ rõ ràng của giao diện và hành vi dưới tải, là những nội dung chưa được định lượng trong báo cáo.
+
+Nếu xét theo mục tiêu ban đầu, hệ thống đã hình thành một đường đi xuyên suốt từ dữ liệu tổ chức đến dữ liệu thực hiện và dữ liệu tổng hợp: người dùng thuộc phòng ban, phòng ban tham gia dự án, dự án chứa công việc, nhân viên ghi nhận thời gian và gửi đơn, quản lý duyệt, cuối cùng dữ liệu được tổng hợp theo tháng. Giá trị của thiết kế nằm ở tính liên kết này. Tuy vậy, liên kết cũng khiến lỗi ở một lớp có thể lan sang lớp khác. Ví dụ, lỗi tính nửa ngày nghỉ có thể chỉ xuất hiện khi xem bảng công, dù thao tác tạo và duyệt đơn vẫn trả kết quả đúng.
+
+Một điểm cần phân biệt là ``có tính năng'' và ``quy trình sẵn sàng sử dụng''. Mã nguồn có endpoint và giao diện cho thao tác, nhưng để sử dụng trong môi trường thật cần quy chế rõ về thời gian làm việc, người duyệt thay thế, lịch nghỉ, ngày lễ, cách chốt kỳ và xử lý sai sót. Những quy định này không thể suy ra từ công nghệ; chúng phải được thống nhất với đơn vị sử dụng rồi thể hiện thành cấu hình, dữ liệu nền hoặc quy tắc kiểm tra.
+
+\section{So sánh các lựa chọn thiết kế}
+Lưu một bản ghi chấm công cho từng ngày giúp tổng hợp theo tháng đơn giản, trong khi lưu riêng các phiên vào/ra cho phép mô tả nhiều lần làm việc trong ngày. Kết hợp cả hai mang lại sự linh hoạt nhưng đòi hỏi quy tắc cập nhật đồng bộ sau khi chỉnh phiên. Token JWT giúp API không cần session máy chủ, song việc thu hồi token trước hạn hoặc quản lý phiên trên nhiều thiết bị cần thiết kế bổ sung. Kiểm thử với H2 nhanh và cô lập; kiểm thử trên MySQL vẫn cần để phát hiện khác biệt giữa hai hệ quản trị.
+
+\begin{table}[H]\centering\caption{Đánh đổi của các lựa chọn kỹ thuật}
+\begin{tabularx}{\textwidth}{p{3.2cm}p{4.3cm}X}\toprule
+\textbf{Lựa chọn}&\textbf{Lợi ích}&\textbf{Chi phí và điều kiện áp dụng}\\\midrule
+REST API và DTO&Giao diện và backend tách rõ, hợp đồng dữ liệu có kiểm soát&Cần duy trì DTO và ánh xạ khi mô hình thay đổi.\\
+JPA và repository&Giảm mã truy cập dữ liệu lặp lại&Cần theo dõi SQL, tải quan hệ và giao dịch.\\
+JWT stateless&API không lưu session theo từng người dùng&Cần cơ chế hạn dùng, bảo vệ secret và chiến lược thu hồi.\\
+H2 cho test&Chạy nhanh, dữ liệu cô lập&Cần bổ sung test trên MySQL cho rủi ro tương thích.\\
+Excel báo cáo&Dễ trao đổi với quy trình văn phòng&Cần kiểm tra định dạng, dữ liệu lớn và quyền xuất.\\\bottomrule
+\end{tabularx}\end{table}
+
+\section{Ưu điểm}
+Các lớp controller, service và repository có vai trò rõ; DTO tách dữ liệu API khỏi entity; nhiều quy trình có trạng thái và điều kiện chuyển; bộ test bao phủ các nhóm backend trọng yếu. Chức năng xuất bảng công hỗ trợ đưa dữ liệu ra công cụ văn phòng quen thuộc. Việc khóa kỳ công là cơ chế hữu ích để bảo vệ số liệu đã được chốt.
+
+\section{Hạn chế}
+\begin{itemize}
+\item Chưa có Flyway/Liquibase; schema phải chuẩn bị ngoài repository.
+\item Thông báo sinh khi gọi API, chưa có WebSocket/push notification.
+\item Bảng công chưa tính lương, phụ cấp, khấu trừ và thuế.
+\item Cấu hình CORS hiện chỉ phục vụ các địa chỉ localhost của bản demo.
+\item Bộ kiểm thử giao diện chưa bao phủ đầy đủ các bước thao tác của người dùng.
+\end{itemize}
+\section{Hướng phát triển}
+Các hướng phát triển của bản demo gồm quản lý phiên bản schema, hoàn thiện công thức bảng công, kiểm thử các luồng nghiệp vụ trên MySQL, kiểm thử giao diện cho quy trình phê duyệt, phân trang và tối ưu truy vấn. Về chức năng, hệ thống có thể mở rộng sang tính lương, báo cáo nâng cao và thông báo trong ứng dụng. Những nội dung này chưa thuộc kết quả hiện tại của đề tài.
+
+\section{Giới hạn của bản demo cục bộ}
+Các quy tắc nghỉ phép, giờ làm, ngày lễ và cấp phê duyệt trong dự án minh họa một quy trình cụ thể; chúng không đại diện cho mọi doanh nghiệp. Dữ liệu demo được lưu tại MySQL cục bộ và việc đối chiếu kết quả chủ yếu dựa trên các ca kiểm thử backend. Báo cáo chưa đánh giá khả năng vận hành với dữ liệu lớn hoặc nhiều người dùng đồng thời.
+
+\chapter{KẾT LUẬN}
+\projectname{} đã hiện thực hóa bản demo cục bộ của hệ thống quản lý nội bộ gồm nhân sự, dự án, work request, task, chấm công, nghỉ phép, phê duyệt và báo cáo công. Đề tài vận dụng Java/Spring Boot, REST API, JPA, Angular, JWT, phân quyền, transaction và kiểm thử tích hợp trong một hệ thống thống nhất.
+
+Điểm nổi bật là các quy trình có ràng buộc: task chỉ chuyển theo luồng hợp lệ, work request chỉ hoàn tất khi task đóng, điều chỉnh công qua nhiều cấp và kỳ công đã khóa không thể tùy tiện thay đổi. Những luồng này thể hiện sự liên kết giữa thiết kế dữ liệu, xử lý nghiệp vụ và giao diện trong bản demo.
+
+\section*{Mức độ đạt mục tiêu và công việc tiếp theo}
+Báo cáo đã mô tả bài toán, cấu trúc, phương pháp triển khai và cách đánh giá cho ứng dụng quản lý nội bộ. Mã nguồn cho thấy các nhóm chức năng cốt lõi đã được hiện thực và có kiểm thử backend tương ứng. Chưa có bằng chứng định lượng về hiệu năng, mức độ hài lòng của người dùng và độ ổn định trong vận hành dài hạn; đây là các việc cần đo và xác nhận ở giai đoạn tiếp theo.
+
+\begin{thebibliography}{9}
+\bibitem{springboot} Spring Team, \textit{Spring Boot Reference Documentation}, phiên bản 3.4.
+\bibitem{security} Spring Team, \textit{Spring Security Reference}.
+\bibitem{angular} Angular Team, \textit{Angular Documentation}.
+\bibitem{jpa} Jakarta Persistence, \textit{Jakarta Persistence Specification}.
+\bibitem{jwt} M. Jones, J. Bradley, N. Sakimura, \textit{JSON Web Token (JWT)}, RFC 7519.
+\bibitem{poi} Apache Software Foundation, \textit{Apache POI Documentation}.
+\end{thebibliography}
+
+\end{document}
+
