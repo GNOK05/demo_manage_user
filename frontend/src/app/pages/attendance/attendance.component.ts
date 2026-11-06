@@ -72,7 +72,7 @@ export class AttendanceComponent implements OnInit {
   }
 
   isSelf() {
-    return this.auth.hasRole(['MEMBER', 'QA', 'VIEWER']);
+    return this.auth.hasRole(['MEMBER', 'QA', 'VIEWER', 'PORTFOLIO_MANAGER']);
   }
 
   localDate() {

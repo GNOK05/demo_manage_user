@@ -106,7 +106,7 @@ export class ProjectListComponent implements OnInit {
   canFilterDepartments() {
     return this.auth.hasRole(['ADMIN', 'HR']);
   }
-  canManageParticipants() { return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER']); }
+  canManageParticipants() { return this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER']); }
   canLoadDepartments() { return this.canFilterDepartments() || this.canManageParticipants(); }
   isParticipant(project: Project, departmentId: number) {
     return project.participatingDepartments?.some((item) => item.id === departmentId) || false;
@@ -114,15 +114,15 @@ export class ProjectListComponent implements OnInit {
   visibleProjects() {
     return this.projects();
   }
-  canManageProjects() { return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER']); }
+  canManageProjects() { return this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER']); }
   canManageProject(project: Project) {
-    if (this.auth.hasRole(['ADMIN'])) return true;
+    if (this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER'])) return true;
     const user = this.auth.user();
     return user?.role === 'PROJECT_MANAGER'
       && Number(user.departmentId) === Number(project.departmentId);
   }
   manageableDepartments() {
-    if (this.auth.hasRole(['ADMIN'])) return this.departments();
+    if (this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER'])) return this.departments();
     const departmentId = this.auth.user()?.departmentId;
     return this.departments().filter((department) => department.id === departmentId);
   }

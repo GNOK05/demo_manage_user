@@ -46,9 +46,9 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
         entity.setFromDayPart(fromPart);
         entity.setToDayPart(toPart);
         entity.setReason(request.reason());
-        entity.setStatus(current.getRole().canReviewPeopleInDepartment()
+        entity.setStatus((current.getRole().canReviewPeopleInDepartment() || current.getRole() == Role.PORTFOLIO_MANAGER)
             ? LeaveRequestStatus.PENDING_ADMIN : LeaveRequestStatus.PENDING_MANAGER);
-        if (current.getRole().canReviewPeopleInDepartment()) {
+        if (current.getRole().canReviewPeopleInDepartment() || current.getRole() == Role.PORTFOLIO_MANAGER) {
             entity.setManagerApprovedBy(current);
             entity.setManagerApprovedAt(LocalDateTime.now(BUSINESS_ZONE));
         }
@@ -126,7 +126,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
         }
 
         LocalDateTime now = LocalDateTime.now(BUSINESS_ZONE);
-        if (current.getRole().canReviewPeopleInDepartment()) {
+        if (current.getRole() == Role.PROJECT_MANAGER || current.getRole() == Role.TEAM_LEAD) {
             verifyManagerDepartment(current, request.getUser());
             if (request.getStatus() != LeaveRequestStatus.PENDING_MANAGER && request.getStatus() != LeaveRequestStatus.PENDING) {
                 throw new BussinessException("This request is not waiting for manager approval");

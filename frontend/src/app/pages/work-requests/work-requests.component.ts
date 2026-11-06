@@ -75,7 +75,7 @@ export class WorkRequestsComponent implements OnInit {
       error: (error) => this.showError(error, 'Không thể tải danh sách phiếu yêu cầu'),
     });
     if (this.canManage()) {
-      const source = this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER']) ? this.api.users() : this.api.departmentMembers();
+      const source = this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER']) ? this.api.users() : this.api.departmentMembers();
       source.subscribe({ next: (users) => this.coordinators.set(users), error: () => this.coordinators.set([]) });
     }
   }
@@ -204,7 +204,7 @@ export class WorkRequestsComponent implements OnInit {
     return [request.status, ...transitions[request.status]];
   }
 
-  canManage() { return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER', 'TEAM_LEAD']); }
+  canManage() { return this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEAD']); }
   statusLabel(value: WorkRequestStatus) { return ({ DRAFT: 'Bản nháp', READY: 'Sẵn sàng', IN_PROGRESS: 'Đang thực hiện', PENDING_ACCEPTANCE: 'Chờ nghiệm thu', COMPLETED: 'Hoàn thành', CANCELLED: 'Đã hủy' })[value]; }
   healthLabel(value: WorkRequestHealth) { return ({ ON_TRACK: 'Đúng tiến độ', AT_RISK: 'Có nguy cơ', OVERDUE: 'Quá hạn', BLOCKED: 'Đang bị chặn' })[value]; }
   priorityLabel(value: TaskPriority) { return ({ LOW: 'Thấp', NORMAL: 'Bình thường', HIGH: 'Cao', URGENT: 'Khẩn cấp' })[value]; }

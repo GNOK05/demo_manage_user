@@ -164,7 +164,7 @@ export class RequestsComponent implements OnInit {
   leaveQuotaLabel() { return this.leaveDraft.type === 'ANNUAL' ? 'Trừ quỹ phép năm' : 'Không trừ quỹ phép'; }
   leaveTypeLabel(type: LeaveRequest['type']) { return ({ ANNUAL: 'Nghỉ phép năm', UNPAID: 'Nghỉ không lương', MATERNITY: 'Nghỉ thai sản' } as const)[type]; }
   locationTypeLabel(type: WorkLocationRequest['type']) { return type === 'WORK_FROM_HOME' ? 'Làm việc tại nhà' : 'Onsite tại công ty khách hàng'; }
-  statusLabel(status: LeaveRequest['status']) { return ({ PENDING: 'Chờ quản lý', PENDING_MANAGER: 'Chờ quản lý', PENDING_ADMIN: 'Chờ admin', APPROVED: 'Đã duyệt', REJECTED: 'Đã từ chối', REJECTED_MANAGER: 'Quản lý từ chối', REJECTED_ADMIN: 'Admin từ chối', CANCELLED: 'Đã hủy' } as const)[status]; }
+  statusLabel(status: LeaveRequest['status']) { return ({ PENDING: 'Chờ quản lý', PENDING_MANAGER: 'Chờ quản lý', PENDING_ADMIN: 'Chờ nhân sự / quản trị', APPROVED: 'Đã duyệt', REJECTED: 'Đã từ chối', REJECTED_MANAGER: 'Quản lý từ chối', REJECTED_ADMIN: 'Nhân sự / quản trị từ chối', CANCELLED: 'Đã hủy' } as const)[status]; }
   dayPartLabel(part: LeaveDayPart) { return part === 'MORNING' ? 'Buổi sáng' : 'Buổi chiều'; }
   leaveSessionChanged() { if (this.leaveDraft.fromDate === this.leaveDraft.toDate && this.leaveDraft.fromDayPart === 'AFTERNOON' && this.leaveDraft.toDayPart === 'MORNING') this.leaveDraft.toDayPart = 'AFTERNOON'; }
   locationSessionChanged() { if (this.locationDraft.fromDate === this.locationDraft.toDate && this.locationDraft.fromDayPart === 'AFTERNOON' && this.locationDraft.toDayPart === 'MORNING') this.locationDraft.toDayPart = 'AFTERNOON'; }

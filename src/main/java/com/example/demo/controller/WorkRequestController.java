@@ -40,24 +40,24 @@ public class WorkRequestController {
     public ApiResponse<WorkRequestDto.Response> get(@PathVariable Long id) { return ApiResponse.ok(service.get(id)); }
 
     @PostMapping("/projects/{projectId}/work-requests")
-    @PreAuthorize("hasAnyRole('ADMIN','PROJECT_MANAGER','TEAM_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN','PORTFOLIO_MANAGER','PROJECT_MANAGER','TEAM_LEAD')")
     public ApiResponse<WorkRequestDto.Response> create(@PathVariable Long projectId, @Valid @RequestBody WorkRequestDto.SaveRequest request) {
         return ApiResponse.ok(service.create(projectId, request));
     }
 
     @PutMapping("/work-requests/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','PROJECT_MANAGER','TEAM_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN','PORTFOLIO_MANAGER','PROJECT_MANAGER','TEAM_LEAD')")
     public ApiResponse<WorkRequestDto.Response> update(@PathVariable Long id, @Valid @RequestBody WorkRequestDto.SaveRequest request) {
         return ApiResponse.ok(service.update(id, request));
     }
 
     @PatchMapping("/work-requests/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN','PROJECT_MANAGER','TEAM_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN','PORTFOLIO_MANAGER','PROJECT_MANAGER','TEAM_LEAD')")
     public ApiResponse<WorkRequestDto.Response> status(@PathVariable Long id, @Valid @RequestBody WorkRequestDto.StatusRequest request) {
         return ApiResponse.ok(service.updateStatus(id, request));
     }
 
     @DeleteMapping("/work-requests/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','PROJECT_MANAGER','TEAM_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN','PORTFOLIO_MANAGER','PROJECT_MANAGER','TEAM_LEAD')")
     public void delete(@PathVariable Long id) { service.delete(id); }
 }

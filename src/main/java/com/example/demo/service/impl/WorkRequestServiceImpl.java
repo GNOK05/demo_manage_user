@@ -151,7 +151,7 @@ public class WorkRequestServiceImpl implements WorkRequestService {
 
     private boolean canView(WorkRequest request) {
         User current = users.currentUser();
-        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR || current.getRole() == Role.PROJECT_MANAGER) return true;
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR || current.getRole() == Role.PORTFOLIO_MANAGER || current.getRole() == Role.PROJECT_MANAGER) return true;
         if (current.getRole() == Role.TEAM_LEAD || current.getRole() == Role.VIEWER) {
             return current.getDepartment() != null
                 && request.getExecutingDepartment().getId().equals(current.getDepartment().getId());
@@ -164,7 +164,7 @@ public class WorkRequestServiceImpl implements WorkRequestService {
 
     private void verifyCanViewProject(Project project) {
         User current = users.currentUser();
-        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR || current.getRole() == Role.PROJECT_MANAGER) return;
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR || current.getRole() == Role.PORTFOLIO_MANAGER || current.getRole() == Role.PROJECT_MANAGER) return;
         if (current.getDepartment() == null
                 || !projectDepartments.existsByProjectIdAndDepartmentId(project.getId(), current.getDepartment().getId())) {
             throw new BussinessException("You cannot view this project");
@@ -173,7 +173,7 @@ public class WorkRequestServiceImpl implements WorkRequestService {
 
     private void verifyCanManage(Project project, Department executingDepartment) {
         User current = users.currentUser();
-        if (current.getRole() == Role.ADMIN) return;
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.PORTFOLIO_MANAGER) return;
         if (current.getDepartment() == null) throw new BussinessException("A department is required");
         boolean participant = projectDepartments.existsByProjectIdAndDepartmentId(project.getId(), current.getDepartment().getId());
         boolean manager = current.getRole() == Role.PROJECT_MANAGER && participant;

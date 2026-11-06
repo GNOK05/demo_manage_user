@@ -50,7 +50,7 @@
         <aside class="estimate-card location-estimate">
           <h3><span>⌂</span>Dự tính địa điểm làm việc</h3><p>Số ngày làm việc dự kiến</p><div class="big-number">{{ requestedDays() | number:'1.0-0' }} <small>ngày công</small></div><p>Nhân viên vẫn thực hiện chấm công trong những ngày được duyệt.</p><hr />
           <dl><div><dt>Hình thức</dt><dd>{{ locationTypeLabel(locationDraft.type) }}</dd></div><div><dt>Tính công</dt><dd>Ngày làm việc bình thường</dd></div><div><dt>Quỹ phép năm</dt><dd>Không trừ quỹ phép</dd></div><div *ngIf="locationDraft.type === 'CLIENT_SITE'"><dt>Khách hàng</dt><dd>{{ locationDraft.clientName || 'Chưa nhập' }}</dd></div></dl>
-          <hr /><div class="approval-flow"><span>Quy trình duyệt</span><strong>Quản lý → Admin</strong></div><p class="estimate-note">ⓘ Địa điểm làm việc được áp dụng sau khi hoàn tất phê duyệt.</p>
+          <hr /><div class="approval-flow"><span>Quy trình duyệt</span><strong>Quản lý → Nhân sự / quản trị</strong></div><p class="estimate-note">ⓘ Địa điểm làm việc được áp dụng sau khi hoàn tất phê duyệt.</p>
         </aside>
       </div>
     </section>

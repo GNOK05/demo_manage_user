@@ -54,7 +54,7 @@
           <label>
             Vai trò
             <select [(ngModel)]="draft.role">
-              <option *ngFor="let role of availableRoles()" [value]="role">{{ role }}</option>
+              <option *ngFor="let role of availableRoles()" [value]="role">{{ roleLabel(role) }}</option>
             </select>
           </label>
           <label *ngIf="!selectedUser">
@@ -120,7 +120,7 @@
       <div class="people-row" *ngFor="let person of visiblePeople(group)">
         <div>
           <strong>{{ person.fullName }}</strong>
-          <p class="muted">{{ person.jobTitle || person.role }} · {{ person.email }}</p>
+          <p class="muted">{{ person.jobTitle || roleLabel(person.role) }} · {{ person.email }}</p>
         </div>
         <div class="people-side">
           <span class="badge status-{{ person.workStatus }}">{{ person.workStatusLabel }}</span>
@@ -184,7 +184,7 @@
           >
           <label
             >Vai trò<select [(ngModel)]="draft.role">
-              <option *ngFor="let role of availableRoles()" [value]="role">{{ role }}</option>
+              <option *ngFor="let role of availableRoles()" [value]="role">{{ roleLabel(role) }}</option>
             </select></label
           >
         </div>

@@ -28,8 +28,8 @@ public class TaskController {private final TaskService service;
  @GetMapping("/project/{projectId}") public ApiResponse<List<TaskDto.Response>> project(@PathVariable Long projectId){return ApiResponse.ok(service.byProject(projectId));}
  @GetMapping("/work-request/{requestId}") public ApiResponse<List<TaskDto.Response>> workRequest(@PathVariable Long requestId){return ApiResponse.ok(service.byWorkRequest(requestId));}
  @GetMapping("/my") public ApiResponse<List<TaskDto.Response>> mine(){return ApiResponse.ok(service.myTasks());}
- @PostMapping @PreAuthorize("hasAnyRole('ADMIN','PROJECT_MANAGER','TEAM_LEAD','MEMBER','QA')") public ApiResponse<TaskDto.Response> create(@Valid @RequestBody TaskDto.SaveRequest r){return ApiResponse.ok(service.save(r));}
- @PutMapping("/{id}") @PreAuthorize("hasAnyRole('ADMIN','PROJECT_MANAGER','TEAM_LEAD','MEMBER','QA')") public ApiResponse<TaskDto.Response> update(@PathVariable Long id,@Valid @RequestBody TaskDto.SaveRequest r){return ApiResponse.ok(service.update(id,r));}
+ @PostMapping @PreAuthorize("hasAnyRole('ADMIN','PORTFOLIO_MANAGER','PROJECT_MANAGER','TEAM_LEAD','MEMBER','QA')") public ApiResponse<TaskDto.Response> create(@Valid @RequestBody TaskDto.SaveRequest r){return ApiResponse.ok(service.save(r));}
+ @PutMapping("/{id}") @PreAuthorize("hasAnyRole('ADMIN','PORTFOLIO_MANAGER','PROJECT_MANAGER','TEAM_LEAD','MEMBER','QA')") public ApiResponse<TaskDto.Response> update(@PathVariable Long id,@Valid @RequestBody TaskDto.SaveRequest r){return ApiResponse.ok(service.update(id,r));}
  @PatchMapping("/{id}/status") public ApiResponse<TaskDto.Response> status(@PathVariable Long id,@Valid @RequestBody TaskDto.StatusRequest r){return ApiResponse.ok(service.updateStatus(id,r));}
- @DeleteMapping("/{id}") @PreAuthorize("hasAnyRole('ADMIN','PROJECT_MANAGER','TEAM_LEAD')") public void delete(@PathVariable Long id){service.delete(id);}
+ @DeleteMapping("/{id}") @PreAuthorize("hasAnyRole('ADMIN','PORTFOLIO_MANAGER','PROJECT_MANAGER','TEAM_LEAD')") public void delete(@PathVariable Long id){service.delete(id);}
 }

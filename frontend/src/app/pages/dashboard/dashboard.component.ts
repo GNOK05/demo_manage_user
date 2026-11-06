@@ -39,7 +39,7 @@ export class DashboardComponent implements OnInit {
     this.loadProjects();
     this.loadTasks();
     this.loadAttendance();
-    if (this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER', 'TEAM_LEAD'])) this.loadPendingLeave();
+    if (this.auth.hasRole(['ADMIN', 'HR', 'PROJECT_MANAGER', 'TEAM_LEAD'])) this.loadPendingLeave();
   }
 
   loadSummary() {
@@ -76,7 +76,7 @@ export class DashboardComponent implements OnInit {
 
   loadEmployees() {
     const role = this.auth.user()?.role;
-    if (['MEMBER', 'QA', 'VIEWER'].includes(role || '')) return;
+    if (['MEMBER', 'QA', 'VIEWER', 'PORTFOLIO_MANAGER'].includes(role || '')) return;
     const request = role === 'ADMIN' || role === 'HR' ? this.api.users() : this.api.departmentMembers();
     this.request(
       request,

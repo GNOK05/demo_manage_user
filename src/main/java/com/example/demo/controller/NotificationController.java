@@ -81,10 +81,12 @@ public class NotificationController {
                         request.getStatus() == LeaveRequestStatus.REJECTED ? "HIGH" : "MEDIUM",
                         request.getCreatedAt(), request.getId())));
 
-        if (current.getRole() == Role.ADMIN) {
-            appendPending(result, id, leaveRequests.findByStatusOrderByCreatedAtDesc(LeaveRequestStatus.PENDING));
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR) {
+            appendPending(result, id, leaveRequests.findByStatusOrderByCreatedAtDesc(LeaveRequestStatus.PENDING_ADMIN));
         } else if (current.getRole().canReviewPeopleInDepartment() && current.getDepartment() != null) {
-            appendPending(result, id, leaveRequests.findByUserDepartmentIdOrderByCreatedAtDesc(current.getDepartment().getId()));
+            appendPending(result, id, leaveRequests.findByUserDepartmentIdOrderByCreatedAtDesc(current.getDepartment().getId()).stream()
+                .filter(request -> request.getStatus() == LeaveRequestStatus.PENDING_MANAGER
+                    || request.getStatus() == LeaveRequestStatus.PENDING).toList());
         }
 
         result.replaceAll(item -> new NotificationDto.Response(
@@ -112,7 +114,9 @@ public class NotificationController {
     }
 
     private void appendPending(List<NotificationDto.Response> result, AtomicLong id, List<com.example.demo.entity.LeaveRequest> requests) {
-        requests.stream().filter(request -> request.getStatus() == LeaveRequestStatus.PENDING && request.getUser() != null).forEach(request ->
+        requests.stream().filter(request -> (request.getStatus() == LeaveRequestStatus.PENDING
+                || request.getStatus() == LeaveRequestStatus.PENDING_MANAGER
+                || request.getStatus() == LeaveRequestStatus.PENDING_ADMIN) && request.getUser() != null).forEach(request ->
                 result.add(new NotificationDto.Response(
                         id.getAndIncrement(), "LEAVE", "Đơn nghỉ phép cần duyệt",
                         request.getUser().getFullName() + " đã gửi đơn nghỉ phép cần xử lý",

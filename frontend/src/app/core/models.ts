@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'HR' | 'PROJECT_MANAGER' | 'TEAM_LEAD' | 'MEMBER' | 'QA' | 'VIEWER';
+export type Role = 'ADMIN' | 'HR' | 'PORTFOLIO_MANAGER' | 'PROJECT_MANAGER' | 'TEAM_LEAD' | 'MEMBER' | 'QA' | 'VIEWER';
 export type TaskStatus = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'TESTING' | 'BLOCKED' | 'DONE' | 'CANCELLED';
 export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 export type WorkRequestStatus = 'DRAFT' | 'READY' | 'IN_PROGRESS' | 'PENDING_ACCEPTANCE' | 'COMPLETED' | 'CANCELLED';

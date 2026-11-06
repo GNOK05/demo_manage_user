@@ -48,6 +48,11 @@ public class DashboardServiceImpl implements DashboardService {
             visibleProjects = projects.findAll();
             visibleTasks = tasks.findAll();
             visibleAttendance = attendance.findAll();
+        } else if (current.getRole() == Role.PORTFOLIO_MANAGER) {
+            visibleUsers = List.of(current);
+            visibleProjects = projects.findAll();
+            visibleTasks = tasks.findAll();
+            visibleAttendance = attendance.findByUserIdOrderByDateDesc(current.getId());
         } else if (current.getRole() == Role.PROJECT_MANAGER) {
             visibleUsers = current.getDepartment() == null ? List.of(current) : users.findByDepartmentId(current.getDepartment().getId());
             visibleProjects = projects.findAll();
@@ -98,16 +103,17 @@ public class DashboardServiceImpl implements DashboardService {
                 .filter(task -> task.getDeadline() != null && task.getDeadline().isBefore(today)
                         && task.getStatus() != TaskStatus.DONE)
                 .count();
-        long pendingLeaveRequests = current.getRole() == Role.ADMIN
-                ? leaveRequests.findByStatusOrderByCreatedAtDesc(com.example.demo.entity.LeaveRequestStatus.PENDING).size()
+        long pendingLeaveRequests = current.getRole() == Role.ADMIN || current.getRole() == Role.HR
+                ? leaveRequests.findByStatusOrderByCreatedAtDesc(com.example.demo.entity.LeaveRequestStatus.PENDING_ADMIN).size()
                 : current.getRole().canReviewPeopleInDepartment() && current.getDepartment() != null
                     ? leaveRequests.findByUserDepartmentIdOrderByCreatedAtDesc(current.getDepartment().getId()).stream()
-                        .filter(request -> request.getStatus() == com.example.demo.entity.LeaveRequestStatus.PENDING).count()
+                        .filter(request -> request.getStatus() == com.example.demo.entity.LeaveRequestStatus.PENDING_MANAGER
+                            || request.getStatus() == com.example.demo.entity.LeaveRequestStatus.PENDING).count()
                     : 0;
 
         return new DashboardDto.Summary(
                 visibleUsers.size(),
-                current.getRole() == Role.ADMIN || current.getRole() == Role.HR
+                current.getRole() == Role.ADMIN || current.getRole() == Role.HR || current.getRole() == Role.PORTFOLIO_MANAGER
                         ? departments.count() : current.getDepartment() == null ? 0 : 1,
                 visibleProjects.size(),
                 visibleProjects.stream().filter(project -> project.getStatus() == com.example.demo.entity.ProjectStatus.IN_PROGRESS).count(),

@@ -62,7 +62,7 @@ public class TaskServiceImpl implements TaskService {
                                                              Long workRequestId) {
         User current = users.currentUser();
         List<Task> accessible;
-        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR || current.getRole() == Role.PROJECT_MANAGER) {
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR || current.getRole() == Role.PORTFOLIO_MANAGER || current.getRole() == Role.PROJECT_MANAGER) {
             accessible = tasks.findAll();
         } else if (current.getRole() == Role.MEMBER || current.getRole() == Role.QA) {
             accessible = tasks.findAssignedOrTesting(current.getId());
@@ -77,7 +77,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private boolean canViewTask(Task task, User current) {
-        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR || current.getRole() == Role.PROJECT_MANAGER) return true;
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR || current.getRole() == Role.PORTFOLIO_MANAGER || current.getRole() == Role.PROJECT_MANAGER) return true;
         if (current.getRole() == Role.MEMBER || current.getRole() == Role.QA) {
             return task.getAssignedTo() != null && task.getAssignedTo().getId().equals(current.getId())
                 || task.getTester() != null && task.getTester().getId().equals(current.getId())
@@ -164,7 +164,7 @@ public class TaskServiceImpl implements TaskService {
         User current = users.currentUser();
         boolean participantDepartment = current.getDepartment() != null
             && projectDepartments.existsByProjectIdAndDepartmentId(task.getProject().getId(), current.getDepartment().getId());
-        boolean allowed = current.getRole() == Role.ADMIN
+        boolean allowed = current.getRole() == Role.ADMIN || current.getRole() == Role.PORTFOLIO_MANAGER
             || current.getRole() == Role.PROJECT_MANAGER && participantDepartment
             || current.getRole() == Role.TEAM_LEAD && task.getWorkRequest() != null && current.getDepartment() != null
                 && current.getDepartment().getId().equals(task.getWorkRequest().getExecutingDepartment().getId())
@@ -219,7 +219,7 @@ public class TaskServiceImpl implements TaskService {
         User current = users.currentUser();
         if (current.getRole().isReadOnly() || current.getRole() == Role.HR)
             throw new BussinessException("Your role cannot create or edit tasks");
-        if (current.getRole() == Role.ADMIN) return;
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.PORTFOLIO_MANAGER) return;
         if (current.getDepartment() == null || !projectDepartments.existsByProjectIdAndDepartmentId(project.getId(), current.getDepartment().getId()))
             throw new BussinessException("You can only manage tasks in participating projects");
         if (!current.getRole().canManageTasks() && assigneeId != null && !assigneeId.equals(current.getId()))
@@ -231,7 +231,7 @@ public class TaskServiceImpl implements TaskService {
         boolean participant = task.getAssignedTo() != null && task.getAssignedTo().getId().equals(current.getId())
             || task.getTester() != null && task.getTester().getId().equals(current.getId())
             || task.getCreatedBy() != null && task.getCreatedBy().getId().equals(current.getId());
-        if (current.getRole() == Role.ADMIN) return;
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.PORTFOLIO_MANAGER) return;
         boolean inProject = current.getDepartment() != null
             && projectDepartments.existsByProjectIdAndDepartmentId(task.getProject().getId(), current.getDepartment().getId());
         if (!inProject || !current.getRole().canManageTasks() && !participant)
@@ -240,13 +240,13 @@ public class TaskServiceImpl implements TaskService {
 
     private void verifyCanView(Project project) {
         User current = users.currentUser();
-        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR) return;
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR || current.getRole() == Role.PORTFOLIO_MANAGER) return;
         if (current.getDepartment() == null || !projectDepartments.existsByProjectIdAndDepartmentId(project.getId(), current.getDepartment().getId()))
             throw new BussinessException("You cannot view tasks in this project");
     }
 
     private void verifyTransitionRole(Task task, User current, TaskStatus from, TaskStatus to) {
-        boolean manager = current.getRole() == Role.ADMIN
+        boolean manager = current.getRole() == Role.ADMIN || current.getRole() == Role.PORTFOLIO_MANAGER
             || current.getRole().canManageTasks() && current.getDepartment() != null
                 && projectDepartments.existsByProjectIdAndDepartmentId(task.getProject().getId(), current.getDepartment().getId());
         boolean assignee = task.getAssignedTo() != null && task.getAssignedTo().getId().equals(current.getId());

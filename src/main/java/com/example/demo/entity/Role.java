@@ -3,6 +3,7 @@ package com.example.demo.entity;
 public enum Role {
     ADMIN,
     HR,
+    PORTFOLIO_MANAGER,
     PROJECT_MANAGER,
     TEAM_LEAD,
     MEMBER,
@@ -14,11 +15,11 @@ public enum Role {
     }
 
     public boolean canManageProjects() {
-        return this == ADMIN || this == PROJECT_MANAGER;
+        return this == ADMIN || this == PORTFOLIO_MANAGER || this == PROJECT_MANAGER;
     }
 
     public boolean canManageTasks() {
-        return this == ADMIN || this == PROJECT_MANAGER || this == TEAM_LEAD;
+        return this == ADMIN || this == PORTFOLIO_MANAGER || this == PROJECT_MANAGER || this == TEAM_LEAD;
     }
 
     public boolean canReviewPeopleInDepartment() {

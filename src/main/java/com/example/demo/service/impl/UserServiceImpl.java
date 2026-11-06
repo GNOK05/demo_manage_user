@@ -36,8 +36,9 @@ public class UserServiceImpl implements UserService {
     @Override public UserResponse update(Long id, UserDto.UpdateRequest r) {
         User current = currentUser();
         User u = findEntity(id);
-        if (current.getRole() == Role.HR && (u.getRole() == Role.ADMIN || u.getRole() == Role.HR)) {
-            throw new AccessDeniedException("HR cannot edit ADMIN or HR accounts.");
+        if (current.getRole() == Role.HR && (u.getRole() == Role.ADMIN || u.getRole() == Role.HR
+                || u.getRole() == Role.PORTFOLIO_MANAGER)) {
+            throw new AccessDeniedException("HR cannot edit ADMIN, HR, or portfolio manager accounts.");
         }
         if (r.role() != null && r.role() != u.getRole()) validateRoleAssignment(current, r.role());
         users.findByEmail(r.email()).filter(existing -> !existing.getId().equals(id)).ifPresent(existing -> {
@@ -67,7 +68,8 @@ public class UserServiceImpl implements UserService {
 
     private int roleRank(Role role) {
         return switch (role) {
-            case ADMIN -> 7;
+            case ADMIN -> 8;
+            case PORTFOLIO_MANAGER -> 7;
             case HR -> 6;
             case PROJECT_MANAGER -> 5;
             case TEAM_LEAD -> 4;
@@ -81,8 +83,9 @@ public class UserServiceImpl implements UserService {
         if (!current.getRole().canManageUsers()) {
             throw new AccessDeniedException("You do not have permission to manage users.");
         }
-        if (current.getRole() == Role.HR && (requestedRole == Role.ADMIN || requestedRole == Role.HR)) {
-            throw new AccessDeniedException("HR cannot assign ADMIN or HR roles.");
+        if (current.getRole() == Role.HR && (requestedRole == Role.ADMIN || requestedRole == Role.HR
+                || requestedRole == Role.PORTFOLIO_MANAGER)) {
+            throw new AccessDeniedException("HR cannot assign ADMIN, HR, or portfolio manager roles.");
         }
     }
     @Override @Transactional(readOnly = true) public User currentUser() {

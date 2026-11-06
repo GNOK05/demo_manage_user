@@ -70,7 +70,7 @@ export class NotificationsComponent implements OnInit {
     });
   }
 
-  adjustmentStatusLabel(status: AttendanceAdjustment['status']) { return ({ PENDING_MANAGER: 'Chờ manager duyệt', PENDING_ADMIN: 'Chờ admin duyệt', APPROVED: 'Đã duyệt', REJECTED_MANAGER: 'Manager từ chối', REJECTED_ADMIN: 'Admin từ chối' } as const)[status]; }
+  adjustmentStatusLabel(status: AttendanceAdjustment['status']) { return ({ PENDING_MANAGER: 'Chờ manager duyệt', PENDING_ADMIN: 'Chờ nhân sự / quản trị duyệt', APPROVED: 'Đã duyệt', REJECTED_MANAGER: 'Manager từ chối', REJECTED_ADMIN: 'Nhân sự / quản trị từ chối' } as const)[status]; }
   adjustmentTime(value: string) { return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' }).format(new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(value) ? value : `${value}+07:00`)); }
   cancelAdjustment() { this.showAdjustmentForm.set(false); this.router.navigate(['/notifications'], { replaceUrl: true }); }
   unreadCount() { return this.notifications().filter((item) => item.unread).length; }

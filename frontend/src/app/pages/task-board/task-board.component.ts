@@ -92,7 +92,7 @@ export class TaskBoardComponent implements OnInit {
         const current = this.auth.user();
         this.employees.set(current ? [current] : []);
       } else {
-        const usersRequest = this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER']) ? this.api.users() : this.api.departmentMembers();
+        const usersRequest = this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER']) ? this.api.users() : this.api.departmentMembers();
         usersRequest.subscribe({
           next: (x) => this.employees.set(x),
           error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tải nhân sự'),
@@ -379,7 +379,7 @@ export class TaskBoardComponent implements OnInit {
   }
 
   isPo() {
-    return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER', 'TEAM_LEAD']);
+    return this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEAD']);
   }
 
   allowedStatuses(task: Task): TaskStatus[] {
@@ -395,7 +395,7 @@ export class TaskBoardComponent implements OnInit {
     };
     const role = this.auth.user()?.role;
     if (role === 'VIEWER') return [task.status];
-    const manager = role === 'ADMIN' || role === 'PROJECT_MANAGER' || role === 'TEAM_LEAD';
+    const manager = role === 'ADMIN' || role === 'PORTFOLIO_MANAGER' || role === 'PROJECT_MANAGER' || role === 'TEAM_LEAD';
     const assignee = this.auth.user()?.id === task.assignedToId;
     const tester = this.auth.user()?.id === task.testerId;
     const allowed = transitions[task.status] ?? [];
@@ -413,7 +413,7 @@ export class TaskBoardComponent implements OnInit {
   }
 
   canCreateTask() {
-    return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER', 'TEAM_LEAD', 'MEMBER', 'QA']);
+    return this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEAD', 'MEMBER', 'QA']);
   }
 
   canEditTask(task: Task) {
@@ -424,7 +424,7 @@ export class TaskBoardComponent implements OnInit {
 
   canDeleteTask(task: Task) {
     const role = this.auth.user()?.role;
-    if (role === 'ADMIN') return true;
+    if (role === 'ADMIN' || role === 'PORTFOLIO_MANAGER') return true;
     if (!this.auth.hasRole(['PROJECT_MANAGER', 'TEAM_LEAD'])) return false;
     return role !== 'TEAM_LEAD' || task.status !== 'DONE';
   }
@@ -434,7 +434,7 @@ export class TaskBoardComponent implements OnInit {
   }
 
   canFilterByAssigneeRole() {
-    return this.auth.hasRole(['ADMIN', 'HR', 'PROJECT_MANAGER', 'TEAM_LEAD']);
+    return this.auth.hasRole(['ADMIN', 'HR', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEAD']);
   }
 
   onEmployeeSelected() {
@@ -513,12 +513,12 @@ export class TaskBoardComponent implements OnInit {
 
   roleScopeLabel() {
     const role = this.auth.user()?.role;
-    if (role === 'ADMIN' || role === 'HR' || role === 'PROJECT_MANAGER') return 'Phạm vi toàn công ty';
-    if (role === 'TEAM_LEAD' || role === 'VIEWER') return `Phạm vi ${this.auth.user()?.departmentName || 'phòng ban'}`;
+    if (role === 'ADMIN' || role === 'HR' || role === 'PORTFOLIO_MANAGER') return 'Phạm vi toàn công ty';
+    if (role === 'PROJECT_MANAGER' || role === 'TEAM_LEAD' || role === 'VIEWER') return `Phạm vi ${this.auth.user()?.departmentName || 'phòng ban'}`;
     return 'Công việc của tôi';
   }
 
-  canManageRequests() { return this.auth.hasRole(['ADMIN', 'PROJECT_MANAGER', 'TEAM_LEAD']); }
+  canManageRequests() { return this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEAD']); }
 
   isOverdue(task: Task) {
     return task.status !== 'DONE' && task.deadline < localDateIso();

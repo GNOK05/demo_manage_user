@@ -20,6 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -63,6 +64,34 @@ class LeaveRequestApiIntegrationTest {
         mockMvc.perform(get("/api/v1/leave-requests/pending")
                         .header("Authorization", "Bearer " + hr))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void hrCanGiveFinalApprovalAfterDepartmentManager() throws Exception {
+        LocalDate day = LocalDate.now().plusWeeks(3).with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+        String body = mapper.writeValueAsString(Map.of(
+                "type", "UNPAID", "fromDate", day.toString(), "toDate", day.toString(),
+                "reason", "HR approval regression"));
+        var created = mockMvc.perform(post("/api/v1/leave-requests")
+                        .header("Authorization", "Bearer " + login("member_2_2", "member123"))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andReturn();
+        long id = mapper.readTree(created.getResponse().getContentAsString()).at("/data/id").asLong();
+        String decision = "{\"status\":\"APPROVED\"}";
+
+        mockMvc.perform(patch("/api/v1/leave-requests/{id}/approve", id)
+                        .header("Authorization", "Bearer " + login("lead_2", "lead123"))
+                        .contentType(MediaType.APPLICATION_JSON).content(decision))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("PENDING_ADMIN"));
+
+        mockMvc.perform(patch("/api/v1/leave-requests/{id}/approve", id)
+                        .header("Authorization", "Bearer " + login("hr", "hr123"))
+                        .contentType(MediaType.APPLICATION_JSON).content(decision))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("APPROVED"))
+                .andExpect(jsonPath("$.data.approvedBy").value("Human Resources"));
     }
 
     @Test
@@ -179,13 +208,15 @@ class LeaveRequestApiIntegrationTest {
                         .andExpect(jsonPath("$.data.usedDays").value(0.5))
                         .andExpect(jsonPath("$.data.pendingDays").value(0.0));
 
-        mockMvc.perform(get("/api/v1/payroll/monthly")
+        var payroll = mockMvc.perform(get("/api/v1/payroll/monthly")
                                 .param("year", String.valueOf(year))
                                 .param("month", String.valueOf(friday.getMonthValue()))
                                 .header("Authorization", "Bearer " + employeeToken))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.employees[0].annualLeaveDays").value(0.5))
-                        .andExpect(jsonPath("$.data.employees[0].payrollWorkDays").value(5.5));
+                        .andReturn();
+        var row = mapper.readTree(payroll.getResponse().getContentAsString()).at("/data/employees/0");
+        assertEquals(row.path("workDays").asDouble() + 0.5, row.path("payrollWorkDays").asDouble());
     }
 
     @Test

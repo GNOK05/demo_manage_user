@@ -50,7 +50,8 @@ public class AttendanceAdjustmentServiceImpl implements AttendanceAdjustmentServ
         Attendance parent = session.getAttendance();
         User target = parent.getUser();
         ensurePeriodOpen(parent.getDate());
-        if (!current.getRole().canReviewPeopleInDepartment() && current.getRole() != Role.ADMIN) {
+        if ((!current.getRole().canReviewPeopleInDepartment() || current.getRole() == Role.HR)
+                && current.getRole() != Role.ADMIN) {
             if (!target.getId().equals(current.getId()) || input.userId() != null && !input.userId().equals(current.getId())) {
                 throw new BussinessException("Employees can only request corrections to their own attendance");
             }
@@ -86,7 +87,7 @@ public class AttendanceAdjustmentServiceImpl implements AttendanceAdjustmentServ
         request.setRequestedCheckIn(input.requestedCheckIn());
         request.setRequestedCheckOut(input.requestedCheckOut());
         request.setReason(input.reason().trim());
-        if (current.getRole().canReviewPeopleInDepartment()) {
+        if (current.getRole().canReviewPeopleInDepartment() || current.getRole() == Role.PORTFOLIO_MANAGER) {
             request.setStatus(AttendanceAdjustmentStatus.PENDING_ADMIN);
             if (!current.getId().equals(target.getId())) {
                 request.setManagerApprovedBy(current);
@@ -133,7 +134,7 @@ public class AttendanceAdjustmentServiceImpl implements AttendanceAdjustmentServ
         if (request.getUser().getId().equals(current.getId()) || request.getRequestedBy().getId().equals(current.getId())) {
             throw new BussinessException("You cannot approve your own attendance correction");
         }
-        if (current.getRole().canReviewPeopleInDepartment()) {
+        if (current.getRole() == Role.PROJECT_MANAGER || current.getRole() == Role.TEAM_LEAD) {
             verifyManagerDepartment(current, request.getUser());
             if (request.getStatus() != AttendanceAdjustmentStatus.PENDING_MANAGER) {
                 throw new BussinessException("This correction is not waiting for manager approval");

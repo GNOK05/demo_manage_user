@@ -25,7 +25,7 @@ export class PeopleComponent implements OnInit {
   attendanceRecords = signal<import('../../core/models').Attendance[]>([]);
   modal = signal<'create' | 'edit' | 'delete' | null>(null);
   draftPassword = '';
-  readonly roles: Role[] = ['ADMIN', 'HR', 'PROJECT_MANAGER', 'TEAM_LEAD', 'MEMBER', 'QA', 'VIEWER'];
+  readonly roles: Role[] = ['ADMIN', 'HR', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEAD', 'MEMBER', 'QA', 'VIEWER'];
   selectedUser: User | null = null;
   draft: User = {
     id: 0,
@@ -183,13 +183,13 @@ export class PeopleComponent implements OnInit {
   canDelete(user: User) {
     const current = this.auth.user();
     if (!current || !this.auth.hasRole(['ADMIN', 'HR']) || current.id === user.id) return false;
-    const rank = (role: Role) => ({ ADMIN: 7, HR: 6, PROJECT_MANAGER: 5, TEAM_LEAD: 4, QA: 3, MEMBER: 2, VIEWER: 1 })[role];
+    const rank = (role: Role) => ({ ADMIN: 8, PORTFOLIO_MANAGER: 7, HR: 6, PROJECT_MANAGER: 5, TEAM_LEAD: 4, QA: 3, MEMBER: 2, VIEWER: 1 })[role];
     return rank(current.role) > rank(user.role);
   }
 
   canEditUser(user: User) {
     if (!this.auth.hasRole(['ADMIN', 'HR'])) return false;
-    return !(this.auth.hasRole(['HR']) && ['ADMIN', 'HR'].includes(user.role));
+    return !(this.auth.hasRole(['HR']) && ['ADMIN', 'HR', 'PORTFOLIO_MANAGER'].includes(user.role));
   }
 
   canManageDepartments() {
@@ -198,8 +198,14 @@ export class PeopleComponent implements OnInit {
 
   availableRoles(): Role[] {
     return this.auth.hasRole(['HR'])
-      ? this.roles.filter((role) => role !== 'ADMIN' && role !== 'HR')
+      ? this.roles.filter((role) => role !== 'ADMIN' && role !== 'HR' && role !== 'PORTFOLIO_MANAGER')
       : this.roles;
+  }
+
+  roleLabel(role: Role) {
+    return ({ ADMIN: 'Quản trị viên', HR: 'Nhân sự', PORTFOLIO_MANAGER: 'Quản lý dự án công ty',
+      PROJECT_MANAGER: 'Quản lý dự án phòng ban', TEAM_LEAD: 'Trưởng nhóm', MEMBER: 'Thành viên',
+      QA: 'Kiểm thử', VIEWER: 'Chỉ xem' } as Record<Role, string>)[role];
   }
 
   resetForm() {

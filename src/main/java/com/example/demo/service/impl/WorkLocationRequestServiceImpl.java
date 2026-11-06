@@ -40,9 +40,9 @@ public class WorkLocationRequestServiceImpl implements WorkLocationRequestServic
         entity.setClientName(trimToNull(request.clientName()));
         entity.setClientAddress(trimToNull(request.clientAddress()));
         entity.setReason(request.reason().trim());
-        entity.setStatus(current.getRole().canReviewPeopleInDepartment()
+        entity.setStatus((current.getRole().canReviewPeopleInDepartment() || current.getRole() == Role.PORTFOLIO_MANAGER)
                 ? LeaveRequestStatus.PENDING_ADMIN : LeaveRequestStatus.PENDING_MANAGER);
-        if (current.getRole().canReviewPeopleInDepartment()) {
+        if (current.getRole().canReviewPeopleInDepartment() || current.getRole() == Role.PORTFOLIO_MANAGER) {
             entity.setManagerApprovedBy(current);
             entity.setManagerApprovedAt(LocalDateTime.now(BUSINESS_ZONE));
         }
