@@ -48,7 +48,7 @@ export class WorkRequestsComponent implements OnInit {
   overdue = false;
   draft: WorkRequestSaveRequest & { projectId: number | null } = this.emptyDraft();
 
-  readonly statuses: WorkRequestStatus[] = ['DRAFT', 'READY', 'IN_PROGRESS', 'PENDING_ACCEPTANCE', 'COMPLETED', 'CANCELLED'];
+  readonly statuses: WorkRequestStatus[] = ['DRAFT', 'ANALYSIS', 'READY', 'DEVELOPMENT', 'TESTING', 'PENDING_ACCEPTANCE', 'CHANGES_REQUESTED', 'PAUSED', 'COMPLETED', 'CANCELLED'];
   readonly healthOptions: WorkRequestHealth[] = ['ON_TRACK', 'AT_RISK', 'OVERDUE', 'BLOCKED'];
   readonly priorities: TaskPriority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
 
@@ -74,7 +74,7 @@ export class WorkRequestsComponent implements OnInit {
       },
       error: (error) => this.showError(error, 'Không thể tải danh sách phiếu yêu cầu'),
     });
-    if (this.canManage()) {
+    if (this.canEditRequest()) {
       const source = this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER']) ? this.api.users() : this.api.departmentMembers();
       source.subscribe({ next: (users) => this.coordinators.set(users), error: () => this.coordinators.set([]) });
     }
@@ -128,8 +128,8 @@ export class WorkRequestsComponent implements OnInit {
   }
 
   save() {
-    if (!this.draft.projectId || !this.draft.executingDepartmentId || !this.draft.title.trim()) {
-      this.errorMessage.set('Vui lòng chọn dự án, phòng ban thực hiện và nhập tiêu đề');
+    if (!this.draft.projectId || !this.draft.executingDepartmentId || !this.draft.coordinatorId || !this.draft.title.trim()) {
+      this.errorMessage.set('Vui lòng chọn dự án, phòng ban, Team Lead và nhập tiêu đề');
       return;
     }
     if (this.draft.deadline < this.draft.startDate) {
@@ -154,7 +154,9 @@ export class WorkRequestsComponent implements OnInit {
 
   changeStatus(request: WorkRequest, status: WorkRequestStatus) {
     if (status === request.status) return;
-    this.api.updateWorkRequestStatus(request.id, status).subscribe({
+    const reason = status === 'CHANGES_REQUESTED' ? window.prompt('Lý do yêu cầu chỉnh sửa:') : undefined;
+    if (status === 'CHANGES_REQUESTED' && !reason?.trim()) return;
+    this.api.updateWorkRequestStatus(request.id, status, reason?.trim()).subscribe({
       next: () => { this.successMessage.set('Đã cập nhật trạng thái phiếu'); this.load(); },
       error: (error) => this.showError(error, 'Không thể cập nhật trạng thái'),
     });
@@ -189,23 +191,36 @@ export class WorkRequestsComponent implements OnInit {
 
   eligibleCoordinators() {
     const departmentId = Number(this.draft.executingDepartmentId);
-    return this.coordinators().filter((user) => user.departmentId === departmentId);
+    return this.coordinators().filter((user) => user.departmentId === departmentId && user.role === 'TEAM_LEAD');
   }
 
   allowedStatuses(request: WorkRequest): WorkRequestStatus[] {
     const transitions: Record<WorkRequestStatus, WorkRequestStatus[]> = {
-      DRAFT: ['READY', 'CANCELLED'],
-      READY: ['IN_PROGRESS', 'DRAFT', 'CANCELLED'],
-      IN_PROGRESS: ['PENDING_ACCEPTANCE', 'CANCELLED'],
-      PENDING_ACCEPTANCE: ['COMPLETED', 'IN_PROGRESS'],
+      DRAFT: ['ANALYSIS', 'READY', 'CANCELLED'],
+      ANALYSIS: ['READY', 'PAUSED', 'CANCELLED'],
+      READY: ['DEVELOPMENT', 'ANALYSIS', 'PAUSED', 'CANCELLED'],
+      IN_PROGRESS: ['TESTING', 'PENDING_ACCEPTANCE', 'PAUSED', 'CANCELLED'],
+      DEVELOPMENT: ['TESTING', 'PAUSED', 'CANCELLED'],
+      TESTING: ['PENDING_ACCEPTANCE', 'DEVELOPMENT', 'PAUSED', 'CANCELLED'],
+      PENDING_ACCEPTANCE: ['COMPLETED', 'CHANGES_REQUESTED'],
+      CHANGES_REQUESTED: ['ANALYSIS', 'DEVELOPMENT', 'TESTING', 'PAUSED'],
+      PAUSED: ['ANALYSIS', 'DEVELOPMENT', 'TESTING', 'CANCELLED'],
       COMPLETED: [],
       CANCELLED: [],
     };
-    return [request.status, ...transitions[request.status]];
+    const role = this.auth.user()?.role;
+    const allowed = transitions[request.status].filter(next => {
+      if (role === 'ADMIN') return true;
+      if (['COMPLETED', 'CHANGES_REQUESTED', 'CANCELLED'].includes(next)) return role === 'PORTFOLIO_MANAGER';
+      if (['READY', 'DEVELOPMENT', 'TESTING', 'PENDING_ACCEPTANCE'].includes(next)) return role === 'TEAM_LEAD';
+      return role === 'TEAM_LEAD' || role === 'PORTFOLIO_MANAGER';
+    });
+    return [request.status, ...allowed];
   }
 
-  canManage() { return this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEAD']); }
-  statusLabel(value: WorkRequestStatus) { return ({ DRAFT: 'Bản nháp', READY: 'Sẵn sàng', IN_PROGRESS: 'Đang thực hiện', PENDING_ACCEPTANCE: 'Chờ nghiệm thu', COMPLETED: 'Hoàn thành', CANCELLED: 'Đã hủy' })[value]; }
+  canEditRequest() { return this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER']); }
+  canChangeStatus(request: WorkRequest) { return this.allowedStatuses(request).length > 1; }
+  statusLabel(value: WorkRequestStatus) { return ({ DRAFT: 'Mới tạo', ANALYSIS: 'Phân tích', READY: 'Sẵn sàng', IN_PROGRESS: 'Đang thực hiện', DEVELOPMENT: 'Đang phát triển', TESTING: 'Đang kiểm thử', PENDING_ACCEPTANCE: 'Chờ nghiệm thu', CHANGES_REQUESTED: 'Yêu cầu chỉnh sửa', PAUSED: 'Tạm dừng', COMPLETED: 'Hoàn thành', CANCELLED: 'Đã hủy' })[value]; }
   healthLabel(value: WorkRequestHealth) { return ({ ON_TRACK: 'Đúng tiến độ', AT_RISK: 'Có nguy cơ', OVERDUE: 'Quá hạn', BLOCKED: 'Đang bị chặn' })[value]; }
   priorityLabel(value: TaskPriority) { return ({ LOW: 'Thấp', NORMAL: 'Bình thường', HIGH: 'Cao', URGENT: 'Khẩn cấp' })[value]; }
 

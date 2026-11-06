@@ -214,6 +214,38 @@
 .department-attendance-card .attendance-legend i.absent { background: #ef6470; }
 .department-attendance-card .attendance-legend i.leave { background: #8f6fe8; }
 
+.company-attendance .attendance-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.company-attendance .attendance-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+}
+
+.company-attendance .attendance-legend b { color: var(--text); }
+
+.company-category {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-UNPAID_LEAVE { background: #fff0ef; color: #b42318; }
+.status-PAID_ANNUAL_LEAVE { background: #f5eeff; color: #6a3fbf; }
+.status-OTHER_LEAVE { background: #eef4ff; color: #3155a0; }
+.status-OFF_DAY, .status-PENDING { background: #f1f3f7; color: #697586; }
+
 .personal-attendance-stats {
   margin-top: 18px;
 }

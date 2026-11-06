@@ -4,7 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.demo.entity.Attendance;
 import com.example.demo.entity.AttendanceStatus;
 import com.example.demo.entity.User;
+import com.example.demo.entity.LeaveRequest;
+import com.example.demo.entity.LeaveRequestStatus;
+import com.example.demo.entity.LeaveRequestType;
 import com.example.demo.repository.AttendanceRepository;
+import com.example.demo.repository.LeaveRequestRepository;
 import com.example.demo.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +36,7 @@ class AttendanceIntegrationTest {
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper mapper;
     @Autowired AttendanceRepository attendance;
+    @Autowired LeaveRequestRepository leaveRequests;
     @Autowired UserRepository users;
 
         @Test
@@ -43,7 +48,7 @@ class AttendanceIntegrationTest {
 
     @Test
     void employeeCanCheckInAndOutMultipleTimesInOneDay() throws Exception {
-        String token = login("member_1_1", "member123");
+        String token = login("dev_1_1", "member123");
 
         var firstCheckIn = mockMvc.perform(post("/api/v1/attendance/check-in").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -84,7 +89,7 @@ class AttendanceIntegrationTest {
 
     @Test
     void hrCanLoadCompanyEmployeeAttendanceHistory() throws Exception {
-        Long employeeId = users.findByUsername("member_1_1").orElseThrow().getId();
+        Long employeeId = users.findByUsername("dev_1_1").orElseThrow().getId();
         var today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         mockMvc.perform(get("/api/v1/attendance/user/{userId}", employeeId)
                         .param("month", String.valueOf(today.getMonthValue()))
@@ -94,8 +99,49 @@ class AttendanceIntegrationTest {
     }
 
     @Test
+    void companyDayUsesApprovedLeaveInsteadOfRawAbsence() throws Exception {
+        LocalDate day = LocalDate.of(2001, 1, 3);
+        User paidUser = users.findByUsername("dev_1_1").orElseThrow();
+        User unpaidUser = users.findByUsername("dev_1_2").orElseThrow();
+        User pendingUser = users.findByUsername("test_1_1").orElseThrow();
+        for (User user : java.util.List.of(paidUser, unpaidUser, pendingUser)) {
+            Attendance record = new Attendance();
+            record.setUser(user);
+            record.setDate(day);
+            record.setStatus(AttendanceStatus.ABSENT);
+            attendance.save(record);
+        }
+        saveLeave(paidUser, day, LeaveRequestType.ANNUAL, LeaveRequestStatus.APPROVED);
+        saveLeave(unpaidUser, day, LeaveRequestType.UNPAID, LeaveRequestStatus.APPROVED);
+        saveLeave(pendingUser, day, LeaveRequestType.ANNUAL, LeaveRequestStatus.PENDING);
+
+        mockMvc.perform(get("/api/v1/attendance/company/day").param("date", day.toString())
+                .header("Authorization", "Bearer " + login("hr", "hr123")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.paidAnnualLeave").value(1))
+            .andExpect(jsonPath("$.data.unpaidLeave").value(1))
+            .andExpect(jsonPath("$.data.employees[?(@.username == 'dev_1_1')].category").value("PAID_ANNUAL_LEAVE"))
+            .andExpect(jsonPath("$.data.employees[?(@.username == 'dev_1_2')].category").value("UNPAID_LEAVE"))
+            .andExpect(jsonPath("$.data.employees[?(@.username == 'test_1_1')].category").value("ABSENT"));
+        mockMvc.perform(get("/api/v1/attendance/company/day").param("date", day.toString())
+                .header("Authorization", "Bearer " + login("dev_1_1", "member123")))
+            .andExpect(status().isForbidden());
+    }
+
+    private void saveLeave(User user, LocalDate day, LeaveRequestType type, LeaveRequestStatus status) {
+        LeaveRequest leave = new LeaveRequest();
+        leave.setUser(user);
+        leave.setType(type);
+        leave.setFromDate(day);
+        leave.setToDate(day);
+        leave.setReason("Attendance summary test");
+        leave.setStatus(status);
+        leaveRequests.save(leave);
+    }
+
+    @Test
     void legacyAttendanceHistoryGetsSessionIdsForCorrectionRequests() throws Exception {
-        User employee = users.findByUsername("member_1_2").orElseThrow();
+        User employee = users.findByUsername("dev_1_2").orElseThrow();
         LocalDate legacyDate = LocalDate.of(2001, 1, 2);
         Attendance legacyRecord = attendance.findByUserIdAndDate(employee.getId(), legacyDate).orElseGet(() -> {
             Attendance record = new Attendance();
@@ -109,7 +155,7 @@ class AttendanceIntegrationTest {
         org.junit.jupiter.api.Assertions.assertNotNull(legacyRecord.getId());
 
         var response = mockMvc.perform(get("/api/v1/attendance/my")
-                        .header("Authorization", "Bearer " + login("member_1_2", "member123")))
+                        .header("Authorization", "Bearer " + login("dev_1_2", "member123")))
                 .andExpect(status().isOk())
                 .andReturn();
         var records = mapper.readTree(response.getResponse().getContentAsString()).at("/data");

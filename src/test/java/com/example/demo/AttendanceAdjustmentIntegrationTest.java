@@ -40,7 +40,7 @@ class AttendanceAdjustmentIntegrationTest {
 
     @Test
     void attendanceCorrectionRequiresManagerThenAdminApproval() throws Exception {
-        String employeeToken = login("member_1_1", "member123");
+        String employeeToken = login("dev_1_1", "member123");
         var checkIn = mockMvc.perform(post("/api/v1/attendance/check-in")
                         .header("Authorization", "Bearer " + employeeToken))
                 .andExpect(status().isOk()).andReturn();
@@ -83,10 +83,10 @@ class AttendanceAdjustmentIntegrationTest {
 
     @Test
     void attendanceCorrectionsAreAllowedForTwoPastDaysButNotEarlier() throws Exception {
-        String employeeToken = login("member_1_1", "member123");
+        String employeeToken = login("dev_1_1", "member123");
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         for (LocalDate allowedDate : new LocalDate[]{today.minusDays(1), today.minusDays(2)}) {
-            long allowedSessionId = createSession("member_1_1", allowedDate);
+            long allowedSessionId = createSession("dev_1_1", allowedDate);
             mockMvc.perform(post("/api/v1/attendance/adjustments")
                             .header("Authorization", "Bearer " + employeeToken)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -96,7 +96,7 @@ class AttendanceAdjustmentIntegrationTest {
         }
 
         LocalDate threeDaysAgo = today.minusDays(3);
-        long expiredSessionId = createSession("member_1_1", threeDaysAgo);
+        long expiredSessionId = createSession("dev_1_1", threeDaysAgo);
         mockMvc.perform(post("/api/v1/attendance/adjustments")
                         .header("Authorization", "Bearer " + employeeToken)
                         .contentType(MediaType.APPLICATION_JSON)

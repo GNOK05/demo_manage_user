@@ -73,8 +73,9 @@ public class UserServiceImpl implements UserService {
             case HR -> 6;
             case PROJECT_MANAGER -> 5;
             case TEAM_LEAD -> 4;
-            case QA -> 3;
-            case MEMBER -> 2;
+            case TEST -> 3;
+            case BA -> 2;
+            case DEV -> 2;
             case VIEWER -> 1;
         };
     }

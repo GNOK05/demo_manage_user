@@ -1,7 +1,8 @@
-export type Role = 'ADMIN' | 'HR' | 'PORTFOLIO_MANAGER' | 'PROJECT_MANAGER' | 'TEAM_LEAD' | 'MEMBER' | 'QA' | 'VIEWER';
+export type Role = 'ADMIN' | 'HR' | 'PORTFOLIO_MANAGER' | 'PROJECT_MANAGER' | 'TEAM_LEAD' | 'BA' | 'DEV' | 'TEST' | 'VIEWER';
 export type TaskStatus = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'TESTING' | 'BLOCKED' | 'DONE' | 'CANCELLED';
+export type TaskType = 'ANALYSIS' | 'DEVELOPMENT' | 'TESTING' | 'BUG' | 'REVIEW' | 'DEPLOYMENT';
 export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
-export type WorkRequestStatus = 'DRAFT' | 'READY' | 'IN_PROGRESS' | 'PENDING_ACCEPTANCE' | 'COMPLETED' | 'CANCELLED';
+export type WorkRequestStatus = 'DRAFT' | 'ANALYSIS' | 'READY' | 'IN_PROGRESS' | 'DEVELOPMENT' | 'TESTING' | 'PENDING_ACCEPTANCE' | 'CHANGES_REQUESTED' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
 export type WorkRequestHealth = 'ON_TRACK' | 'AT_RISK' | 'OVERDUE' | 'BLOCKED';
 export type TaskSort =
   'DEFAULT' | 'NEWEST' | 'OLDEST' | 'DEADLINE_ASC' | 'DEADLINE_DESC' | 'NAME_ASC' | 'NAME_DESC';
@@ -88,6 +89,9 @@ export interface Task {
   testerName?: string;
   createdById?: number;
   status: TaskStatus;
+  taskType: TaskType;
+  relatedTaskId?: number;
+  resultSummary?: string;
   startDate: string;
   deadline: string;
   priority: TaskPriority;
@@ -103,6 +107,8 @@ export interface TaskSaveRequest {
   assignedToId: number | null;
   testerId: number | null;
   status?: TaskStatus;
+  taskType?: TaskType;
+  relatedTaskId?: number | null;
   startDate?: string;
   deadline: string;
   priority?: TaskPriority;
@@ -134,6 +140,13 @@ export interface WorkRequest {
   overdueTasks: number;
   progress: number;
 }
+export interface WorkRequestHistory {
+  fromStatus?: WorkRequestStatus;
+  toStatus: WorkRequestStatus;
+  reason?: string;
+  actorName: string;
+  changedAt: string;
+}
 export interface WorkRequestSaveRequest {
   title: string;
   description?: string;
@@ -162,6 +175,21 @@ export interface DepartmentAttendanceSummary {
   late: number;
   absent: number;
   leave: number;
+}
+export type CompanyAttendanceCategory = 'PRESENT' | 'LATE' | 'ABSENT' | 'UNPAID_LEAVE'
+  | 'PAID_ANNUAL_LEAVE' | 'OTHER_LEAVE' | 'OFF_DAY' | 'PENDING';
+export interface CompanyDaySummary {
+  date: string;
+  present: number;
+  late: number;
+  absent: number;
+  unpaidLeave: number;
+  paidAnnualLeave: number;
+  otherLeave: number;
+  offDay: number;
+  pending: number;
+  employees: { userId: number; username: string; fullName: string; department: string;
+    category: CompanyAttendanceCategory }[];
 }
 
 export type LeaveStatus =

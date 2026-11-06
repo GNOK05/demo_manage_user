@@ -56,6 +56,30 @@
         <ng-template #loadingDepartmentChart><p class="loading-state">Đang tải dữ liệu chấm công...</p></ng-template>
       </section>
 
+      <section class="card company-attendance" *ngIf="isAdmin()">
+        <div class="section-top">
+          <div><p class="eyebrow subtle">Toàn công ty</p><h2>Chấm công theo ngày</h2></div>
+          <label>Chọn ngày <input type="date" [(ngModel)]="selectedAttendanceDate" [max]="localDate()" (ngModelChange)="loadCompanyDay()" /></label>
+        </div>
+        <ng-container *ngIf="companyDay() as day">
+          <div class="attendance-legend">
+            <span>Có mặt <b>{{ day.present }}</b></span>
+            <span>Đi muộn <b>{{ day.late }}</b></span>
+            <span>Vắng mặt <b>{{ day.absent }}</b></span>
+            <span>Nghỉ không lương <b>{{ day.unpaidLeave }}</b></span>
+            <span>Phép năm có lương <b>{{ day.paidAnnualLeave }}</b></span>
+            <span *ngIf="day.otherLeave">Nghỉ khác <b>{{ day.otherLeave }}</b></span>
+            <span *ngIf="day.offDay">Ngày nghỉ <b>{{ day.offDay }}</b></span>
+            <span *ngIf="day.pending">Chưa ghi nhận <b>{{ day.pending }}</b></span>
+          </div>
+          <div class="table-scroll"><table>
+            <thead><tr><th>Nhân viên</th><th>Phòng ban</th><th>Trạng thái</th></tr></thead>
+            <tbody><tr *ngFor="let row of companyRows()"><td>{{ row.fullName }} · {{ row.username }}</td>
+              <td>{{ row.department || 'Chưa phân phòng ban' }}</td><td><span class="company-category status-{{ row.category }}">{{ companyCategoryLabel(row.category) }}</span></td></tr></tbody>
+          </table></div>
+        </ng-container>
+      </section>
+
       <section class="card filter-card">
         <div class="section-top">
           <div>
@@ -271,13 +295,13 @@
             >
               <header><span>{{ day.day }}</span><small *ngIf="day.date === localDate()">Hôm nay</small></header>
               <ng-container *ngIf="attendanceForDate(day.date) as record">
-                <span class="calendar-status status-{{ record.status }}">{{ attendanceStatusLabel(record.status) }}</span>
+                <span class="calendar-status status-{{ attendanceDayClass(day.date, record) }}">{{ attendanceDayLabel(day.date, record) }}</span>
                 <div class="calendar-sessions" *ngFor="let session of attendanceSessions(record)">
                   <span>{{ time(session.checkInTime) }} – {{ time(session.checkOutTime) }}</span>
                   <button type="button" class="calendar-edit" *ngIf="session.id && canAdjustAttendance(record.date)" (click)="startAdjustment(record, session)">Điều chỉnh giờ</button>
                 </div>
               </ng-container>
-              <span class="calendar-leave" *ngIf="leaveForDate(day.date) as leave">{{ leaveTypeLabel(leave.type) }}</span>
+              <ng-container *ngIf="!attendanceForDate(day.date)"><span class="calendar-leave" *ngIf="leaveForDate(day.date) as leave">{{ leaveTypeLabel(leave.type) }}</span></ng-container>
             </article>
           </div>
           <p class="loading-state" *ngIf="loadingAttendance()">Đang tải dữ liệu chấm công...</p>
@@ -411,13 +435,13 @@
           >
             <header><span>{{ day.day }}</span><small *ngIf="day.date === localDate()">Hôm nay</small></header>
             <ng-container *ngIf="attendanceForDate(day.date) as record">
-              <span class="calendar-status status-{{ record.status }}">{{ attendanceStatusLabel(record.status) }}</span>
+                <span class="calendar-status status-{{ attendanceDayClass(day.date, record) }}">{{ attendanceDayLabel(day.date, record) }}</span>
               <div class="calendar-sessions" *ngFor="let session of attendanceSessions(record)">
                 <span>{{ time(session.checkInTime) }} – {{ time(session.checkOutTime) }}</span>
                   <button type="button" class="calendar-edit" *ngIf="session.id && canAdjustAttendance(record.date)" (click)="startAdjustment(record, session)">Đề nghị sửa giờ</button>
               </div>
             </ng-container>
-              <span class="calendar-leave" *ngIf="leaveForDate(day.date) as leave">{{ leaveTypeLabel(leave.type) }}</span>
+              <ng-container *ngIf="!attendanceForDate(day.date)"><span class="calendar-leave" *ngIf="leaveForDate(day.date) as leave">{{ leaveTypeLabel(leave.type) }}</span></ng-container>
           </article>
         </div>
         <p class="loading-state" *ngIf="loadingAttendance()">Đang tải lịch chấm công...</p>

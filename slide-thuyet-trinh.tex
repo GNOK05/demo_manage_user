@@ -167,12 +167,12 @@ Kiểm thử & Spring Boot Test, MockMvc và H2.\\
 \begin{enumerate}
 \setlength{\itemsep}{10pt}
 \item Tạo dự án và xác định các phòng ban tham gia.
-\item Tạo work request với mục tiêu, người điều phối và hạn xử lý.
-\item Chia yêu cầu thành task, gán người thực hiện và người kiểm thử.
-\item Cập nhật trạng thái theo luồng hợp lệ: Backlog $\rightarrow$ Todo $\rightarrow$ In progress $\rightarrow$ Review $\rightarrow$ Testing $\rightarrow$ Done.
+\item PORTFOLIO\_MANAGER tạo phiếu yêu cầu, giao TEAM\_LEAD và thời hạn.
+\item TEAM\_LEAD chia task phân tích cho BA, phát triển cho DEV, kiểm thử cho TEST.
+\item TEST tạo bug để DEV sửa; PORTFOLIO\_MANAGER nghiệm thu kết quả.
 \end{enumerate}
 \vspace{5mm}
-\small Task chuyển sang Blocked phải có lý do; work request không được hoàn tất khi còn task mở.
+\small Task bị chặn cần lý do; phiếu chỉ hoàn thành sau nghiệm thu và không còn bug nghiêm trọng.
 \end{frame}
 
 \begin{frame}{Chấm công và điều chỉnh công}
@@ -183,6 +183,7 @@ Kiểm thử & Spring Boot Test, MockMvc và H2.\\
 \item Nhân viên check-in và check-out.
 \item Một ngày có thể chứa nhiều phiên làm việc.
 \item Dữ liệu được tổng hợp theo ngày và tháng.
+\item Toàn công ty: có mặt, đi muộn, vắng mặt, nghỉ không lương, phép năm có lương.
 \end{itemize}
 \column{.48\textwidth}
 \textbf{Sửa sai có kiểm soát}
@@ -200,6 +201,7 @@ Kiểm thử & Spring Boot Test, MockMvc và H2.\\
 \item Đơn nghỉ lưu loại nghỉ, khoảng ngày, phần ngày và lý do.
 \item Bộ tính ngày làm việc xử lý cả trường hợp nghỉ nửa ngày.
 \item Đơn nghỉ năm liên quan đến hạn mức và số dư phép.
+\item Chỉ đơn đã duyệt mới được tính vào trạng thái nghỉ trên bảng công.
 \item Yêu cầu làm việc tại nhà hoặc tại khách hàng được quản lý riêng với nghỉ phép.
 \item Người gửi không tự phê duyệt yêu cầu của mình.
 \end{itemize}
@@ -238,13 +240,13 @@ Kiểm thử & Spring Boot Test, MockMvc và H2.\\
 \item Địa điểm làm việc và bảng công
 \end{itemize}
 \column{.44\textwidth}
-\begin{block}{Lần chạy ngày 02/11/2026}
-48 ca kiểm thử\\[2mm]
-47 đạt, 1 thất bại
+\begin{block}{Lần chạy ngày 07/11/2026}
+51 ca kiểm thử\\[2mm]
+51 đạt, 0 thất bại
 \end{block}
 \end{columns}
 \vspace{4mm}
-\small Ca thất bại liên quan đến chỉ tiêu ngày công khi duyệt nửa ngày nghỉ năm: mong đợi 5,5 nhưng nhận 1,5.
+\small Ca kiểm thử mới xác nhận phép năm và nghỉ không lương chỉ hiện khi đơn đã duyệt; API toàn công ty chỉ dành cho HR và ADMIN.
 \end{frame}
 
 \begin{frame}{Demo trên máy local}
@@ -263,7 +265,7 @@ Kiểm thử & Spring Boot Test, MockMvc và H2.\\
 \setlength{\itemsep}{10pt}
 \item Bản demo kết nối dữ liệu tổ chức, công việc và thời gian làm việc trong một ứng dụng web.
 \item Các thao tác quan trọng được giới hạn bằng vai trò, phạm vi dữ liệu và trạng thái nghiệp vụ.
-\item Bộ kiểm thử backend đã phát hiện một sai khác ở phép tính ngày công nửa ngày nghỉ năm.
+\item Bộ kiểm thử backend đạt 51/51 ca; frontend build thành công.
 \end{itemize}
 \vspace{6mm}
 \begin{block}{Hướng hoàn thiện}

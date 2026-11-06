@@ -26,7 +26,7 @@ class WorkLocationRequestIntegrationTest {
     @Test
     void workFromHomeRequestFollowsManagerThenAdminApproval() throws Exception {
         LocalDate day = LocalDate.now().plusDays(10);
-        String member = login("member_1_1", "member123");
+        String member = login("dev_1_1", "member123");
         String response = mockMvc.perform(post("/api/v1/work-location-requests")
                         .header("Authorization", "Bearer " + member)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -47,7 +47,7 @@ class WorkLocationRequestIntegrationTest {
     void clientSiteRequiresClientIdentityAndAddress() throws Exception {
         LocalDate day = LocalDate.now().plusDays(11);
         mockMvc.perform(post("/api/v1/work-location-requests")
-                        .header("Authorization", "Bearer " + login("member_1_1", "member123"))
+                        .header("Authorization", "Bearer " + login("dev_1_1", "member123"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(Map.of(
                                 "type", "CLIENT_SITE", "fromDate", day, "toDate", day,

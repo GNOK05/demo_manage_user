@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth.service';
 import { CompanyApiService } from '../../core/company-api.service';
 import { SidebarComponent } from '../../core/layout/sidebar.component';
-import { AnnualLeaveBalance, Attendance, Department, DepartmentAttendanceSummary, LeaveRequest, PayrollMonthlyReport, User } from '../../core/models';
+import { AnnualLeaveBalance, Attendance, CompanyAttendanceCategory, CompanyDaySummary, Department, DepartmentAttendanceSummary, LeaveRequest, PayrollMonthlyReport, User } from '../../core/models';
 import { computeWorkStatus, isAttendanceAdjustmentDateAllowed, localDateIso, parseVietnamDateTime, WORK_STATUS_LABEL } from '../../core/work-status';
 import { finalize } from 'rxjs';
 import { Router } from '@angular/router';
@@ -26,6 +26,7 @@ export class AttendanceComponent implements OnInit {
   selfBalance = signal<AnnualLeaveBalance | null>(null);
   payrollReport = signal<PayrollMonthlyReport | null>(null);
   departmentAttendanceSummary = signal<DepartmentAttendanceSummary | null>(null);
+  companyDay = signal<CompanyDaySummary | null>(null);
   selectedAttendanceDate = localDateIso();
   selectedDepartmentId = signal<number | null>(null);
   selectedEmployeeId = signal<number | null>(null);
@@ -64,7 +65,29 @@ export class AttendanceComponent implements OnInit {
       this.loadPayrollReport();
       return;
     }
+    if (this.isAdmin()) this.loadCompanyDay();
     this.loadDepartmentsAndEmployees();
+  }
+
+  loadCompanyDay() {
+    if (!this.isAdmin() || !this.selectedAttendanceDate) return;
+    this.api.companyAttendanceDay(this.selectedAttendanceDate).subscribe({
+      next: summary => this.companyDay.set(summary),
+      error: error => this.errorMessage.set(error?.error?.message || 'Không thể tải chấm công toàn công ty.'),
+    });
+  }
+  companyRows() {
+    const rows = this.companyDay()?.employees || [];
+    const departmentId = this.selectedDepartmentId();
+    const departmentName = this.departments().find(department => department.id === departmentId)?.name;
+    const selected = departmentId == null ? rows : rows.filter(row => row.department === departmentName);
+    const query = this.search().trim().toLocaleLowerCase('vi-VN');
+    return query ? selected.filter(row => `${row.fullName} ${row.username}`.toLocaleLowerCase('vi-VN').includes(query)) : selected;
+  }
+  companyCategoryLabel(category: CompanyAttendanceCategory) {
+    return ({ PRESENT: 'Có mặt', LATE: 'Đi muộn', ABSENT: 'Vắng mặt',
+      UNPAID_LEAVE: 'Nghỉ không lương', PAID_ANNUAL_LEAVE: 'Phép năm có lương',
+      OTHER_LEAVE: 'Nghỉ khác đã duyệt', OFF_DAY: 'Ngày nghỉ', PENDING: 'Chưa ghi nhận' })[category];
   }
 
   title() {
@@ -72,7 +95,7 @@ export class AttendanceComponent implements OnInit {
   }
 
   isSelf() {
-    return this.auth.hasRole(['MEMBER', 'QA', 'VIEWER', 'PORTFOLIO_MANAGER']);
+    return this.auth.hasRole(['BA', 'DEV', 'TEST', 'VIEWER', 'PORTFOLIO_MANAGER']);
   }
 
   localDate() {
@@ -371,8 +394,19 @@ export class AttendanceComponent implements OnInit {
   attendanceStatusLabel(status: string) {
     return ({ PRESENT: 'Có mặt', LATE: 'Đi muộn', LEAVE: 'Nghỉ phép', ABSENT: 'Vắng mặt' } as Record<string, string>)[status] ?? status;
   }
+  attendanceDayLabel(date: string, record: Attendance) {
+    const leave = this.leaveForDate(date);
+    return leave?.type === 'ANNUAL' ? 'Phép năm có lương'
+      : leave?.type === 'UNPAID' ? 'Nghỉ không lương'
+      : leave ? this.leaveTypeLabel(leave.type) : this.attendanceStatusLabel(record.status);
+  }
+  attendanceDayClass(date: string, record: Attendance) {
+    return this.leaveForDate(date) ? 'LEAVE' : record.status;
+  }
 
   leaveForDate(date: string) {
+    const weekday = new Date(`${date}T12:00:00`).getDay();
+    if (weekday === 0 || weekday === 6) return undefined;
     return (this.isSelf() ? this.selfLeaves() : this.selectedLeaves()).find((request) =>
       request.status === 'APPROVED' && request.fromDate <= date && request.toDate >= date);
   }

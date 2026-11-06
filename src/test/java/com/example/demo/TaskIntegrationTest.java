@@ -117,6 +117,15 @@ public class TaskIntegrationTest {
         var deptNode = mapper.readTree(deptRes.getResponse().getContentAsString());
         long deptId = deptNode.at("/data/id").asLong();
 
+        String leadBody = mapper.writeValueAsString(Map.of(
+                "username", "integration_lead_2", "password", "lead123",
+                "fullName", "Integration Lead", "email", "integration.lead2@company.local",
+                "role", "TEAM_LEAD", "departmentId", deptId));
+        var leadRes = mockMvc.perform(post("/api/v1/users").contentType(MediaType.APPLICATION_JSON)
+                .content(leadBody).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andReturn();
+        long leadId = mapper.readTree(leadRes.getResponse().getContentAsString()).at("/data/id").asLong();
+
         // create project
         String projectBody = mapper.writeValueAsString(Map.of(
                 "projectName", "Integration Project 2",
@@ -135,6 +144,7 @@ public class TaskIntegrationTest {
                 "title", "Integration Request",
                 "description", "Request for task integration test",
                 "executingDepartmentId", deptId,
+                "coordinatorId", leadId,
                 "startDate", LocalDate.now().toString(),
                 "deadline", LocalDate.now().plusDays(30).toString(),
                 "priority", "URGENT"
@@ -213,7 +223,7 @@ public class TaskIntegrationTest {
 
                 mockMvc.perform(get("/api/v1/tasks")
                                                 .param("keyword", "engineer")
-                                                .param("role", "MEMBER")
+                                                .param("role", "DEV")
                                                 .param("status", "IN_PROGRESS")
                                                 .param("sort", "DEADLINE_ASC")
                                                 .header("Authorization", "Bearer " + token))

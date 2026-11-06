@@ -10,4 +10,10 @@ public final class AttendanceDto {
                            LocalDateTime checkOutTime, AttendanceStatus status, List<Session> sessions) {}
     public record DepartmentSummary(LocalDate date, long totalEmployees, long present, long late,
                                     long absent, long leave) {}
+    public record CompanyDayRow(Long userId, String username, String fullName, String department,
+                                String category) {}
+    public record CompanyDaySummary(LocalDate date, long present, long late, long absent,
+                                    long unpaidLeave, long paidAnnualLeave, long otherLeave,
+                                    long offDay, long pending,
+                                    List<CompanyDayRow> employees) {}
 }

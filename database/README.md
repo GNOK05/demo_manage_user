@@ -15,6 +15,16 @@ Hibernate runs with `ddl-auto: validate` and `show-sql: false`. The running MySQ
 
 Automated tests continue to use isolated in-memory H2 databases and do not change this MySQL database.
 
+## Recent demo attendance
+
+Use `scripts/seed-attendance-through-today.sql` as the single script for recent attendance data. It fills missing weekdays from 2026-11-03 and adds a small Saturday shift on 2026-11-07. Rerunning it leaves existing attendance and sessions unchanged. The SQL file is an import script; the running application's data lives in the MySQL `company_management` database.
+
+## Work request workflow upgrade
+
+For an existing MySQL database, back it up before upgrading. Run `scripts/migrate-workflow-tasks.sql` once to add task types, bug links, and request history. Then run `scripts/migrate-workflow-roles.sql` to migrate `MEMBER` to `DEV`/`BA` and `QA` to `TEST`. The latter keeps usernames and foreign keys intact and also permits `PORTFOLIO_MANAGER` in the database role constraint. Run these scripts before starting the updated backend because Hibernate uses `ddl-auto: validate`.
+
+The role migration assigns one existing `staff_*` account per department to `BA` and the remaining specialists to `DEV`. It renames sample logins to `ba_*`, `dev_*`, and `test_*` without changing user IDs or password hashes. An admin can adjust individual assignments in the People screen. A local `portfolio_manager` account was created separately through the user API; the migration does not create it on other databases.
+
 ## Demo data for September-November 2026
 
 Run `scripts/seed-demo-sep-nov-2026.sql` against `company_management` to populate every calendar day for active employees. The script also adds representative leave, work-location, and attendance-adjustment requests. It can be rerun without duplicating rows. November dates after the import day are simulated records for demonstration.

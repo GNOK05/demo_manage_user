@@ -71,12 +71,12 @@ export class DashboardComponent implements OnInit {
   }
 
   canCheckInOut() {
-    return this.auth.hasRole(['MEMBER', 'QA', 'PROJECT_MANAGER', 'TEAM_LEAD']);
+    return this.auth.hasRole(['BA', 'DEV', 'TEST', 'PROJECT_MANAGER', 'TEAM_LEAD']);
   }
 
   loadEmployees() {
     const role = this.auth.user()?.role;
-    if (['MEMBER', 'QA', 'VIEWER', 'PORTFOLIO_MANAGER'].includes(role || '')) return;
+    if (['BA', 'DEV', 'TEST', 'VIEWER', 'PORTFOLIO_MANAGER'].includes(role || '')) return;
     const request = role === 'ADMIN' || role === 'HR' ? this.api.users() : this.api.departmentMembers();
     this.request(
       request,

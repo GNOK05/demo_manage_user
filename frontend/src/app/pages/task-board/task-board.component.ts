@@ -15,6 +15,7 @@ import {
   TaskStatus,
   User,
   WorkRequest,
+  WorkRequestHistory,
 } from '../../core/models';
 import { finalize, forkJoin } from 'rxjs';
 import { localDateIso } from '../../core/work-status';
@@ -33,6 +34,7 @@ export class TaskBoardComponent implements OnInit {
   projects = signal<Project[]>([]);
   workRequests = signal<WorkRequest[]>([]);
   currentRequest = signal<WorkRequest | null>(null);
+  history = signal<WorkRequestHistory[]>([]);
   expandedProjectId = signal<number | null>(null);
   expandedRequestId = signal<number | null>(null);
   search = signal('');
@@ -56,6 +58,7 @@ export class TaskBoardComponent implements OnInit {
     assignedToId: null,
     testerId: null,
     status: 'BACKLOG',
+    taskType: 'DEVELOPMENT',
     priority: 'NORMAL',
     startDate: localDateIso(),
     deadline: localDateIso(),
@@ -73,13 +76,14 @@ export class TaskBoardComponent implements OnInit {
     if (!requestId) return;
     this.expandedRequestId.set(requestId);
     this.loading.set(true);
-    forkJoin({ request: this.api.workRequest(requestId), tasks: this.api.tasksByWorkRequest(requestId) })
+    forkJoin({ request: this.api.workRequest(requestId), tasks: this.api.tasksByWorkRequest(requestId), history: this.api.workRequestHistory(requestId) })
       .pipe(finalize(() => this.loading.set(false))).subscribe({
-        next: ({ request, tasks }) => {
+        next: ({ request, tasks, history }) => {
           this.currentRequest.set(request);
           this.workRequests.set([request]);
           this.expandedProjectId.set(request.projectId);
           this.tasks.set(tasks);
+          this.history.set(history);
           this.api.project(request.projectId).subscribe((project) => this.projects.set([project]));
           if (!this.route.snapshot.paramMap.get('projectId')) {
             this.router.navigate(['/work/projects', request.projectId, 'requests', request.id], { replaceUrl: true });
@@ -88,7 +92,7 @@ export class TaskBoardComponent implements OnInit {
         error: (error) => this.errorMessage.set(error?.error?.message || 'Không thể tải task của phiếu yêu cầu'),
       });
     if (this.canCreateTask()) {
-      if (this.auth.hasRole(['MEMBER', 'QA'])) {
+      if (this.auth.hasRole(['DEV', 'TEST'])) {
         const current = this.auth.user();
         this.employees.set(current ? [current] : []);
       } else {
@@ -224,6 +228,8 @@ export class TaskBoardComponent implements OnInit {
       assignedToId: task.assignedToId ?? null,
       testerId: task.testerId ?? null,
       status: task.status,
+      taskType: task.taskType,
+      relatedTaskId: task.relatedTaskId ?? null,
       priority: task.priority,
       startDate: task.startDate,
       deadline: task.deadline,
@@ -236,6 +242,7 @@ export class TaskBoardComponent implements OnInit {
 
   openCreate() {
     this.resetForm();
+    if (this.auth.hasRole(['TEST'])) this.draft.taskType = 'BUG';
     this.draft.projectId = this.expandedProjectId();
     this.draft.workRequestId = this.expandedRequestId();
     const request = this.workRequests().find((item) => item.id === this.draft.workRequestId);
@@ -274,6 +281,8 @@ export class TaskBoardComponent implements OnInit {
       assignedToId: this.draft.assignedToId || null,
       testerId: this.draft.testerId || null,
       status: this.draft.status,
+      taskType: this.draft.taskType,
+      relatedTaskId: this.draft.relatedTaskId,
       priority: this.draft.priority,
       startDate: this.draft.startDate,
       deadline: this.draft.deadline,
@@ -372,6 +381,7 @@ export class TaskBoardComponent implements OnInit {
       assignedToId: null,
       testerId: null,
       status: 'BACKLOG',
+      taskType: 'DEVELOPMENT',
       priority: 'NORMAL',
       startDate: localDateIso(),
       deadline: localDateIso(),
@@ -379,7 +389,8 @@ export class TaskBoardComponent implements OnInit {
   }
 
   isPo() {
-    return this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEAD']);
+    return this.auth.hasRole(['ADMIN']) || this.auth.hasRole(['TEAM_LEAD'])
+      && this.currentRequest()?.coordinatorId === this.auth.user()?.id;
   }
 
   allowedStatuses(task: Task): TaskStatus[] {
@@ -395,7 +406,7 @@ export class TaskBoardComponent implements OnInit {
     };
     const role = this.auth.user()?.role;
     if (role === 'VIEWER') return [task.status];
-    const manager = role === 'ADMIN' || role === 'PORTFOLIO_MANAGER' || role === 'PROJECT_MANAGER' || role === 'TEAM_LEAD';
+    const manager = this.isPo();
     const assignee = this.auth.user()?.id === task.assignedToId;
     const tester = this.auth.user()?.id === task.testerId;
     const allowed = transitions[task.status] ?? [];
@@ -405,7 +416,7 @@ export class TaskBoardComponent implements OnInit {
         if (['CANCELLED', 'BACKLOG'].includes(next) || task.status === 'BACKLOG') return manager;
         if (task.status === 'REVIEW') return manager;
         if (task.status === 'TESTING' && ['DONE', 'IN_PROGRESS'].includes(next)) {
-          return manager || tester || role === 'QA';
+          return manager || tester;
         }
         return manager || assignee;
       }),
@@ -413,20 +424,44 @@ export class TaskBoardComponent implements OnInit {
   }
 
   canCreateTask() {
-    return this.auth.hasRole(['ADMIN', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEAD', 'MEMBER', 'QA']);
+    return this.auth.hasRole(['ADMIN', 'TEAM_LEAD', 'TEST']);
   }
+  taskTypes() {
+    return this.auth.hasRole(['TEST'])
+      ? ['BUG']
+      : ['ANALYSIS', 'DEVELOPMENT', 'TESTING', 'BUG', 'REVIEW', 'DEPLOYMENT'];
+  }
+  developmentTasks() { return this.tasks().filter(task => task.taskType === 'DEVELOPMENT'); }
+  canSubmitResult(task: Task) {
+    const user = this.auth.user();
+    return task.status !== 'DONE' && task.status !== 'CANCELLED' && !!user
+      && (user.role === 'ADMIN' || this.isPo() || task.assignedToId === user.id
+        || task.taskType === 'TESTING' && task.testerId === user.id);
+  }
+  submitResult(task: Task) {
+    const result = window.prompt('Kết quả thực hiện, tài liệu, PR hoặc báo cáo kiểm thử:', task.resultSummary || '');
+    if (!result?.trim()) return;
+    this.api.submitTaskResult(task.id, result.trim()).subscribe({
+      next: () => this.load(),
+      error: error => this.errorMessage.set(error?.error?.message || 'Không thể lưu kết quả task'),
+    });
+  }
+  groupProgress(types: string[]) {
+    const group = this.tasks().filter(task => types.includes(task.taskType) && task.status !== 'CANCELLED');
+    return `${group.filter(task => task.status === 'DONE').length}/${group.length}`;
+  }
+  blockedTasks() { return this.tasks().filter(task => task.status === 'BLOCKED'); }
 
   canEditTask(task: Task) {
     if (this.auth.hasRole(['HR', 'VIEWER'])) return false;
     const userId = this.auth.user()?.id;
-    return this.isPo() || !!userId && [task.assignedToId, task.testerId, task.createdById].includes(userId);
+    return this.isPo() || this.auth.hasRole(['TEST']) && task.taskType === 'BUG' && task.createdById === userId;
   }
 
   canDeleteTask(task: Task) {
     const role = this.auth.user()?.role;
-    if (role === 'ADMIN' || role === 'PORTFOLIO_MANAGER') return true;
-    if (!this.auth.hasRole(['PROJECT_MANAGER', 'TEAM_LEAD'])) return false;
-    return role !== 'TEAM_LEAD' || task.status !== 'DONE';
+    if (role === 'ADMIN') return true;
+    return this.isPo() && task.status !== 'DONE';
   }
 
   canMoveTask(task: Task) {
@@ -474,7 +509,7 @@ export class TaskBoardComponent implements OnInit {
   eligibleTesters() {
     const departmentIds = this.projects()[0]?.participatingDepartments.map((department) => department.id) || [];
     return this.employees().filter((user) =>
-      user.role === 'QA' && !!user.departmentId && departmentIds.includes(user.departmentId));
+      user.role === 'TEST' && !!user.departmentId && departmentIds.includes(user.departmentId));
   }
 
   onWorkRequestSelected() {
@@ -508,7 +543,7 @@ export class TaskBoardComponent implements OnInit {
   }
 
   requestStatusLabel(status: WorkRequest['status']) {
-    return { DRAFT: 'Bản nháp', READY: 'Sẵn sàng', IN_PROGRESS: 'Đang thực hiện', PENDING_ACCEPTANCE: 'Chờ nghiệm thu', COMPLETED: 'Hoàn thành', CANCELLED: 'Đã hủy' }[status];
+    return { DRAFT: 'Mới tạo', ANALYSIS: 'Phân tích', READY: 'Sẵn sàng', IN_PROGRESS: 'Đang thực hiện', DEVELOPMENT: 'Đang phát triển', TESTING: 'Đang kiểm thử', PENDING_ACCEPTANCE: 'Chờ nghiệm thu', CHANGES_REQUESTED: 'Yêu cầu chỉnh sửa', PAUSED: 'Tạm dừng', COMPLETED: 'Hoàn thành', CANCELLED: 'Đã hủy' }[status];
   }
 
   roleScopeLabel() {

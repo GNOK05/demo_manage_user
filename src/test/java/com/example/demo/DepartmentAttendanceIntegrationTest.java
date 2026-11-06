@@ -46,7 +46,7 @@ class DepartmentAttendanceIntegrationTest {
     @Test
     void employeeCannotReadDepartmentSummaryAndFutureDateIsRejected() throws Exception {
         String manager = login("lead_1", "lead123");
-        String employee = login("member_1_1", "member123");
+        String employee = login("dev_1_1", "member123");
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
 
         mockMvc.perform(get("/api/v1/attendance/department/summary")

@@ -15,5 +15,6 @@ public interface WorkRequestService {
     WorkRequestDto.Response create(Long projectId, WorkRequestDto.SaveRequest request);
     WorkRequestDto.Response update(Long id, WorkRequestDto.SaveRequest request);
     WorkRequestDto.Response updateStatus(Long id, WorkRequestDto.StatusRequest request);
+    java.util.List<WorkRequestDto.HistoryResponse> history(Long id);
     void delete(Long id);
 }

@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 @RestController
 @RequestMapping("/api/v1/payroll")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN','HR','PORTFOLIO_MANAGER','PROJECT_MANAGER','TEAM_LEAD','MEMBER','QA','VIEWER')")
+@PreAuthorize("hasAnyRole('ADMIN','HR','PORTFOLIO_MANAGER','PROJECT_MANAGER','TEAM_LEAD','BA','DEV','TEST','VIEWER')")
 public class PayrollController {
     private final PayrollService payroll;
 

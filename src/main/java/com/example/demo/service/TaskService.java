@@ -13,5 +13,6 @@ public interface TaskService {
     TaskDto.Response save(TaskDto.SaveRequest r);
     TaskDto.Response update(Long id, TaskDto.SaveRequest r);
     TaskDto.Response updateStatus(Long id, TaskDto.StatusRequest r);
+    TaskDto.Response updateResult(Long id, TaskDto.ResultRequest r);
     void delete(Long id);
 }

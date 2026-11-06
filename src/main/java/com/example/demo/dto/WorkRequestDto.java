@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public final class WorkRequestDto {
     private WorkRequestDto() {}
@@ -24,6 +25,8 @@ public final class WorkRequestDto {
     ) {}
 
     public record StatusRequest(@NotNull WorkRequestStatus status, @Size(max = 500) String reason) {}
+    public record HistoryResponse(WorkRequestStatus fromStatus, WorkRequestStatus toStatus,
+                                  String reason, String actorName, LocalDateTime changedAt) {}
 
     public record Response(
         Long id, String requestCode, Long projectId, String projectName,

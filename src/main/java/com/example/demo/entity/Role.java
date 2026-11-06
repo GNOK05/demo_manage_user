@@ -6,8 +6,9 @@ public enum Role {
     PORTFOLIO_MANAGER,
     PROJECT_MANAGER,
     TEAM_LEAD,
-    MEMBER,
-    QA,
+    BA,
+    DEV,
+    TEST,
     VIEWER;
 
     public boolean canManageUsers() {

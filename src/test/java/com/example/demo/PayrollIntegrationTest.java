@@ -32,14 +32,14 @@ class PayrollIntegrationTest {
     @Test
     void employeesSeeOnlyTheirOwnPayrollAndManagersSeeOnlyTheirDepartment() throws Exception {
         YearMonth period = YearMonth.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-        String employee = login("member_1_1", "member123");
+        String employee = login("dev_1_1", "member123");
         mockMvc.perform(get("/api/v1/payroll/monthly")
                         .param("year", String.valueOf(period.getYear()))
                         .param("month", String.valueOf(period.getMonthValue()))
                         .header("Authorization", "Bearer " + employee))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.employees.length()").value(1))
-                .andExpect(jsonPath("$.data.employees[0].username").value("member_1_1"))
+                .andExpect(jsonPath("$.data.employees[0].username").value("dev_1_1"))
                 .andReturn();
 
         String manager = login("lead_1", "lead123");

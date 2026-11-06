@@ -45,7 +45,7 @@ public class PayrollServiceImpl implements PayrollService {
             .filter(user -> user.getRole() != Role.ADMIN).toList();
         else if (current.getRole().canReviewPeopleInDepartment() && current.getDepartment() != null) {
             employees = users.findByDepartmentId(current.getDepartment().getId());
-        } else if (current.getRole() == Role.MEMBER || current.getRole() == Role.QA
+        } else if (current.getRole() == Role.BA || current.getRole() == Role.DEV || current.getRole() == Role.TEST
                 || current.getRole() == Role.VIEWER || current.getRole() == Role.PORTFOLIO_MANAGER) employees = List.of(current);
         else throw new BussinessException("Only employees, managers, and admins can access payroll attendance reports");
 

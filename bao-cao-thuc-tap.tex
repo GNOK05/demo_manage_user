@@ -58,7 +58,7 @@ Báo cáo trình bày quá trình phân tích và phát triển \projectname{}, 
 
 Backend sử dụng Java 21, Spring Boot 3.4.5, Spring Data JPA, MySQL và Spring Security kết hợp JSON Web Token. Frontend sử dụng Angular 22, TypeScript và RxJS. Hệ thống có phân quyền theo vai trò, quy trình trạng thái, khóa kỳ công, xuất Excel và bộ test dùng Spring Boot Test cùng H2.
 
-Phương pháp thực hiện gồm phân tích yêu cầu, thiết kế mô hình dữ liệu và API, triển khai phân lớp, sau đó kiểm tra bằng các ca kiểm thử tích hợp. Trong lần chạy ngày 02/11/2026, bộ test backend hoàn tất 48 ca, gồm 47 ca đạt và 1 ca lỗi ở kiểm tra tổng hợp ngày công khi duyệt nửa ngày nghỉ năm. Kết quả này chỉ ra một điểm cần điều tra trước khi xem chức năng bảng công là hoàn thiện.
+Phương pháp thực hiện gồm phân tích yêu cầu, thiết kế mô hình dữ liệu và API, triển khai phân lớp, sau đó kiểm tra bằng các ca kiểm thử tích hợp. Lần chạy ngày 07/11/2026 với JDK 21 hoàn tất 51 ca backend, tất cả đều đạt. Giao diện Angular cũng được build thành công.
 
 \noindent\textbf{Từ khóa:} quản lý doanh nghiệp, Spring Boot, Angular, MySQL, JWT, chấm công, quản lý dự án.
 
@@ -177,12 +177,13 @@ Người có quyền chọn tháng và năm để xem tổng hợp ngày làm vi
 \begin{tabularx}{\textwidth}{p{3.3cm}X}\toprule
 \textbf{Vai trò}&\textbf{Trách nhiệm chính}\\\midrule
 ADMIN&Quản trị hệ thống, dữ liệu, phê duyệt cấp cuối, khóa/mở kỳ công.\\
-HR&Quản lý nhân sự, xem dữ liệu phòng ban, hỗ trợ phê duyệt và báo cáo.\\
-PROJECT\
-MANAGER&Quản lý dự án, work request và task trong phạm vi được tham gia.\\
-TEAM\_LEAD&Điều phối công việc/phê duyệt của phòng ban.\\
-MEMBER&Thực hiện task được giao, chấm công và gửi yêu cầu cá nhân.\\
-QA&Kiểm thử nhiệm vụ và cập nhật trạng thái testing.\\
+HR&Quản lý nhân sự, duyệt cuối đơn nghỉ và điều chỉnh công, xem báo cáo.\\
+PORTFOLIO\_MANAGER&Quản lý danh mục dự án, tạo phiếu yêu cầu và nghiệm thu.\\
+PROJECT\_MANAGER&Quản lý dự án trong phạm vi được giao.\\
+TEAM\_LEAD&Phân rã phiếu yêu cầu, giao task và điều phối tiến độ.\\
+BA&Phân tích nghiệp vụ, đặc tả và tiêu chí nghiệm thu.\\
+DEV&Phát triển, sửa bug và cập nhật kết quả task.\\
+TEST&Viết test case, kiểm thử, tạo bug và kiểm thử lại.\\
 VIEWER&Chỉ xem dữ liệu được phép, không thay đổi dữ liệu.\\\bottomrule
 \end{tabularx}\end{table}
 
@@ -196,7 +197,7 @@ F04&Dashboard&Tổng hợp nhân viên, phòng ban, dự án, task, quá hạn v
 F05&Dự án&Quản lý tên, mô tả, phòng ban, thời gian và trạng thái dự án.\\
 F06&Work request&Theo dõi yêu cầu liên phòng ban, điều phối viên, ưu tiên, deadline và nghiệm thu.\\
 F07&Task&Phân công người thực hiện/tester, cập nhật trạng thái, ưu tiên, hạn và lý do blocked.\\
-F08&Chấm công&Check-in, check-out, xem lịch sử cá nhân/phòng ban/nhân viên.\\
+F08&Chấm công&Check-in, check-out; xem công toàn công ty theo có mặt, đi muộn, vắng mặt, nghỉ không lương và phép năm có lương khi đơn đã duyệt.\\
 F09&Nghỉ phép&Tạo, duyệt, từ chối, hủy đơn; tính số ngày và số dư phép năm.\\
 F10&Địa điểm làm việc&Đăng ký WFH/client site và phê duyệt nhiều cấp.\\
 F11&Điều chỉnh công&Gửi yêu cầu sửa phiên chấm công và phê duyệt quản lý--ADMIN.\\
@@ -270,7 +271,7 @@ Có ba nhóm lỗi cần phân biệt. Lỗi đầu vào gồm thiếu trường
 \begin{table}[H]\centering\caption{Các nhóm thực thể dữ liệu}
 \begin{tabularx}{\textwidth}{p{4cm}X}\toprule\textbf{Nhóm}&\textbf{Thực thể và quan hệ}\\\midrule
 Tổ chức&Department liên kết User, Project, WorkRequest; ProjectDepartment biểu diễn phòng ban tham gia.\\
-Công việc&Project--WorkRequest--Task; task có người thực hiện, người tạo và QA/tester.\\
+Công việc&Project--WorkRequest--Task; task có người thực hiện, người tạo và TEST.\\
 Chấm công&Attendance là bản ghi theo ngày; AttendanceSession lưu các phiên vào/ra.\\
 Nghỉ phép&LeaveRequest liên kết người gửi/người duyệt; AnnualLeaveBalance lưu hạn mức năm.\\
 Điều chỉnh&AttendanceAdjustmentRequest lưu giá trị gốc, giá trị đề nghị, lý do và trạng thái.\\
@@ -302,7 +303,7 @@ PayrollPeriod&Mỗi cặp năm--tháng có tối đa một kỳ; kỳ đóng gi�
 \section{Quy trình trạng thái}
 Work request đi qua \code{DRAFT}, \code{READY}, \code{IN\_PROGRESS}, \code{PENDING\_ACCEPTANCE}, \code{COMPLETED} hoặc \code{CANCELLED}. Không thể chuyển sang nghiệm thu khi còn task mở.
 
-Task dùng \code{BACKLOG}, \code{TODO}, \code{IN\_PROGRESS}, \code{REVIEW}, \code{TESTING}, \code{BLOCKED}, \code{DONE}, \code{CANCELLED}. Khi chuyển sang BLOCKED bắt buộc có lý do. Manager/team lead điều phối, assignee thực thi, QA/tester xử lý kiểm thử.
+Task dùng \code{BACKLOG}, \code{TODO}, \code{IN\_PROGRESS}, \code{REVIEW}, \code{TESTING}, \code{BLOCKED}, \code{DONE}, \code{CANCELLED}. Khi chuyển sang BLOCKED bắt buộc có lý do. TEAM\_LEAD điều phối, BA/DEV/TEST thực hiện công việc theo vai trò.
 
 \begin{figure}[H]\centering
 \begin{tikzpicture}[
@@ -386,7 +387,7 @@ frontend/src/app/
 Dashboard gọi \code{/api/v1/dashboard/summary} để hiển thị số nhân viên, phòng ban, dự án, task, task quá hạn và đơn nghỉ chờ duyệt. NotificationController tổng hợp thông báo từ task gần hạn/quá hạn, work request gần deadline, đơn nghỉ có quyết định và yêu cầu cần người dùng xử lý.
 
 \subsection{Dự án, work request và task}
-Dự án có phòng ban sở hữu và các phòng ban tham gia. Work request có mã tự sinh, tiêu đề, mô tả, acceptance criteria, ưu tiên, coordinator, ngày bắt đầu và deadline. Task bắt buộc thuộc work request; assignee phải thuộc phòng ban thực hiện, tester phải có role QA và thuộc phòng ban tham gia dự án. Deadline task phải nằm trong khoảng work request.
+Dự án có phòng ban sở hữu và các phòng ban tham gia. PORTFOLIO\_MANAGER tạo phiếu yêu cầu với mức ưu tiên, thời hạn và giao TEAM\_LEAD; TEAM\_LEAD phân rã thành task phân tích, phát triển, kiểm thử, sửa lỗi hoặc review. BA đặc tả yêu cầu, DEV phát triển, TEST kiểm thử và tạo bug liên kết khi phát hiện lỗi. PORTFOLIO\_MANAGER nghiệm thu sau khi các task bắt buộc hoàn thành và không còn bug nghiêm trọng chưa xử lý. Task bắt buộc thuộc work request; người thực hiện và người kiểm thử phải có quyền phù hợp trong dự án.
 
 \begin{lstlisting}[language=Java,caption={Kiểm tra transition và lý do blocked}]
 if (!TRANSITIONS.getOrDefault(from, EnumSet.noneOf(TaskStatus.class))
@@ -399,7 +400,7 @@ if (to == TaskStatus.BLOCKED && (reason == null || reason.isBlank())) {
 \end{lstlisting}
 
 \subsection{Chấm công}
-Người dùng check-in/check-out. Attendance bảo đảm tối đa một bản ghi/người/ngày; AttendanceSession lưu nhiều phiên trong ngày. Múi giờ nghiệp vụ là Asia/Ho\_Chi\_Minh; check-in sau 09:00 được đánh dấu LATE. Có các chế độ xem cá nhân, theo ngày, phòng ban và nhân viên theo tháng.
+Người dùng check-in/check-out. Attendance bảo đảm tối đa một bản ghi/người/ngày; AttendanceSession lưu nhiều phiên trong ngày. Múi giờ nghiệp vụ là Asia/Ho\_Chi\_Minh; check-in sau 09:00 được đánh dấu LATE. Có các chế độ xem cá nhân, theo ngày, phòng ban và nhân viên theo tháng. Tab toàn công ty tổng hợp từng người theo có mặt, đi muộn, vắng mặt, nghỉ không lương, phép năm có lương và loại nghỉ khác. Chỉ đơn nghỉ đã duyệt mới thay trạng thái vắng mặt; ngày cuối tuần và ngày hiện tại chưa kết thúc được hiển thị riêng để tránh tính nhầm là vắng mặt.
 
 \subsubsection{Luồng check-in}
 Khi nhận yêu cầu check-in, service xác định danh tính từ ngữ cảnh bảo mật và lấy thời điểm hiện tại theo múi giờ nghiệp vụ. Sau đó service kiểm tra kỳ công tương ứng có đang đóng không và người dùng có một phiên chưa check-out hay không. Nếu hợp lệ, một phiên mới được tạo; bản ghi attendance của ngày được tìm hoặc tạo, và thông tin giờ vào cùng trạng thái ngày được cập nhật. Quy trình cần nằm trong giao dịch để tránh tình huống phiên đã lưu nhưng bản ghi ngày chưa được cập nhật. Khi hai request check-in đến gần như đồng thời, ràng buộc dữ liệu và xử lý xung đột phiên bản phải bảo đảm chỉ một kết quả hợp lệ.
@@ -515,16 +516,16 @@ Tổng quan&Thống kê và readiness&\code{DashboardIntegrationTest}, \code{Hea
 \section{Kết quả quan sát từ cấu trúc dự án}
 Mã nguồn có các lớp kiểm thử tương ứng với các nhóm chức năng nêu trong Bảng~\ref{tab:testmatrix}. Đây là bằng chứng về phạm vi kiểm thử đã được thiết kế, không tự nó chứng minh mọi ca đều thành công trên mọi máy. Trạng thái đạt/không đạt và số lượng test thực tế phải lấy từ một lần chạy \code{./gradlew test} kèm ngày, môi trường và log. Nếu có lỗi, cần phân biệt lỗi thiết lập môi trường với lỗi nghiệp vụ trước khi kết luận. Giao diện Angular có lệnh build trong \code{package.json}; build thành công kiểm tra khả năng biên dịch, chưa thay thế kiểm thử thao tác người dùng.
 
-\section{Kết quả chạy bộ test ngày 02/11/2026}
-Trên máy khảo sát, lệnh \code{.\textbackslash gradlew.bat test --console=plain} chạy với JDK 25.0.4.1. Gradle hoàn tất 48 ca: 47 ca đạt và 1 ca thất bại. Ca lỗi là \code{LeaveRequestApiIntegrationTest.approvedHalfDayAnnualLeaveDeductsHalfDayFromBalance}. Kiểm tra JSON path \code{\$.data.employees[0].payrollWorkDays} mong đợi 5.5 nhưng thực tế nhận 1.5. Điều này cho thấy quy tắc liên quan tới tổng hợp ngày công khi có nửa ngày nghỉ năm cần được điều tra thêm; chưa thể kết luận nguyên nhân chỉ từ một thông báo assertion. Báo cáo HTML do Gradle sinh nằm tại \code{build/reports/tests/test/index.html}. Lần chạy đầu bằng Java 8 dừng trước khi test vì Gradle cần JVM từ phiên bản 17 trở lên; đây là lỗi môi trường riêng với lỗi assertion nói trên.
+\section{Kết quả chạy bộ test ngày 07/11/2026}
+Trên máy khảo sát, lệnh \code{.\textbackslash gradlew.bat test --no-daemon} chạy với JDK 21. Gradle hoàn tất 51 ca trong 14 lớp kiểm thử, không có ca thất bại hoặc lỗi. Ca kiểm thử chấm công toàn công ty xác nhận rằng đơn nghỉ năm và nghỉ không lương đã duyệt thay trạng thái vắng mặt, còn đơn đang chờ không được tính là nghỉ. Báo cáo HTML do Gradle sinh nằm tại \code{build/reports/tests/test/index.html}. Lệnh \code{npm --prefix frontend run build} cũng hoàn tất thành công.
 
 \section{Đánh giá sơ bộ}
 Ưu điểm của thiết kế là ranh giới nghiệp vụ rõ, phân quyền ở cả endpoint và service, trạng thái quan trọng được giới hạn bằng transition map, test không phụ thuộc database thật. Việc tách Attendance thành bản ghi ngày và session phù hợp với nhiều phiên làm việc.
 
-Repository chưa có migration SQL hoặc cơ chế tự tạo schema; Hibernate dùng chế độ validate. Vì vậy bản demo phụ thuộc vào schema MySQL đã được chuẩn bị trên máy chạy thử.
+Repository có các script migration cho role và quy trình công việc; Hibernate dùng chế độ validate. Vì vậy bản demo vẫn phụ thuộc vào schema MySQL đã được chuẩn bị trên máy chạy thử.
 
-\subsection{Diễn giải ca kiểm thử thất bại}
-Sai khác giữa 5.5 ngày công được mong đợi và 1.5 ngày công thực nhận là một tín hiệu về cách phối hợp dữ liệu nghỉ phép với dữ liệu chấm công trong báo cáo tháng. Chỉ từ assertion không thể khẳng định lỗi nằm ở bộ tính ngày nghỉ, bộ lọc khoảng tháng, dữ liệu khởi tạo test hay công thức ngày công. Trình tự phân tích hợp lý là: đọc dữ liệu đầu vào của test; tính bằng tay số ngày làm, ngày nghỉ và ngày công mong đợi; lần theo hàm tạo báo cáo; kiểm tra phạm vi ngày được tải từ repository; cuối cùng so sánh giá trị trung gian. Báo cáo giữ ca này như một hạn chế đã quan sát, thay vì đưa ra kết luận nguyên nhân khi chưa đủ bằng chứng.
+\subsection{Kiểm thử trạng thái công và nghỉ}
+Tab chấm công toàn công ty tổng hợp trạng thái của mỗi người theo ngày từ bản ghi công và đơn nghỉ đã duyệt. Kiểm thử dùng cùng một ngày có ba bản ghi vắng mặt: người có đơn nghỉ năm đã duyệt được phân loại phép năm có lương, người có đơn nghỉ không lương đã duyệt được phân loại nghỉ không lương, còn người có đơn đang chờ vẫn vắng mặt. Test cũng xác nhận tài khoản DEV không được gọi API tổng hợp toàn công ty.
 
 \subsection{Giới hạn suy luận từ bộ test}
 Một bộ test backend chạy thành công sẽ chứng minh các ca đã viết đạt trong môi trường đã chạy. Nó không chứng minh mọi trường hợp nghiệp vụ đều được bao phủ. Các luồng qua giao diện có thể phát sinh lỗi hiển thị hoặc điều hướng mà MockMvc không phát hiện. H2 có thể xử lý kiểu ngày, ràng buộc hoặc truy vấn khác MySQL. Những ngày lễ, thay đổi múi giờ, thời gian qua nửa đêm và dữ liệu quy mô lớn cũng cần bộ test riêng. Vì vậy đánh giá ở đây là đánh giá có giới hạn theo bằng chứng hiện có.

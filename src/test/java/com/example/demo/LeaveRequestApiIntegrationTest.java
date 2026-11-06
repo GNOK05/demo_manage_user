@@ -52,7 +52,7 @@ class LeaveRequestApiIntegrationTest {
 
     @Test
     void hrCanViewCompanyLeaveHistoryBalancesAndFinalApprovalQueue() throws Exception {
-        long employeeId = users.findByUsername("member_1_1").orElseThrow().getId();
+        long employeeId = users.findByUsername("dev_1_1").orElseThrow().getId();
         String hr = login("hr", "hr123");
         mockMvc.perform(get("/api/v1/leave-requests/user/{userId}", employeeId)
                         .header("Authorization", "Bearer " + hr))
@@ -73,7 +73,7 @@ class LeaveRequestApiIntegrationTest {
                 "type", "UNPAID", "fromDate", day.toString(), "toDate", day.toString(),
                 "reason", "HR approval regression"));
         var created = mockMvc.perform(post("/api/v1/leave-requests")
-                        .header("Authorization", "Bearer " + login("member_2_2", "member123"))
+                        .header("Authorization", "Bearer " + login("dev_2_2", "member123"))
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -96,7 +96,7 @@ class LeaveRequestApiIntegrationTest {
 
     @Test
     void employeeCanSubmitAndManagerCanApproveUsingDecisionPayload() throws Exception {
-                String employeeToken = login("member_1_1", "member123");
+                String employeeToken = login("dev_1_1", "member123");
         String requestBody = mapper.writeValueAsString(Map.of(
                 "type", "ANNUAL",
                 "fromDate", LocalDate.now().plusDays(2).toString(),
@@ -132,7 +132,7 @@ class LeaveRequestApiIntegrationTest {
 
             @Test
             void employeeCanCancelFutureLeaveWithoutApprovalAndAnnualBalanceIsReported() throws Exception {
-                                String employeeToken = login("member_1_2", "member123");
+                                String employeeToken = login("dev_1_2", "member123");
                 String requestBody = mapper.writeValueAsString(Map.of(
                         "type", "ANNUAL",
                         "fromDate", LocalDate.now().plusDays(10).toString(),
@@ -161,7 +161,7 @@ class LeaveRequestApiIntegrationTest {
 
     @Test
     void approvedHalfDayAnnualLeaveDeductsHalfDayFromBalance() throws Exception {
-        String employeeToken = login("qa_1_2", "qa123");
+        String employeeToken = login("test_1_2", "qa123");
         LocalDate friday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.FRIDAY));
         LocalDate sunday = friday.plusDays(2);
         int year = friday.getYear();
@@ -224,7 +224,7 @@ class LeaveRequestApiIntegrationTest {
         int year = LocalDate.now().getYear();
         mockMvc.perform(get("/api/v1/leave-requests/balance")
                                 .param("year", String.valueOf(year))
-                                .header("Authorization", "Bearer " + login("qa_1_1", "qa123")))
+                                .header("Authorization", "Bearer " + login("test_1_1", "qa123")))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.usedDays").value(1.0))
                         .andExpect(jsonPath("$.data.pendingDays").value(0.0));

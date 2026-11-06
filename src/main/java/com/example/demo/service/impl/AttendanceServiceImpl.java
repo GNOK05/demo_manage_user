@@ -6,6 +6,7 @@ import com.example.demo.exception.BussinessException;
 import com.example.demo.repository.AttendanceRepository;
 import com.example.demo.repository.AttendanceSessionRepository;
 import com.example.demo.repository.LeaveRequestRepository;
+import com.example.demo.repository.UserRepository;
 import com.example.demo.service.AttendanceService;
 import com.example.demo.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final AttendanceRepository records;
     private final AttendanceSessionRepository sessions;
     private final LeaveRequestRepository leaveRequests;
+    private final UserRepository userRepository;
     private final UserService users;
 
     public AttendanceDto.Response checkIn() {
@@ -102,6 +104,54 @@ public class AttendanceServiceImpl implements AttendanceService {
         leave += approvedLeaveUsers.size();
         long absent = total - present - late - leave;
         return new AttendanceDto.DepartmentSummary(date, total, present, late, absent, leave);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AttendanceDto.CompanyDaySummary companyDaySummary(LocalDate date) {
+        if (date == null || date.isAfter(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"))))
+            throw new BussinessException("Choose a date up to today");
+        User current = users.currentUser();
+        if (current.getRole() != Role.ADMIN && current.getRole() != Role.HR)
+            throw new BussinessException("Only HR or admins can view company attendance");
+        var attendanceByUser = records.findByDate(date).stream()
+            .collect(java.util.stream.Collectors.toMap(a -> a.getUser().getId(), a -> a, (first, ignored) -> first));
+        var approvedLeaveByUser = leaveRequests.findByStatusAndFromDateLessThanEqualAndToDateGreaterThanEqual(
+                LeaveRequestStatus.APPROVED, date, date).stream()
+            .collect(java.util.stream.Collectors.toMap(leave -> leave.getUser().getId(), leave -> leave,
+                (first, ignored) -> first));
+        List<AttendanceDto.CompanyDayRow> rows = userRepository.findAll().stream()
+            .filter(user -> user.getAccountStatus() == AccountStatus.ACTIVE)
+            .map(user -> {
+                LeaveRequest leave = approvedLeaveByUser.get(user.getId());
+                Attendance record = attendanceByUser.get(user.getId());
+                String category;
+                if (leave != null && date.getDayOfWeek() != DayOfWeek.SATURDAY
+                        && date.getDayOfWeek() != DayOfWeek.SUNDAY) category = switch (leave.getType()) {
+                    case ANNUAL -> "PAID_ANNUAL_LEAVE";
+                    case UNPAID -> "UNPAID_LEAVE";
+                    default -> "OTHER_LEAVE";
+                };
+                else if (record != null && record.getStatus() == AttendanceStatus.PRESENT) category = "PRESENT";
+                else if (record != null && record.getStatus() == AttendanceStatus.LATE) category = "LATE";
+                else if (date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY)
+                    category = "OFF_DAY";
+                else if (date.equals(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")))
+                        && LocalTime.now(ZoneId.of("Asia/Ho_Chi_Minh")).isBefore(LocalTime.of(18, 0)))
+                    category = "PENDING";
+                else category = "ABSENT";
+                return new AttendanceDto.CompanyDayRow(user.getId(), user.getUsername(), user.getFullName(),
+                    user.getDepartment() == null ? "" : user.getDepartment().getName(), category);
+            }).toList();
+        return new AttendanceDto.CompanyDaySummary(date,
+            rows.stream().filter(row -> row.category().equals("PRESENT")).count(),
+            rows.stream().filter(row -> row.category().equals("LATE")).count(),
+            rows.stream().filter(row -> row.category().equals("ABSENT")).count(),
+            rows.stream().filter(row -> row.category().equals("UNPAID_LEAVE")).count(),
+            rows.stream().filter(row -> row.category().equals("PAID_ANNUAL_LEAVE")).count(),
+            rows.stream().filter(row -> row.category().equals("OTHER_LEAVE")).count(),
+            rows.stream().filter(row -> row.category().equals("OFF_DAY")).count(),
+            rows.stream().filter(row -> row.category().equals("PENDING")).count(), rows);
     }
 
     @Transactional(readOnly = true)

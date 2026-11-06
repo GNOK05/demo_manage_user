@@ -44,7 +44,7 @@ public class ProjectServiceImpl implements ProjectService {
         String query = searchable(keyword);
         List<Project> result = switch (u.getRole()) {
             case ADMIN, HR, PORTFOLIO_MANAGER, PROJECT_MANAGER -> projects.findAll();
-            case MEMBER, QA -> projects.findAssignedToUser(u.getId());
+            case BA, DEV, TEST -> projects.findAssignedToUser(u.getId());
             case TEAM_LEAD, VIEWER -> u.getDepartment() == null ? List.of()
                 : projects.findByParticipantDepartmentId(u.getDepartment().getId());
         };
@@ -63,7 +63,7 @@ public class ProjectServiceImpl implements ProjectService {
         Project p = entity(id);
         User u = users.currentUser();
         boolean companyScope = u.getRole() == Role.ADMIN || u.getRole() == Role.HR || u.getRole() == Role.PORTFOLIO_MANAGER || u.getRole() == Role.PROJECT_MANAGER;
-        boolean personalScope = (u.getRole() == Role.MEMBER || u.getRole() == Role.QA)
+        boolean personalScope = (u.getRole() == Role.BA || u.getRole() == Role.DEV || u.getRole() == Role.TEST)
             && projects.findAssignedToUser(u.getId()).stream().anyMatch(item -> item.getId().equals(id));
         boolean departmentScope = u.getDepartment() != null
             && projectDepartments.existsByProjectIdAndDepartmentId(id, u.getDepartment().getId());
@@ -198,7 +198,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     private boolean canViewTask(com.example.demo.entity.Task task, User current) {
         if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR || current.getRole() == Role.PORTFOLIO_MANAGER || current.getRole() == Role.PROJECT_MANAGER) return true;
-        if (current.getRole() == Role.MEMBER || current.getRole() == Role.QA) {
+        if (current.getRole() == Role.BA || current.getRole() == Role.DEV || current.getRole() == Role.TEST) {
             return task.getAssignedTo() != null && task.getAssignedTo().getId().equals(current.getId())
                 || task.getTester() != null && task.getTester().getId().equals(current.getId())
                 || task.getCreatedBy() != null && task.getCreatedBy().getId().equals(current.getId());

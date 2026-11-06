@@ -23,7 +23,7 @@ import java.time.ZoneId;
 import java.util.List;
 
 /**
- * Seeds demo data for the ADMIN, HR, PROJECT_MANAGER, TEAM_LEAD, MEMBER, QA and VIEWER roles,
+ * Seeds demo data for the ADMIN, HR, PROJECT_MANAGER, TEAM_LEAD, DEV, TEST and VIEWER roles,
  * three projects per department covering every {@link ProjectStatus}, tasks covering every
  * {@link TaskStatus} (with a tester assigned on some of them), and a 7-day attendance history
  * covering a mix of working, late, and absent {@link AttendanceStatus} values.
@@ -96,14 +96,14 @@ public class DataInitializer {
                 departments.save(department);
             }
 
-            User member1 = createOrUpdateDemoUser("member_" + number + "_1", "dev_" + number + "_1", "member123",
-                deptName + " Member 1", "member_" + number + "_1@company.local", Role.MEMBER, department, "Developer");
-            User member2 = createOrUpdateDemoUser("member_" + number + "_2", "dev_" + number + "_2", "member123",
-                deptName + " Member 2", "member_" + number + "_2@company.local", Role.MEMBER, department, "Developer");
-            User qa1 = createOrUpdateDemoUser("qa_" + number + "_1", "qa" + number, "qa123",
-                deptName + " QA 1", "qa_" + number + "_1@company.local", Role.QA, department, "QA Engineer");
-            User qa2 = createOrUpdateDemoUser("qa_" + number + "_2", null, "qa123",
-                deptName + " QA 2", "qa_" + number + "_2@company.local", Role.QA, department, "QA Engineer");
+            User member1 = createOrUpdateDemoUser("dev_" + number + "_1", "member_" + number + "_1", "member123",
+                deptName + " Developer 1", "member_" + number + "_1@company.local", Role.DEV, department, "Developer");
+            User member2 = createOrUpdateDemoUser("dev_" + number + "_2", "member_" + number + "_2", "member123",
+                deptName + " Developer 2", "member_" + number + "_2@company.local", Role.DEV, department, "Developer");
+            User qa1 = createOrUpdateDemoUser("test_" + number + "_1", "qa_" + number + "_1", "qa123",
+                deptName + " Tester 1", "qa_" + number + "_1@company.local", Role.TEST, department, "Tester");
+            User qa2 = createOrUpdateDemoUser("test_" + number + "_2", "qa_" + number + "_2", "qa123",
+                deptName + " Tester 2", "qa_" + number + "_2@company.local", Role.TEST, department, "Tester");
             User viewer = createOrUpdateDemoUser("viewer_" + number, null, "viewer123",
                 deptName + " Viewer", "viewer_" + number + "@company.local", Role.VIEWER, department, "Stakeholder");
             List<User> employees = List.of(member1, qa1, member2, qa2, viewer);

@@ -65,7 +65,7 @@ public class DashboardServiceImpl implements DashboardService {
             visibleTasks = tasks.findAll().stream().filter(task -> task.getWorkRequest() != null
                 && task.getWorkRequest().getExecutingDepartment().getId().equals(current.getDepartment().getId())).toList();
             visibleAttendance = attendance.findByUserDepartmentIdOrderByDateDesc(current.getDepartment().getId());
-        } else if (current.getRole() == Role.MEMBER || current.getRole() == Role.QA) {
+        } else if (current.getRole() == Role.BA || current.getRole() == Role.DEV || current.getRole() == Role.TEST) {
             visibleUsers = List.of(current);
             visibleProjects = projects.findAssignedToUser(current.getId());
             visibleTasks = tasks.findAssignedOrTesting(current.getId());

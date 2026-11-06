@@ -25,14 +25,14 @@ export class PeopleComponent implements OnInit {
   attendanceRecords = signal<import('../../core/models').Attendance[]>([]);
   modal = signal<'create' | 'edit' | 'delete' | null>(null);
   draftPassword = '';
-  readonly roles: Role[] = ['ADMIN', 'HR', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEAD', 'MEMBER', 'QA', 'VIEWER'];
+  readonly roles: Role[] = ['ADMIN', 'HR', 'PORTFOLIO_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEAD', 'BA', 'DEV', 'TEST', 'VIEWER'];
   selectedUser: User | null = null;
   draft: User = {
     id: 0,
     username: '',
     fullName: '',
     email: '',
-    role: 'MEMBER',
+    role: 'DEV',
     jobTitle: 'Nhân viên',
     departmentName: 'Phòng ban',
   };
@@ -183,7 +183,7 @@ export class PeopleComponent implements OnInit {
   canDelete(user: User) {
     const current = this.auth.user();
     if (!current || !this.auth.hasRole(['ADMIN', 'HR']) || current.id === user.id) return false;
-    const rank = (role: Role) => ({ ADMIN: 8, PORTFOLIO_MANAGER: 7, HR: 6, PROJECT_MANAGER: 5, TEAM_LEAD: 4, QA: 3, MEMBER: 2, VIEWER: 1 })[role];
+    const rank = (role: Role) => ({ ADMIN: 8, PORTFOLIO_MANAGER: 7, HR: 6, PROJECT_MANAGER: 5, TEAM_LEAD: 4, TEST: 3, BA: 2, DEV: 2, VIEWER: 1 })[role];
     return rank(current.role) > rank(user.role);
   }
 
@@ -204,8 +204,8 @@ export class PeopleComponent implements OnInit {
 
   roleLabel(role: Role) {
     return ({ ADMIN: 'Quản trị viên', HR: 'Nhân sự', PORTFOLIO_MANAGER: 'Quản lý dự án công ty',
-      PROJECT_MANAGER: 'Quản lý dự án phòng ban', TEAM_LEAD: 'Trưởng nhóm', MEMBER: 'Thành viên',
-      QA: 'Kiểm thử', VIEWER: 'Chỉ xem' } as Record<Role, string>)[role];
+      PROJECT_MANAGER: 'Quản lý dự án phòng ban', TEAM_LEAD: 'Trưởng nhóm', BA: 'Phân tích nghiệp vụ', DEV: 'Phát triển',
+      TEST: 'Kiểm thử', VIEWER: 'Chỉ xem' } as Record<Role, string>)[role];
   }
 
   resetForm() {
@@ -217,7 +217,7 @@ export class PeopleComponent implements OnInit {
       username: '',
       fullName: '',
       email: '',
-      role: 'MEMBER',
+      role: 'DEV',
       jobTitle: 'Nhân viên',
       departmentName: 'Phòng ban',
     };

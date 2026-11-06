@@ -36,7 +36,7 @@
       <span class="user-avatar">{{ (auth.user()?.fullName || 'U').charAt(0).toUpperCase() }}</span>
       <div>
         <strong>{{ auth.user()?.fullName || 'Người dùng' }}</strong>
-        <small>{{ auth.user()?.jobTitle || auth.user()?.role || 'MEMBER' }}</small>
+        <small>{{ auth.user()?.jobTitle || auth.user()?.role || 'DEV' }}</small>
       </div>
     </div>
     <a class="account-settings" routerLink="/settings" routerLinkActive="active">Thiết lập tài khoản</a>

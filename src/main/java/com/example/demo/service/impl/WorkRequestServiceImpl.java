@@ -23,16 +23,22 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional
 public class WorkRequestServiceImpl implements WorkRequestService {
-    private static final Map<WorkRequestStatus, EnumSet<WorkRequestStatus>> TRANSITIONS = Map.of(
-        WorkRequestStatus.DRAFT, EnumSet.of(WorkRequestStatus.READY, WorkRequestStatus.CANCELLED),
-        WorkRequestStatus.READY, EnumSet.of(WorkRequestStatus.IN_PROGRESS, WorkRequestStatus.DRAFT, WorkRequestStatus.CANCELLED),
-        WorkRequestStatus.IN_PROGRESS, EnumSet.of(WorkRequestStatus.PENDING_ACCEPTANCE, WorkRequestStatus.CANCELLED),
-        WorkRequestStatus.PENDING_ACCEPTANCE, EnumSet.of(WorkRequestStatus.COMPLETED, WorkRequestStatus.IN_PROGRESS),
-        WorkRequestStatus.COMPLETED, EnumSet.noneOf(WorkRequestStatus.class),
-        WorkRequestStatus.CANCELLED, EnumSet.noneOf(WorkRequestStatus.class)
+    private static final Map<WorkRequestStatus, EnumSet<WorkRequestStatus>> TRANSITIONS = Map.ofEntries(
+        Map.entry(WorkRequestStatus.DRAFT, EnumSet.of(WorkRequestStatus.ANALYSIS, WorkRequestStatus.READY, WorkRequestStatus.CANCELLED)),
+        Map.entry(WorkRequestStatus.ANALYSIS, EnumSet.of(WorkRequestStatus.READY, WorkRequestStatus.PAUSED, WorkRequestStatus.CANCELLED)),
+        Map.entry(WorkRequestStatus.READY, EnumSet.of(WorkRequestStatus.DEVELOPMENT, WorkRequestStatus.IN_PROGRESS, WorkRequestStatus.ANALYSIS, WorkRequestStatus.PAUSED, WorkRequestStatus.CANCELLED)),
+        Map.entry(WorkRequestStatus.IN_PROGRESS, EnumSet.of(WorkRequestStatus.TESTING, WorkRequestStatus.PENDING_ACCEPTANCE, WorkRequestStatus.PAUSED, WorkRequestStatus.CANCELLED)),
+        Map.entry(WorkRequestStatus.DEVELOPMENT, EnumSet.of(WorkRequestStatus.TESTING, WorkRequestStatus.PAUSED, WorkRequestStatus.CANCELLED)),
+        Map.entry(WorkRequestStatus.TESTING, EnumSet.of(WorkRequestStatus.PENDING_ACCEPTANCE, WorkRequestStatus.DEVELOPMENT, WorkRequestStatus.PAUSED, WorkRequestStatus.CANCELLED)),
+        Map.entry(WorkRequestStatus.PENDING_ACCEPTANCE, EnumSet.of(WorkRequestStatus.COMPLETED, WorkRequestStatus.CHANGES_REQUESTED)),
+        Map.entry(WorkRequestStatus.CHANGES_REQUESTED, EnumSet.of(WorkRequestStatus.ANALYSIS, WorkRequestStatus.DEVELOPMENT, WorkRequestStatus.TESTING, WorkRequestStatus.PAUSED)),
+        Map.entry(WorkRequestStatus.PAUSED, EnumSet.of(WorkRequestStatus.ANALYSIS, WorkRequestStatus.DEVELOPMENT, WorkRequestStatus.TESTING, WorkRequestStatus.CANCELLED)),
+        Map.entry(WorkRequestStatus.COMPLETED, EnumSet.noneOf(WorkRequestStatus.class)),
+        Map.entry(WorkRequestStatus.CANCELLED, EnumSet.noneOf(WorkRequestStatus.class))
     );
 
     private final WorkRequestRepository requests;
+    private final WorkRequestHistoryRepository history;
     private final ProjectRepository projects;
     private final ProjectDepartmentRepository projectDepartments;
     private final DepartmentRepository departments;
@@ -80,6 +86,7 @@ public class WorkRequestServiceImpl implements WorkRequestService {
 
     @Override
     public WorkRequestDto.Response create(Long projectId, WorkRequestDto.SaveRequest request) {
+        requirePortfolioManager();
         Project project = project(projectId);
         Department department = department(request.executingDepartmentId());
         verifyCanManage(project, department);
@@ -88,11 +95,14 @@ public class WorkRequestServiceImpl implements WorkRequestService {
         item.setRequestCode(nextCode(project));
         item.setProject(project);
         item.setCreatedBy(users.currentUser());
-        return response(requests.save(build(item, request, project, department)));
+        WorkRequest saved = requests.save(build(item, request, project, department));
+        recordHistory(saved, null, WorkRequestStatus.DRAFT, null);
+        return response(saved);
     }
 
     @Override
     public WorkRequestDto.Response update(Long id, WorkRequestDto.SaveRequest request) {
+        requirePortfolioManager();
         WorkRequest item = entity(id);
         Department department = department(request.executingDepartmentId());
         verifyCanManage(item.getProject(), item.getExecutingDepartment());
@@ -104,27 +114,61 @@ public class WorkRequestServiceImpl implements WorkRequestService {
     public WorkRequestDto.Response updateStatus(Long id, WorkRequestDto.StatusRequest request) {
         WorkRequest item = entity(id);
         verifyCanManage(item.getProject(), item.getExecutingDepartment());
+        if (users.currentUser().getRole() == Role.TEAM_LEAD && (item.getCoordinator() == null
+                || !item.getCoordinator().getId().equals(users.currentUser().getId())))
+            throw new BussinessException("Only the assigned team lead can advance this work request");
         WorkRequestStatus from = item.getStatus();
         WorkRequestStatus to = request.status();
+        Role role = users.currentUser().getRole();
+        if (role != Role.ADMIN && role != Role.PORTFOLIO_MANAGER && role != Role.TEAM_LEAD)
+            throw new BussinessException("This role cannot change work request stages");
+        if ((to == WorkRequestStatus.COMPLETED || to == WorkRequestStatus.CHANGES_REQUESTED
+                || to == WorkRequestStatus.CANCELLED) && role != Role.ADMIN && role != Role.PORTFOLIO_MANAGER)
+            throw new BussinessException("Only portfolio managers can accept, reject or cancel a work request");
+        if ((to == WorkRequestStatus.PENDING_ACCEPTANCE || to == WorkRequestStatus.TESTING
+                || to == WorkRequestStatus.DEVELOPMENT || to == WorkRequestStatus.READY)
+                && role != Role.ADMIN && role != Role.TEAM_LEAD)
+            throw new BussinessException("Only team leads can advance delivery stages");
+        if (to == WorkRequestStatus.CHANGES_REQUESTED && (request.reason() == null || request.reason().isBlank()))
+            throw new BussinessException("A reason is required when requesting changes");
         if (from == to) return response(item);
         if (!TRANSITIONS.getOrDefault(from, EnumSet.noneOf(WorkRequestStatus.class)).contains(to)) {
             throw new BussinessException("Invalid work request transition: " + from + " -> " + to);
         }
-        if (to == WorkRequestStatus.PENDING_ACCEPTANCE && hasOpenTasks(item.getId())) {
-            throw new BussinessException("All active tasks must be completed before acceptance");
+        if (to == WorkRequestStatus.PENDING_ACCEPTANCE && (tasks.findByWorkRequestIdOrderByDeadlineAsc(item.getId()).stream()
+                .noneMatch(task -> task.getStatus() == TaskStatus.DONE) || hasOpenTasks(item.getId()))) {
+            throw new BussinessException("All required tasks must be completed before acceptance");
         }
         if (to == WorkRequestStatus.COMPLETED && from != WorkRequestStatus.PENDING_ACCEPTANCE) {
             throw new BussinessException("Work request must await acceptance before completion");
         }
         item.setStatus(to);
+        recordHistory(item, from, to, request.reason());
         return response(item);
+    }
+
+    @Override @Transactional(readOnly = true)
+    public List<WorkRequestDto.HistoryResponse> history(Long id) {
+        get(id);
+        return history.findByWorkRequestIdOrderByChangedAtDesc(id).stream()
+            .map(h -> new WorkRequestDto.HistoryResponse(h.getFromStatus(), h.getToStatus(),
+                h.getReason(), h.getActor().getFullName(), h.getChangedAt())).toList();
+    }
+
+    private void recordHistory(WorkRequest item, WorkRequestStatus from, WorkRequestStatus to, String reason) {
+        WorkRequestHistory entry = new WorkRequestHistory();
+        entry.setWorkRequest(item); entry.setActor(users.currentUser());
+        entry.setFromStatus(from); entry.setToStatus(to); entry.setReason(reason);
+        history.save(entry);
     }
 
     @Override
     public void delete(Long id) {
+        requirePortfolioManager();
         WorkRequest item = entity(id);
         verifyCanManage(item.getProject(), item.getExecutingDepartment());
         if (tasks.countByWorkRequestId(id) > 0) throw new BussinessException("Cannot delete a work request that contains tasks");
+        history.deleteAll(history.findByWorkRequestIdOrderByChangedAtDesc(id));
         requests.delete(item);
     }
 
@@ -134,6 +178,8 @@ public class WorkRequestServiceImpl implements WorkRequestService {
             throw new BussinessException("Work request dates must be within project dates");
         }
         User coordinator = request.coordinatorId() == null ? null : users.findEntity(request.coordinatorId());
+        if (coordinator == null || coordinator.getRole() != Role.TEAM_LEAD)
+            throw new BussinessException("A team lead must be assigned to this work request");
         if (coordinator != null && (coordinator.getDepartment() == null
                 || !coordinator.getDepartment().getId().equals(department.getId()))) {
             throw new BussinessException("Coordinator must belong to the executing department");
@@ -245,4 +291,9 @@ public class WorkRequestServiceImpl implements WorkRequestService {
     private Project project(Long id) { return projects.findById(id).orElseThrow(() -> new BussinessException("Project not found: " + id)); }
     private Department department(Long id) { return departments.findById(id).orElseThrow(() -> new BussinessException("Department not found: " + id)); }
     private WorkRequest entity(Long id) { return requests.findById(id).orElseThrow(() -> new BussinessException("Work request not found: " + id)); }
+    private void requirePortfolioManager() {
+        Role role = users.currentUser().getRole();
+        if (role != Role.ADMIN && role != Role.PORTFOLIO_MANAGER)
+            throw new BussinessException("Only portfolio managers can create or edit work requests");
+    }
 }

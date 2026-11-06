@@ -1,6 +1,7 @@
 package com.example.demo.dto;
 import com.example.demo.entity.TaskStatus;
 import com.example.demo.entity.TaskPriority;
+import com.example.demo.entity.TaskType;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 public final class TaskDto {
@@ -8,11 +9,13 @@ public final class TaskDto {
     public record SaveRequest(@NotBlank String taskName, @Size(max = 2000) String description, Long projectId, Long workRequestId, Long assignedToId, Long testerId,
         @NotNull LocalDate deadline, TaskStatus status, TaskPriority priority, LocalDate startDate,
         @Min(1) @Max(1000) Integer estimatedHours, @Size(max = 2000) String acceptanceCriteria,
-        @Size(max = 500) String blockedReason) {}
+        @Size(max = 500) String blockedReason, TaskType taskType, Long relatedTaskId) {}
     public record StatusRequest(@NotNull TaskStatus status, @Size(max = 500) String blockedReason) {}
+    public record ResultRequest(@NotBlank @Size(max = 3000) String resultSummary) {}
     public record Response(Long id, String taskName, String description, Long projectId, String projectName,
         Long workRequestId, String workRequestCode, String workRequestTitle, Long executingDepartmentId, String executingDepartmentName,
         Long assignedToId, String assignedToName, Long testerId, String testerName, Long createdById,
         TaskStatus status, LocalDate startDate, LocalDate deadline, TaskPriority priority,
-        Integer estimatedHours, String acceptanceCriteria, String blockedReason) {}
+        Integer estimatedHours, String acceptanceCriteria, String blockedReason, TaskType taskType, Long relatedTaskId,
+        String resultSummary) {}
 }

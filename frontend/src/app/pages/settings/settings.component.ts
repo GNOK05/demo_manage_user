@@ -42,7 +42,7 @@ export class SettingsComponent implements OnInit {
   }
 
   roleLabel(role?: User['role']) {
-    return ({ ADMIN: 'Quản trị viên', HR: 'Nhân sự', PORTFOLIO_MANAGER: 'Quản lý dự án công ty', PROJECT_MANAGER: 'Quản lý dự án phòng ban', TEAM_LEAD: 'Trưởng nhóm', MEMBER: 'Thành viên', QA: 'Kiểm thử', VIEWER: 'Chỉ xem' } as Record<User['role'], string>)[role ?? 'MEMBER'];
+    return ({ ADMIN: 'Quản trị viên', HR: 'Nhân sự', PORTFOLIO_MANAGER: 'Quản lý dự án công ty', PROJECT_MANAGER: 'Quản lý dự án phòng ban', TEAM_LEAD: 'Trưởng nhóm', BA: 'Phân tích nghiệp vụ', DEV: 'Phát triển', TEST: 'Kiểm thử', VIEWER: 'Chỉ xem' } as Record<User['role'], string>)[role ?? 'DEV'];
   }
 
   changePassword() {

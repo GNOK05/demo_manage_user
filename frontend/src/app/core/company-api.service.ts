@@ -246,11 +246,19 @@ export class CompanyApiService {
       .patch<ApiResponse<WorkRequest>>(`${API}/work-requests/${id}/status`, { status, reason })
       .pipe(map((r) => r.data));
   }
+  workRequestHistory(id: number) {
+    return this.http.get<ApiResponse<import('./models').WorkRequestHistory[]>>(`${API}/work-requests/${id}/history`)
+      .pipe(map((r) => r.data));
+  }
   deleteWorkRequest(id: number) {
     return this.http.delete<void>(`${API}/work-requests/${id}`);
   }
   createTask(payload: TaskSaveRequest) {
     return this.http.post<ApiResponse<Task>>(`${API}/tasks`, payload).pipe(map((r) => r.data));
+  }
+  submitTaskResult(id: number, resultSummary: string) {
+    return this.http.patch<ApiResponse<Task>>(`${API}/tasks/${id}/result`, { resultSummary })
+      .pipe(map((r) => r.data));
   }
   updateTask(id: number, payload: TaskSaveRequest) {
     return this.http.put<ApiResponse<Task>>(`${API}/tasks/${id}`, payload).pipe(map((r) => r.data));
@@ -306,6 +314,10 @@ export class CompanyApiService {
     return this.http
       .get<ApiResponse<Attendance[]>>(`${API}/attendance/day`, { params: { date } })
       .pipe(map((r) => r.data));
+  }
+  companyAttendanceDay(date: string) {
+    return this.http.get<ApiResponse<import('./models').CompanyDaySummary>>(`${API}/attendance/company/day`,
+      { params: { date } }).pipe(map((r) => r.data));
   }
   departmentAttendance() {
     return this.http

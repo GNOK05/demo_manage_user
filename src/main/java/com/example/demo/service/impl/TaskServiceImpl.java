@@ -64,7 +64,7 @@ public class TaskServiceImpl implements TaskService {
         List<Task> accessible;
         if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR || current.getRole() == Role.PORTFOLIO_MANAGER || current.getRole() == Role.PROJECT_MANAGER) {
             accessible = tasks.findAll();
-        } else if (current.getRole() == Role.MEMBER || current.getRole() == Role.QA) {
+        } else if (current.getRole() == Role.BA || current.getRole() == Role.DEV || current.getRole() == Role.TEST) {
             accessible = tasks.findAssignedOrTesting(current.getId());
         } else if (current.getDepartment() != null && (current.getRole() == Role.TEAM_LEAD || current.getRole() == Role.VIEWER)) {
             accessible = tasks.findAll().stream().filter(task -> task.getWorkRequest() != null
@@ -78,7 +78,7 @@ public class TaskServiceImpl implements TaskService {
 
     private boolean canViewTask(Task task, User current) {
         if (current.getRole() == Role.ADMIN || current.getRole() == Role.HR || current.getRole() == Role.PORTFOLIO_MANAGER || current.getRole() == Role.PROJECT_MANAGER) return true;
-        if (current.getRole() == Role.MEMBER || current.getRole() == Role.QA) {
+        if (current.getRole() == Role.BA || current.getRole() == Role.DEV || current.getRole() == Role.TEST) {
             return task.getAssignedTo() != null && task.getAssignedTo().getId().equals(current.getId())
                 || task.getTester() != null && task.getTester().getId().equals(current.getId())
                 || task.getCreatedBy() != null && task.getCreatedBy().getId().equals(current.getId());
@@ -126,8 +126,9 @@ public class TaskServiceImpl implements TaskService {
 
     @Override public TaskDto.Response save(TaskDto.SaveRequest request) {
         WorkRequest workRequest = resolveWorkRequest(request);
+        verifyAssignedLead(workRequest, request.taskType());
         Project project = workRequest.getProject();
-        verifyCanCreate(project, request.assignedToId());
+        verifyCanCreate(project, request.assignedToId(), request.taskType());
         return response(tasks.save(build(new Task(), request, project, workRequest, true)));
     }
 
@@ -136,7 +137,7 @@ public class TaskServiceImpl implements TaskService {
         verifyCanEdit(task);
         WorkRequest workRequest = resolveWorkRequest(request);
         Project project = workRequest.getProject();
-        verifyCanCreate(project, request.assignedToId());
+        verifyCanCreate(project, request.assignedToId(), request.taskType());
         return response(build(task, request, project, workRequest, false));
     }
 
@@ -150,27 +151,44 @@ public class TaskServiceImpl implements TaskService {
             throw new BussinessException("Invalid task transition: " + from + " -> " + to);
         }
         verifyTransitionRole(task, current, from, to);
+        if (to == TaskStatus.DONE && (task.getResultSummary() == null || task.getResultSummary().isBlank()))
+            throw new BussinessException("A task result is required before completion");
         if (to == TaskStatus.BLOCKED && (request.blockedReason() == null || request.blockedReason().isBlank())) {
             throw new BussinessException("A reason is required when blocking a task");
         }
         task.setStatus(to);
         task.setBlockedReason(to == TaskStatus.BLOCKED ? request.blockedReason().trim() : null);
-        synchronizeWorkRequest(task.getWorkRequest());
+        // Progress is derived from tasks; only authorized actors move the request stage.
         return response(task);
     }
 
     @Override public void delete(Long id) {
         Task task = task(id);
         User current = users.currentUser();
-        boolean participantDepartment = current.getDepartment() != null
-            && projectDepartments.existsByProjectIdAndDepartmentId(task.getProject().getId(), current.getDepartment().getId());
-        boolean allowed = current.getRole() == Role.ADMIN || current.getRole() == Role.PORTFOLIO_MANAGER
-            || current.getRole() == Role.PROJECT_MANAGER && participantDepartment
+        boolean allowed = current.getRole() == Role.ADMIN
             || current.getRole() == Role.TEAM_LEAD && task.getWorkRequest() != null && current.getDepartment() != null
                 && current.getDepartment().getId().equals(task.getWorkRequest().getExecutingDepartment().getId())
+                && task.getWorkRequest().getCoordinator() != null
+                && task.getWorkRequest().getCoordinator().getId().equals(current.getId())
                 && task.getStatus() != TaskStatus.DONE;
         if (!allowed) throw new BussinessException("You are not allowed to delete this task");
         tasks.delete(task);
+    }
+
+    @Override public TaskDto.Response updateResult(Long id, TaskDto.ResultRequest request) {
+        Task task = task(id);
+        User current = users.currentUser();
+        boolean assigned = task.getAssignedTo() != null && task.getAssignedTo().getId().equals(current.getId());
+        boolean tester = task.getTaskType() == TaskType.TESTING && task.getTester() != null
+            && task.getTester().getId().equals(current.getId());
+        boolean lead = current.getRole() == Role.TEAM_LEAD && task.getWorkRequest().getCoordinator() != null
+            && task.getWorkRequest().getCoordinator().getId().equals(current.getId());
+        if (!assigned && !tester && !lead && current.getRole() != Role.ADMIN)
+            throw new BussinessException("Only the assignee can submit this task result");
+        if (task.getStatus() == TaskStatus.DONE || task.getStatus() == TaskStatus.CANCELLED)
+            throw new BussinessException("Closed task results cannot be changed");
+        task.setResultSummary(request.resultSummary().trim());
+        return response(task);
     }
 
     private Task build(Task task, TaskDto.SaveRequest request, Project project, WorkRequest workRequest, boolean creating) {
@@ -193,6 +211,25 @@ public class TaskServiceImpl implements TaskService {
         task.setTaskName(request.taskName()); task.setDescription(request.description()); task.setProject(project); task.setWorkRequest(workRequest);
         task.setDeadline(request.deadline()); task.setStartDate(startDate); task.setPriority(priority);
         task.setEstimatedHours(request.estimatedHours()); task.setAcceptanceCriteria(request.acceptanceCriteria());
+        TaskType type = request.taskType() == null ? task.getTaskType() : request.taskType();
+        if (type == null) type = TaskType.DEVELOPMENT;
+        Task related = request.relatedTaskId() == null ? null : task(request.relatedTaskId());
+        if (type == TaskType.BUG && (related == null || !related.getWorkRequest().getId().equals(workRequest.getId())
+                || related.getTaskType() != TaskType.DEVELOPMENT))
+            throw new BussinessException("A bug must link to a development task in the same work request");
+        if (type != TaskType.BUG && related != null)
+            throw new BussinessException("Only bug tasks can link to another task");
+        task.setTaskType(type); task.setRelatedTask(related);
+        if (task.getAssignedTo() != null) {
+            Role assignedRole = task.getAssignedTo().getRole();
+            boolean valid = switch (type) {
+                case ANALYSIS -> assignedRole == Role.BA;
+                case TESTING -> assignedRole == Role.TEST;
+                case REVIEW -> assignedRole == Role.TEAM_LEAD;
+                case DEVELOPMENT, BUG, DEPLOYMENT -> assignedRole == Role.DEV || assignedRole == Role.TEAM_LEAD;
+            };
+            if (!valid) throw new BussinessException("Task assignee role does not match its type");
+        }
         task.setStatus(status); task.setBlockedReason(status == TaskStatus.BLOCKED ? blockedReason.trim() : null);
         if (task.getCreatedBy() == null) task.setCreatedBy(users.currentUser());
         return task;
@@ -209,21 +246,31 @@ public class TaskServiceImpl implements TaskService {
     private User validateTester(Long userId, Project project) {
         if (userId == null) return null;
         User user = users.findEntity(userId);
-        if (user.getRole() != Role.QA) throw new BussinessException("Tester must have the QA role");
+        if (user.getRole() != Role.TEST) throw new BussinessException("Tester must have the TEST role");
         if (user.getDepartment() == null || !projectDepartments.existsByProjectIdAndDepartmentId(project.getId(), user.getDepartment().getId()))
             throw new BussinessException("Tester must belong to a participating project department");
         return user;
     }
 
-    private void verifyCanCreate(Project project, Long assigneeId) {
+    private void verifyCanCreate(Project project, Long assigneeId, TaskType type) {
         User current = users.currentUser();
         if (current.getRole().isReadOnly() || current.getRole() == Role.HR)
             throw new BussinessException("Your role cannot create or edit tasks");
-        if (current.getRole() == Role.ADMIN || current.getRole() == Role.PORTFOLIO_MANAGER) return;
+        if (current.getRole() == Role.ADMIN) return;
+        if (current.getRole() != Role.TEAM_LEAD && !(current.getRole() == Role.TEST && type == TaskType.BUG))
+            throw new BussinessException("Only team leads can create or assign tasks");
         if (current.getDepartment() == null || !projectDepartments.existsByProjectIdAndDepartmentId(project.getId(), current.getDepartment().getId()))
             throw new BussinessException("You can only manage tasks in participating projects");
         if (!current.getRole().canManageTasks() && assigneeId != null && !assigneeId.equals(current.getId()))
-            throw new BussinessException("Members and QA can only assign a new task to themselves");
+            throw new BussinessException("Members and TEST can only assign a new task to themselves");
+    }
+
+    private void verifyAssignedLead(WorkRequest request, TaskType type) {
+        User current = users.currentUser();
+        if (current.getRole() == Role.ADMIN) return;
+        if (current.getRole() == Role.TEST && type == TaskType.BUG) return;
+        if (request.getCoordinator() == null || !request.getCoordinator().getId().equals(current.getId()))
+            throw new BussinessException("Only the assigned team lead can split this work request into tasks");
     }
 
     private void verifyCanEdit(Task task) {
@@ -231,10 +278,13 @@ public class TaskServiceImpl implements TaskService {
         boolean participant = task.getAssignedTo() != null && task.getAssignedTo().getId().equals(current.getId())
             || task.getTester() != null && task.getTester().getId().equals(current.getId())
             || task.getCreatedBy() != null && task.getCreatedBy().getId().equals(current.getId());
-        if (current.getRole() == Role.ADMIN || current.getRole() == Role.PORTFOLIO_MANAGER) return;
+        if (current.getRole() == Role.ADMIN) return;
         boolean inProject = current.getDepartment() != null
             && projectDepartments.existsByProjectIdAndDepartmentId(task.getProject().getId(), current.getDepartment().getId());
-        if (!inProject || !current.getRole().canManageTasks() && !participant)
+        boolean assignedLead = current.getRole() == Role.TEAM_LEAD && task.getWorkRequest().getCoordinator() != null
+            && task.getWorkRequest().getCoordinator().getId().equals(current.getId());
+        if (!inProject || !assignedLead && !(current.getRole() == Role.TEST
+                && task.getTaskType() == TaskType.BUG && participant))
             throw new BussinessException("You are not allowed to edit this task");
     }
 
@@ -246,8 +296,9 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private void verifyTransitionRole(Task task, User current, TaskStatus from, TaskStatus to) {
-        boolean manager = current.getRole() == Role.ADMIN || current.getRole() == Role.PORTFOLIO_MANAGER
-            || current.getRole().canManageTasks() && current.getDepartment() != null
+        boolean manager = current.getRole() == Role.ADMIN
+            || current.getRole() == Role.TEAM_LEAD && task.getWorkRequest().getCoordinator() != null
+                && task.getWorkRequest().getCoordinator().getId().equals(current.getId()) && current.getDepartment() != null
                 && projectDepartments.existsByProjectIdAndDepartmentId(task.getProject().getId(), current.getDepartment().getId());
         boolean assignee = task.getAssignedTo() != null && task.getAssignedTo().getId().equals(current.getId());
         boolean tester = task.getTester() != null && task.getTester().getId().equals(current.getId());
@@ -256,8 +307,8 @@ public class TaskServiceImpl implements TaskService {
         } else if (from == TaskStatus.REVIEW && (to == TaskStatus.TESTING || to == TaskStatus.IN_PROGRESS)) {
             if (!manager) throw new BussinessException("Only project managers or team leads can approve or reject review");
         } else if (from == TaskStatus.TESTING && (to == TaskStatus.DONE || to == TaskStatus.IN_PROGRESS)) {
-            if (!tester && current.getRole() != Role.QA && !manager)
-                throw new BussinessException("Only the assigned QA or a task manager can complete testing");
+            if (!tester && !manager)
+                throw new BussinessException("Only the assigned TEST or a task manager can complete testing");
         } else if (!manager && !assignee) {
             throw new BussinessException("Only the assignee or a task manager can update this task");
         }
@@ -282,18 +333,6 @@ public class TaskServiceImpl implements TaskService {
         return workRequest;
     }
 
-    private void synchronizeWorkRequest(WorkRequest request) {
-        if (request == null || request.getStatus() == WorkRequestStatus.COMPLETED
-                || request.getStatus() == WorkRequestStatus.CANCELLED) return;
-        List<Task> requestTasks = tasks.findByWorkRequestIdOrderByDeadlineAsc(request.getId());
-        boolean anyStarted = requestTasks.stream().anyMatch(task -> task.getStatus() != TaskStatus.BACKLOG && task.getStatus() != TaskStatus.TODO);
-        boolean allClosed = !requestTasks.isEmpty() && requestTasks.stream()
-            .allMatch(task -> task.getStatus() == TaskStatus.DONE || task.getStatus() == TaskStatus.CANCELLED);
-        if (allClosed) request.setStatus(WorkRequestStatus.PENDING_ACCEPTANCE);
-        else if (anyStarted && (request.getStatus() == WorkRequestStatus.READY || request.getStatus() == WorkRequestStatus.DRAFT))
-            request.setStatus(WorkRequestStatus.IN_PROGRESS);
-    }
-
     private Project project(Long id) { return projects.findById(Objects.requireNonNull(id))
         .orElseThrow(() -> new BussinessException("Project not found: " + id)); }
     private WorkRequest workRequest(Long id) { return workRequests.findById(Objects.requireNonNull(id))
@@ -311,5 +350,6 @@ public class TaskServiceImpl implements TaskService {
         t.getAssignedTo() == null ? null : t.getAssignedTo().getFullName(), t.getTester() == null ? null : t.getTester().getId(),
         t.getTester() == null ? null : t.getTester().getFullName(), t.getCreatedBy() == null ? null : t.getCreatedBy().getId(),
         t.getStatus(), t.getStartDate(), t.getDeadline(), t.getPriority(), t.getEstimatedHours(),
-        t.getAcceptanceCriteria(), t.getBlockedReason()); }
+        t.getAcceptanceCriteria(), t.getBlockedReason(), t.getTaskType(), t.getRelatedTask() == null ? null : t.getRelatedTask().getId(),
+        t.getResultSummary()); }
 }

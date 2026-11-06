@@ -43,7 +43,7 @@ class LeaveRequestServiceTest {
     void shouldCreatePendingLeaveRequestForEmployee() {
         User employee = new User();
         employee.setId(10L);
-        employee.setRole(Role.MEMBER);
+        employee.setRole(Role.DEV);
         employee.setFullName("Alice");
 
         when(userService.currentUser()).thenReturn(employee);

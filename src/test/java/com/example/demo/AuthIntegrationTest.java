@@ -61,7 +61,7 @@ public class AuthIntegrationTest {
 
     @Test
     void authenticatedUserCanChangeAndRestoreOwnPassword() throws Exception {
-        String username = "member_15_2";
+        String username = "dev_15_2";
         String currentPassword = "member123";
         String replacementPassword = "change-me-123";
         String token = login(username, currentPassword);
